@@ -1,7 +1,12 @@
 # Phase 13G — Application-level A/B deployment, rollback and version compatibility
 
-Status: **Staging Pass** (Gate A and Gate B complete; Gates C, D and E require
-operator-run `sudo` and are not yet executed).
+Status: **Pass** (Gates A-E complete on the physical Jetson Orin NX 16 GB).
+
+Final runtime/package source SHA:
+`315432ae1894f6c4e023c1e350445e3a4ec44fd2`.
+
+The final source regression ran 670 tests with zero skips and all 16 mandatory
+Phase 13G scenarios covered.
 
 This phase gives the Jetson node an A/B release mechanism: a commit becomes an
 immutable release, releases are activated by an atomic symlink switch, an
@@ -255,32 +260,201 @@ including both checks that the two design fixes above address. The running
 service was not stopped to obtain this evidence, because that would change
 production authority without approval.
 
-## Gate C — Activation Pass (requires operator `sudo`)
+## Gate C — Activation Pass
 
-Not executed. Claude does not run `sudo`, edit `/etc`, request or store sudo
-passwords, or enable passwordless sudo. Regenerate the exact commands with:
+Gate C was executed on the physical Jetson using the release-managed systemd
+unit.
 
-```bash
-python scripts/run_phase13g_install.py --systemd-version 245 --write-staged /home/myjetsonnx/ma-vlna-staging --print-commands
-```
+The original Gate C release pair was:
 
-The sequence backs up the Phase 13F unit before overwriting it (Gate C is
-reversible), verifies with `systemd-analyze verify` before starting anything,
-publishes the environment layer before the first start, and enables for boot
-only after the service is healthy.
 
-Both staged units already pass `systemd-analyze verify` on the target
-(systemd 245, `245.4-4ubuntu3.22`).
+release A relA-20260814082659
+release B relB-20260814082659
+source 47f7373366ef669f72c8749f00caa0a4ff4e2a8a
 
-Gate C requires: READY within 120 s, a 300 s probation, then confirmation as
-last-known-good.
 
-## Gates D and E
+A -> B activation passed:
 
-- **Gate D — Rollback Pass**: inject candidate failures and prove both automatic
-  and manual rollback, with the environment layer following the switch back.
-- **Gate E — Reboot Recovery Pass**: reboot during staging, and after activation
-  but before confirmation. Requires operator approval for each reboot.
+- atomic `current` switch by symlink + rename
+- per-release expected-SHA environment published before restart
+- candidate reached READY
+- FP16 remained the only production command authority
+- engine hash matched
+- preflight passed
+- probation completed for approximately 302 s with no observed service restart
+- B was confirmed as `last-known-good`
+
+The health payload's legacy `repository_sha` field continued to reflect the
+external Phase 13F startup manifest. The authoritative release expectation is
+the per-release `MA_VLNA_EXPECTED_SHA`; startup preflight passed against that
+value. This is an observability ambiguity, not a failed activation.
+
+## Gate D — Rollback Pass
+
+Both rollback paths were exercised on the physical Jetson.
+
+**Manual rollback:** B -> A completed successfully. The release symlink and
+environment layer both returned to A, the node returned to READY, FP16 authority
+was restored, and the engine hash and startup preflight remained valid.
+
+**Automatic rollback:** the exact node PID was killed during B probation. The
+deployment manager observed `state_left_ready`, classified the candidate
+activation as `probation_failed`, entered `ROLLING_BACK`, restored A and its
+environment layer, and completed in `ROLLED_BACK`.
+
+No broad process kill such as `pkill` was used.
+
+## Gate E — Reboot Recovery Pass
+
+Gate E was repeated with fixed releases built from:
+
+
+runtime/package SHA 315432ae1894f6c4e023c1e350445e3a4ec44fd2
+A2 relA2-20230331003500
+B2 relB2-20230331003500
+
+
+Both packages reported `package_matches_commit=true`.
+
+### Cycle 1 — reboot with B2 only staged
+
+Before reboot:
+
+
+current = A2
+last-known-good = A2
+candidate = B2
+state = STAGED
+switch_completed = false
+
+
+Boot IDs proved a real reboot:
+
+
+before 39d36f00-25f1-4d28-93ca-5f069bc7e0c5
+after b9861ab2-4778-4bbe-9e7e-d537a17d7e14
+
+
+Boot recovery selected `discard_candidate`, returned the deployment state to
+`IDLE`, and left both `current` and `last-known-good` on A2.
+
+The node then reached:
+
+
+state = READY
+precision = fp16
+preflight_passed = true
+ai_authority_permitted = true
+NRestarts = 0
+boot_to_active_sec = 26.638679
+
+
+Cycle 1 therefore passed the 120 s boot readiness limit.
+
+### Cycle 2 — reboot during B2 probation
+
+B2 was validated and activated while A2 remained last-known-good. The system was
+rebooted while deployment state was `PROBATION`.
+
+Boot IDs again proved a real reboot:
+
+
+before b9861ab2-4778-4bbe-9e7e-d537a17d7e14
+after 18adbe68-bacb-489d-91dc-6ccf0924bf91
+
+
+Recovery observed:
+
+
+state_found = PROBATION
+action = rollback_to_last_known_good
+target = A2
+
+
+It atomically switched `current` from B2 to A2, republished A2's expected SHA,
+and completed:
+
+
+operation = rollback_for_boot
+service_restart_deferred = true
+ready_check_deferred = true
+deployment_state = ROLLED_BACK
+
+
+The resume unit completed with:
+
+
+Result = success
+ExecMainStatus = 0
+ActiveState = active
+SubState = exited
+
+
+After the resume one-shot exited, systemd started the node normally from A2:
+
+
+current = A2
+last-known-good = A2
+environment/current = agree
+expected SHA = 315432ae1894f6c4e023c1e350445e3a4ec44fd2
+state = READY
+precision = fp16
+preflight_passed = true
+ai_authority_permitted = true
+NRestarts = 0
+boot_to_active_sec = 26.412298
+
+
+Cycle 2 therefore passed the 120 s boot readiness limit.
+
+### Boot-resume deadlock found and fixed during Gate E
+
+The first Cycle 2 attempt exposed a real systemd ordering defect.
+
+`ma-vlna-deploy-resume.service` is ordered `Before=` the node service, but the
+original boot recovery reused the normal runtime `rollback()` implementation.
+That implementation synchronously executed:
+
+
+sudo systemctl restart ma-vlna-jetson-node.service
+
+
+The resume process therefore waited for the node service while systemd kept the
+node start job waiting for the `Before=` resume unit to finish: a dependency
+deadlock.
+
+The fix separates boot recovery from runtime rollback. `rollback_for_boot()`
+performs only the operations that must happen before the node starts:
+
+1. enter `ROLLING_BACK`
+2. atomically restore `current`
+3. publish the target release environment
+4. enter `ROLLED_BACK`
+5. return successfully without restarting or waiting for the node
+
+systemd then continues its existing boot transaction and starts the selected
+release after the resume unit exits.
+
+The same no-restart rule is used if a resumed probation subsequently fails.
+
+Regression coverage includes seven interruption-recovery tests. Final target
+regression:
+
+
+mandatory_scenarios=16 covered=True
+tests_run=670
+skipped=0
+passed=True
+store_scenarios_exercised=True
+
+
+The repaired Cycle 2 journal contains `rollback_for_boot`,
+`service_restart_deferred=true` and `boot_rollback_prepared`, with no nested
+`sudo` or `systemctl restart` invocation.
+
+**Gate E result: PASS. The boot-resume deadlock fix was verified by real reboot
+on the physical Jetson.**
+
 
 ## Operational notes
 
