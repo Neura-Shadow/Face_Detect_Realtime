@@ -559,6 +559,13 @@ class TestInterruptionRecovery(DeploymentScenarioTest):
         self.assertEqual(report["decision"]["action"], "rollback_to_last_known_good")
         self.assertTrue(report["ok"], report)
         self.assertEqual(fixture.store.resolve(CURRENT_LINK), "relA")
+        self.assertEqual(fixture.service.restart_count, 0)
+        self.assertTrue(report["rollback"]["service_restart_deferred"])
+        self.assertTrue(report["rollback"]["ready_check_deferred"])
+        self.assertEqual(
+            fixture.read_env_layer()["MA_VLNA_ACTIVE_RELEASE_ID"],
+            "relA",
+        )
 
     def test_reboot_during_probation_rolls_back_by_default(self) -> None:
         fixture = self.fixture()
@@ -575,7 +582,15 @@ class TestInterruptionRecovery(DeploymentScenarioTest):
         resumed = DeploymentManager(fixture.args, service=fixture.service)
         report = resumed.resume()
         self.assertEqual(report["decision"]["action"], "rollback_to_last_known_good")
+        self.assertTrue(report["ok"], report)
         self.assertEqual(fixture.store.resolve(CURRENT_LINK), "relA")
+        self.assertEqual(fixture.service.restart_count, 0)
+        self.assertTrue(report["rollback"]["service_restart_deferred"])
+        self.assertTrue(report["rollback"]["ready_check_deferred"])
+        self.assertEqual(
+            fixture.read_env_layer()["MA_VLNA_ACTIVE_RELEASE_ID"],
+            "relA",
+        )
 
     def test_resume_policy_can_finish_probation_instead(self) -> None:
         fixture = self.fixture()
@@ -598,6 +613,40 @@ class TestInterruptionRecovery(DeploymentScenarioTest):
         self.assertTrue(report["ok"], report)
         self.assertEqual(fixture.store.resolve(CURRENT_LINK), "relB")
         self.assertEqual(fixture.store.resolve(LAST_KNOWN_GOOD_LINK), "relB")
+
+    def test_failed_resumed_probation_uses_boot_rollback_without_restart(self) -> None:
+        fixture = self.fixture(leave_ready_after_polls=2)
+        fixture.install_release_a()
+        package, manifest = fixture.build_package("relB")
+        fixture.manager.stage(package, manifest)
+        fixture.manager.validate()
+        fixture.manager.state.transition(
+            ACTIVATING, "a", candidate_release_id="relB"
+        )
+        fixture.store.set_link_atomic(PREVIOUS_LINK, "relA")
+        fixture.store.set_link_atomic(CURRENT_LINK, "relB")
+        fixture.manager.state.set(
+            switch_completed=True,
+            active_release_id="relB",
+        )
+        fixture.manager.state.transition(
+            PROBATION,
+            "p",
+            probation_deadline_epoch=time.time() + 0.2,
+        )
+
+        fixture.args.on_boot_unconfirmed = "resume"
+        resumed = DeploymentManager(fixture.args, service=fixture.service)
+        report = resumed.resume()
+
+        self.assertEqual(report["decision"]["action"], "resume_probation")
+        self.assertFalse(report["probation"]["passed"])
+        self.assertTrue(report["rollback"]["ok"], report)
+        self.assertEqual(fixture.store.resolve(CURRENT_LINK), "relA")
+        self.assertEqual(fixture.service.restart_count, 0)
+        self.assertTrue(report["rollback"]["service_restart_deferred"])
+        self.assertTrue(report["rollback"]["ready_check_deferred"])
+        self.assertEqual(resumed.state.state, ROLLED_BACK)
 
     def test_recovery_is_deterministic_for_the_same_state(self) -> None:
         # Two independent readers of the same state file must decide the same

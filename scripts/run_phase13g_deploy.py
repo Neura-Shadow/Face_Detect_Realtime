@@ -460,6 +460,112 @@ class DeploymentManager:
             self.emit("rollback_failed", release_id=destination)
         return report
 
+
+    def rollback_for_boot(
+        self,
+        *,
+        target: Optional[str] = None,
+        reason: str = "boot_recovery",
+    ) -> Dict[str, Any]:
+        """Prepare a rollback during boot without restarting the node service.
+
+        The boot-resume unit is ordered Before= the node service. Calling
+        systemctl restart for that node from this path creates a systemd
+        ordering deadlock: resume waits for node, while node waits for resume.
+
+        This path therefore switches current, publishes the matching per-release
+        environment, records the rollback, and returns. systemd then starts the
+        selected release normally after the resume unit exits.
+        """
+
+        destination = (
+            target
+            or self.store.resolve(LAST_KNOWN_GOOD_LINK)
+            or self.store.resolve(PREVIOUS_LINK)
+        )
+        report = {
+            "operation": "rollback_for_boot",
+            "target_release_id": destination,
+            "reason": reason,
+        }
+
+        if not destination:
+            report["ok"] = False
+            report["error"] = (
+                "no last-known-good or previous release to roll back to"
+            )
+            self._fail("no boot rollback target")
+            return report
+
+        if not self.store.is_installed(destination):
+            report["ok"] = False
+            report["error"] = (
+                "rollback target %s is not installed" % destination
+            )
+            self._fail("boot rollback target missing")
+            return report
+
+        if self.state.state != ROLLING_BACK:
+            try:
+                self.state.transition(
+                    ROLLING_BACK,
+                    "rolling back to %s during boot: %s"
+                    % (destination, reason),
+                )
+            except DeploymentStateError:
+                self.state.set(
+                    state=ROLLING_BACK,
+                    reason=reason,
+                )
+
+        report["switch"] = self.store.set_link_atomic(
+            CURRENT_LINK, destination
+        )
+        self.state.set(
+            active_release_id=destination,
+            switch_completed=True,
+        )
+
+        # Publish the release-specific expected SHA before systemd starts the
+        # node. The node startup preflight consumes this environment layer.
+        env_layer = self._publish_release_env(destination)
+        report["env_layer"] = env_layer
+
+        if not env_layer.get("ok"):
+            report["ok"] = False
+            report["classification"] = "env_layer_publish_failed"
+            self.state.transition(
+                FAILED,
+                "boot rollback environment for %s could not be published"
+                % destination,
+            )
+            self.emit(
+                "boot_rollback_failed",
+                release_id=destination,
+                reason="env_layer_publish_failed",
+            )
+            return report
+
+        # Do NOT restart or wait for the service here. The resume unit is
+        # Before= the node service; once this process exits, systemd continues
+        # the existing boot transaction and starts the selected release.
+        self.state.transition(
+            ROLLED_BACK,
+            "boot rollback prepared %s" % destination,
+            active_release_id=destination,
+        )
+        self.emit(
+            "boot_rollback_prepared",
+            release_id=destination,
+            reason=reason,
+        )
+
+        report["service_restart_deferred"] = True
+        report["ready_check_deferred"] = True
+        report["ok"] = True
+        return report
+
+
     def cleanup(self) -> Dict[str, Any]:
         report = {"operation": "cleanup"}
         report.update(self.store.cleanup(keep=int(self.args.keep), dry_run=bool(self.args.dry_run)))
@@ -585,7 +691,9 @@ class DeploymentManager:
             report["ok"] = True
             return report
         if action in ("rollback_to_last_known_good", "resume_rollback"):
-            report["rollback"] = self.rollback(reason="interrupted_%s" % decision["state_found"])
+            report["rollback"] = self.rollback_for_boot(
+                reason="interrupted_%s" % decision["state_found"]
+            )
             report["ok"] = bool(report["rollback"].get("ok"))
             return report
         if action == "resume_probation":
@@ -599,7 +707,9 @@ class DeploymentManager:
                 report.update(self.confirm())
                 report["ok"] = True
             else:
-                report["rollback"] = self.rollback(reason="probation_failed_after_resume")
+                report["rollback"] = self.rollback_for_boot(
+                    reason="probation_failed_after_resume"
+                )
                 report["ok"] = bool(report["rollback"].get("ok"))
             return report
         report["ok"] = False
