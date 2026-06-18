@@ -1,0 +1,102 @@
+# ============================================================
+# MA-VLNA — Agent 行為設定檔
+# ============================================================
+
+agent:
+  id: "vehicle-001"
+  mode: "simulator"                   # simulator | webcam | carla | ros2 | isaac_sim
+  main_loop_hz: 10                    # 主循環目標頻率（Hz）
+  embedding_cache_ttl_sec: 2.0        # 場景 embedding 快取有效期
+
+# ---- CARLA closed-loop simulation (Phase 11) ----
+carla:
+  host: "127.0.0.1"
+  port: 2000
+  timeout_sec: 10.0
+  town: ""                            # 留空代表使用 CARLA server 目前載入的 map
+  synchronous_mode: true              # closed-loop 原型預設使用同步 tick
+  fixed_delta_seconds: 0.05           # 20 FPS simulation step
+  max_substep_delta_time: 0.01
+  max_substeps: 10
+  ego_blueprint: "vehicle.tesla.model3"
+  spawn_point_index: 0
+  camera_width: 1280
+  camera_height: 720
+  camera_fov: 90.0
+  camera_x: 1.6
+  camera_y: 0.0
+  camera_z: 1.7
+  camera_pitch: 0.0
+  control_hold_ticks: 1
+  max_control_speed_mps: 8.0
+  steer_gain: 1.0
+  throttle_gain: 0.7
+  brake_gain: 1.0
+
+# ---- 邊緣感知 ----
+perception:
+  backend: "dummy"                    # dummy | yolo | rtdetr
+  model_name: "yolov8n.pt"            # 若使用 yolo，則為 yolov8n.pt 等
+  confidence_threshold: 0.5           # 感知物件過濾門檻
+
+# ---- 觸發策略 ----
+trigger_policy:
+  low_confidence_threshold: 0.45      # Edge CV 信心低於此值時觸發 VLM
+  tracker_instability_window: 10      # 連續 N 幀有 ID switch 則觸發
+  unknown_scene_threshold: 0.55       # 場景向量相似度低於此值 → 未知場景
+  planner_deadlock_count: 5           # 規劃器連續震盪 N 次 → 觸發
+  cooldown_sec: 5.0                   # 同一觸發原因的冷卻時間
+  max_pending_requests: 2             # 最多同時 pending VLM 請求數
+
+# ---- VLM Reasoner ----
+vlm:
+  provider: "openai_compatible"       # local_stub | openai_compatible | gemma
+  timeout_sec: 30
+  max_retries: 2
+  confidence_threshold: 0.4           # VLM 信心低於此值 → request_review
+  temperature: 0.2
+  max_tokens: 1024
+
+# ---- 安全閘門 ----
+safety_gate:
+  reject_low_confidence: true
+  confidence_floor: 0.3               # VLM confidence 低於此值直接拒絕
+  max_speed_hint: "normal"            # 允許的最大速度 hint
+  forbidden_actions: []               # 永遠禁止的 action 類型
+  require_planner_validation: true    # VLM waypoint 必須通過 planner 驗證
+
+# ---- 路徑規劃器 ----
+planner:
+  local:
+    algorithm: "a_star"               # a_star | dijkstra | rrt_star
+    max_waypoints: 20
+    safety_margin_m: 1.5
+    replan_interval_sec: 1.0
+  global:
+    enabled: false                    # 第一版不啟用 global planner
+    use_postgis: false                # 預留 PostGIS / pgRouting
+    waypoint_graph_file: ""           # 路網檔案路徑（可選）
+
+# ---- 場景記憶 ----
+memory:
+  top_k: 5
+  similarity_threshold: 0.82
+  replay_min_similarity: 0.88        # 高於此值才允許 replay
+  replay_require_success: true        # 只 replay 成功案例
+  conflict_check_enabled: true        # replay 前檢查感知衝突
+  max_memory_entries: 10000           # 記憶體上限
+
+# ---- 遙測 ----
+telemetry:
+  publish_interval_sec: 1.0           # 遙測寫入間隔
+  batch_size: 10                      # 批次寫入筆數
+  async_writes: true                  # 非同步寫入 Supabase
+
+# ---- 保守策略 ----
+fallback:
+  on_vlm_timeout: "stop_and_wait"     # stop_and_wait | slow_crawl | request_review
+  on_vlm_low_confidence: "request_review"
+  on_planner_reject: "stop_and_log"
+  on_memory_conflict: "block_replay"
+  on_network_unavailable: "local_conservative"
+  safe_stop_decel_mps2: 3.0           # 安全停車減速度

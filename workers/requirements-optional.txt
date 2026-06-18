@@ -1,0 +1,11 @@
+# MA-VLNA Optional Dependencies
+# 這些套件為選擇性安裝，用於啟用深度學習感知後端 (YOLO/RT-DETR) 與進階追蹤分析 (Supervision)。
+# 若未安裝，系統會自動 fallback 至 DummyPerceptionBackend 與基礎 SimpleTracker。
+
+supervision>=0.21.0
+ultralytics>=8.2.0
+
+# Phase 11: CARLA closed-loop simulation
+# CARLA Python wheel 必須與 CARLA server 版本相容；若 PyPI 無對應版本，
+# 請使用 CARLA release 內附的 PythonAPI wheel 安裝。
+# carla>=0.9.15

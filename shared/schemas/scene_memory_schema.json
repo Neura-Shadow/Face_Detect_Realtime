@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ma-vlna/scene-memory",
+  "title": "SceneMemoryEntry",
+  "description": "場景記憶條目 — 用於 top-k 檢索、replay 候選與記憶面板展示",
+  "type": "object",
+  "required": ["scene_id", "vehicle_id", "timestamp", "similarity_score"],
+  "properties": {
+    "scene_id": { "type": "string", "format": "uuid" },
+    "memory_id": { "type": ["string", "null"], "format": "uuid" },
+    "vehicle_id": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "similarity_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "is_replay_candidate": { "type": "boolean" },
+    "success_flag": { "type": ["boolean", "null"] },
+    "semantic_summary": { "type": ["string", "null"] },
+    "thumbnail_url": { "type": ["string", "null"] },
+    "action_sequence": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string" },
+          "duration_sec": { "type": "number" }
+        }
+      }
+    },
+    "outcome": { "type": ["string", "null"] },
+    "replay_count": { "type": "integer", "default": 0 },
+    "source_scene_id": { "type": ["string", "null"], "format": "uuid" }
+  }
+}

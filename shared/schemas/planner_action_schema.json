@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ma-vlna/planner-action",
+  "title": "PlannerAction",
+  "description": "規劃器動作輸出 — 包含 waypoints、action sequence 與驗證狀態",
+  "type": "object",
+  "required": ["plan_id", "timestamp", "waypoints", "action_sequence", "source"],
+  "properties": {
+    "plan_id": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "string",
+      "enum": ["local_planner", "semantic_planner", "memory_replay", "safe_stop", "operator_override"],
+      "description": "此規劃來源"
+    },
+    "waypoints": {
+      "type": "array",
+      "description": "規劃的航點序列",
+      "items": {
+        "type": "object",
+        "required": ["x", "y"],
+        "properties": {
+          "x": { "type": "number" },
+          "y": { "type": "number" },
+          "z": { "type": "number", "default": 0 },
+          "speed_limit": { "type": "number" },
+          "action": { "type": "string" }
+        }
+      }
+    },
+    "action_sequence": {
+      "type": "array",
+      "description": "動作序列（simulator adapter 可直接執行）",
+      "items": {
+        "type": "object",
+        "required": ["action", "duration_sec"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["forward", "turn_left", "turn_right", "stop", "wait", "reverse", "slow_forward"]
+          },
+          "duration_sec": { "type": "number" },
+          "speed_mps": { "type": "number" },
+          "steering_deg": { "type": "number" }
+        }
+      }
+    },
+    "validated": { "type": "boolean", "description": "是否通過 Safety Gate 驗證" },
+    "vlm_proposal_accepted": { "type": ["boolean", "null"] },
+    "rejection_reason": { "type": ["string", "null"] }
+  }
+}

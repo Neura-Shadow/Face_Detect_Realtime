@@ -1,0 +1,11 @@
+.env
+config/.env
+*.env
+runtime_logs/
+release_artifacts/
+test_env/
+__pycache__/
+*.pyc
+*.log
+node_modules/
+.next/
