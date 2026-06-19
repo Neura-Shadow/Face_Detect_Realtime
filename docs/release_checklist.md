@@ -36,6 +36,7 @@
 - [x] **Phase 11M GRP-backed Route Following**: 已產生 `runtime_logs\carla_runs\20260614T173740Z`，在真實 CARLA smoke 中使用 CARLA `GlobalRoutePlanner` route-following 通過 strict goal-reach gate，並保留 benchmark boundary。
 - [x] **Phase 11N Git Snapshot & Release Packaging**: 已產生 timestamped `release_artifacts` package，包含 git snapshot、artifact boundary、checksums 與 release zip；精確路徑與 SHA-256 以 generated `manifest.json` / `package.sha256` 為準。
 - [x] **Phase 11O Source Commit Boundary & Draft PR Preparation**: 已新增 staged-file boundary gate 與 Draft PR handoff 文件，將 source commit 與 runtime/release artifacts 明確分離。
+- [x] **Phase 12 Experiment Kickoff Preparation**: 已新增 experiment kickoff plan 與 scaffold script；此階段只建立計畫與輸出格式，不啟動 CARLA 或大型實驗。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -60,6 +61,7 @@
 - **CARLA GRP Route-Following Smoke**: Phase 11M 已驗證 `GlobalRoutePlanner` route generation 與 runner-only GRP waypoint following；`grp_route_following_verified=true` 與 `fixed_route_completion_verified=true` 仍只代表 fixed spawn-pair smoke gate，不等同 CARLA Leaderboard、正式 route benchmark 或 infraction benchmark。
 - **Release Artifact Boundary**: Phase 11N 已產生 release zip 與 checksum；`status_clean=false` 被記錄於 git snapshot，代表這是 workspace artifact snapshot，不是 clean git commit/tag release。
 - **Source Commit Boundary**: Phase 11O 已準備 source-only commit boundary 與 Draft PR body；runtime logs、release artifacts、local envs 與 `.env` 仍不得進入 git。遠端 Draft PR、git tag 與 push 需另行執行。
+- **Experiment Kickoff Scaffold**: Phase 12 已建立 controlled experiment planning scaffold；`experiments/phase12/*/runs/` 與 `experiments/phase12/*/raw_outputs/` 不得提交，kickoff 不等於正式實驗結果。
 
 ---
 
@@ -95,6 +97,7 @@
 | **CARLA GRP Route-Following Smoke** | 100% | — | — | 🟢 Phase 11M Pass |
 | **Release Artifact Packaging** | 100% | — | — | 🟢 Phase 11N Pass |
 | **Source Commit Boundary** | 100% | — | — | 🟢 Phase 11O Pass |
+| **Experiment Kickoff Scaffold** | 100% | — | — | 🟢 Phase 12 Kickoff Pass |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 ## 🚧 Explicitly Not Verified

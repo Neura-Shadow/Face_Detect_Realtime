@@ -56,6 +56,10 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 11M GRP-backed route following: **Passed — strict GlobalRoutePlanner route-following goal-reach gate passed**
   - Phase 11N release packaging: **Passed — git snapshot, artifact boundary, and release zip generated**
   - Phase 11O source commit boundary: **Passed — source-only commit boundary and Draft PR body prepared**
+- **Phase 12**:
+  - Experiment kickoff preparation: **Passed — controlled experiment plan and scaffold created without running large experiments**
+
+Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
 ---
 
@@ -198,6 +202,14 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 > Phase 11N release packaging 請見 [docs/phase11n_git_snapshot_artifact_release_packaging.md](docs/phase11n_git_snapshot_artifact_release_packaging.md)
 >
 > Phase 11O source commit boundary / Draft PR preparation 請見 [docs/phase11o_source_commit_boundary_draft_pr.md](docs/phase11o_source_commit_boundary_draft_pr.md)
+>
+> Phase 12 experiment kickoff plan 請見 [docs/phase12_experiment_kickoff_plan.md](docs/phase12_experiment_kickoff_plan.md)
+
+Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
+
+```powershell
+python scripts\run_phase12_experiment_plan.py --output-dir experiments\phase12
+```
 
 ---
 

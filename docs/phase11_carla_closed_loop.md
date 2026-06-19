@@ -484,6 +484,26 @@ leaderboard_evaluated=false
 
 This phase prepares a local branch/commit and Draft PR handoff. It does not push to origin, open a remote pull request, create a git tag, or upgrade the CARLA smoke evidence into a formal benchmark claim.
 
+## Phase 12 Handoff — Experiment Kickoff
+
+Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
+
+Phase 12 starts from the Phase 11M/11N/11O boundaries and prepares:
+
+- multi-route CARLA route smoke scaling
+- controller ablation
+- perception backend ablation
+- VLM trigger / no-VLM comparison
+- evidence aggregation under `experiments/phase12/<timestamp>/`
+
+Scaffold command:
+
+```powershell
+python scripts\run_phase12_experiment_plan.py --output-dir experiments\phase12
+```
+
+Phase 12 kickoff does not run CARLA, does not import `carla`, does not require Python 3.12, and does not claim CARLA Leaderboard, formal route benchmark, infraction benchmark, or driving policy quality.
+
 ## Closed-Loop Runner
 
 最小 CARLA closed-loop：

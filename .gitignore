@@ -9,3 +9,5 @@ __pycache__/
 *.log
 node_modules/
 .next/
+experiments/phase12/*/runs/
+experiments/phase12/*/raw_outputs/
