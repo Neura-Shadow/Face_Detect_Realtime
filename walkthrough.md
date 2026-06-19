@@ -16,7 +16,7 @@
 Current result:
 
 ```text
-Phase 12A Route Scaling Prepared — batch runner, fixed route matrix, dry-run scaffold, and summary aggregation are implemented.
+Phase 12A Real Runtime Evidence Produced — real 5-route CARLA batch completed with aggregated evidence; strict all-route pass gate is blocked by route_05 goal-reach failure.
 ```
 
 Route matrix:
@@ -53,6 +53,8 @@ Regression result:
 Phase 12A py_compile: passed
 Phase 12A dry-run: passed
 Phase 12A dry-run summary assertions: passed
+Phase 12A real CARLA run: completed, exit code 1 due strict all-route blocked gate
+Phase 12A real evidence assertions: passed
 Base Python Phase 11 checks: 6/6 passed
 Base Python demo checks: 6/6 passed
 ```
@@ -61,4 +63,13 @@ Dry-run output:
 
 ```text
 experiments\phase12\20260619T110549Z
+```
+
+Real runtime output:
+
+```text
+experiments\phase12\20260619T113705Z
+passed_count=4
+blocked_or_failed_count=1
+route_05=goal_reach_blocked
 ```

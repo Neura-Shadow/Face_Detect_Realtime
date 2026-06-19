@@ -3,10 +3,21 @@
 ## Status
 
 ```text
-Phase 12A Route Scaling Prepared — batch runner, fixed route matrix, dry-run scaffold, and summary aggregation are implemented.
+Phase 12A Real Runtime Evidence Produced — real 5-route CARLA batch completed with aggregated evidence; strict all-route pass gate is blocked by route_05 goal-reach failure.
 ```
 
 Phase 12A 是第一條真正的 Phase 12 實驗線。它把 Phase 11M 的單一路線 GRP smoke runner 擴展成 5 條固定 `Town03` spawn-pair route 的批次實驗。此階段仍是 controlled smoke experiment，不是 CARLA Leaderboard、正式 route benchmark 或 infraction benchmark。
+
+Latest real runtime evidence:
+
+```text
+experiments\phase12\20260619T113705Z
+passed_count=4
+blocked_or_failed_count=1
+route_05=result: goal_reach_blocked
+```
+
+Detailed evidence summary: [phase12a_real_route_scaling_evidence.md](phase12a_real_route_scaling_evidence.md)
 
 ## Route Matrix
 

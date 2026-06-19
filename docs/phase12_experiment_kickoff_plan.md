@@ -56,6 +56,15 @@ docs/phase12a_carla_route_scaling_experiment.md
 
 Phase 12A 使用固定 5 組 `Town03` spawn-pair route，逐條呼叫 Phase 11M GRP runner，並把每條 route 的 `metrics.json` 聚合成 `summary.csv` 與 `summary.json`。Batch runner 採 continue-all policy；若任一路線失敗，仍跑完其餘路線後輸出 `Phase 12A Route Scaling Blocked`。
 
+Latest Phase 12A real runtime evidence:
+
+```text
+experiments\phase12\20260619T113705Z
+passed_count=4
+blocked_or_failed_count=1
+all_routes_passed=false
+```
+
 ## Experiment Line B — Controller Ablation
 
 比較：

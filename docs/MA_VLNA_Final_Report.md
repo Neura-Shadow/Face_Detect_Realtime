@@ -46,7 +46,7 @@ MA-VLNA 採用模組化的軟體架構，主要包含以下核心元件：
   - 新增 Phase 11N Git Snapshot, Artifact Boundary & Release Packaging，將 Phase 11M evidence、source/docs、artifact boundary、git snapshot 與 checksums 打包為 timestamped release zip。此階段是 workspace release artifact snapshot，不等同 clean git commit/tag release，也不宣稱 CARLA Leaderboard 或正式 benchmark。
   - 新增 Phase 11O Source Commit Boundary & Draft PR Preparation，將 11N 的 artifact snapshot 轉成 source-only commit boundary，加入 staged-file gate 與 Draft PR handoff body。此階段只處理 source review hygiene，不建立 git tag、不 push、不宣稱 formal benchmark。
   - 新增 Phase 12 Experiment Kickoff Preparation，從 Phase 11 的 CARLA runtime verification 與 evidence-pack foundation 進入受控實驗規劃，定義 route scaling、controller ablation、perception backend ablation、VLM trigger comparison 與 evidence aggregation scaffold。此階段不啟動 CARLA、不執行大型實驗、不宣稱 Leaderboard 或 benchmark。
-  - 新增 Phase 12A CARLA Route Scaling Experiment，將 Phase 11M 的單一路線 GRP smoke runner 擴展成固定 5 組 `Town03` spawn-pair 的 batch orchestrator，支援 dry-run、continue-all policy 與 `summary.csv` / `summary.json` 聚合。此階段仍只代表 controlled route smoke，不等同 CARLA Leaderboard、正式 route benchmark 或 infraction benchmark。
+  - 新增 Phase 12A CARLA Route Scaling Experiment，將 Phase 11M 的單一路線 GRP smoke runner 擴展成固定 5 組 `Town03` spawn-pair 的 batch orchestrator，支援 dry-run、continue-all policy 與 `summary.csv` / `summary.json` 聚合。真實 runtime 已產生 5-route aggregate evidence，其中 4 條路線通過 strict goal-reach gate，`route_05` 因 goal-reach failure 保持 blocked。此階段仍只代表 controlled route smoke，不等同 CARLA Leaderboard、正式 route benchmark 或 infraction benchmark。
   - Phase 11 首版不追求 CARLA Leaderboard，而是先建立可觀測、可回放、可安全退場的仿真閉環。
 
 ### 4. 關鍵技術亮點 (Technical Highlights)

@@ -3,7 +3,7 @@
 ## Status
 
 ```text
-Phase 12A Route Scaling Prepared — batch runner, fixed route matrix, dry-run scaffold, and summary aggregation are implemented.
+Phase 12A Real Runtime Evidence Produced — real 5-route CARLA batch completed with aggregated evidence; strict all-route pass gate is blocked by route_05 goal-reach failure.
 ```
 
 Maintained boundary:
@@ -30,9 +30,14 @@ Phase 12A is controlled multi-route smoke orchestration only; no CARLA Leaderboa
 - Phase 12A py_compile: passed.
 - Phase 12A dry-run: passed with 5 route rows.
 - Phase 12A dry-run summary assertions: passed.
+- Phase 12A real CARLA run: completed with exit code 1 because strict all-route gate blocked.
+- Phase 12A real evidence dir: `experiments\phase12\20260619T113705Z`.
+- Phase 12A real evidence assertions: passed.
+- Phase 12A real aggregate result: `passed_count=4`, `blocked_or_failed_count=1`, `all_routes_passed=false`.
+- route_05 result: `goal_reach_blocked`, `distance_to_goal_m=322.443754`, `collision_count=2408`.
 - Base Python Phase 11 checks: 6/6 passed.
 - Base Python demo checks: 6/6 passed.
 
 ## Next Action
 
-Run the Phase 12A dry-run and source checks, then optionally run the real CARLA Python 3.12 command when the external CARLA server is ready. Do not claim formal benchmark status or commit generated experiment outputs unless a later packaging phase explicitly requests it.
+Use the Phase 12A aggregate evidence for diagnosis or ablation planning. Do not relabel the blocked all-route gate as a benchmark pass, and do not commit generated experiment outputs unless a later packaging phase explicitly requests selected artifacts.
