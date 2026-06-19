@@ -37,6 +37,7 @@
 - [x] **Phase 11N Git Snapshot & Release Packaging**: 已產生 timestamped `release_artifacts` package，包含 git snapshot、artifact boundary、checksums 與 release zip；精確路徑與 SHA-256 以 generated `manifest.json` / `package.sha256` 為準。
 - [x] **Phase 11O Source Commit Boundary & Draft PR Preparation**: 已新增 staged-file boundary gate 與 Draft PR handoff 文件，將 source commit 與 runtime/release artifacts 明確分離。
 - [x] **Phase 12 Experiment Kickoff Preparation**: 已新增 experiment kickoff plan 與 scaffold script；此階段只建立計畫與輸出格式，不啟動 CARLA 或大型實驗。
+- [x] **Phase 12A CARLA Route Scaling Experiment Prepared**: 已新增 5-route `Town03` GRP smoke batch runner、dry-run summary aggregation 與 non-benchmark 文件；真實 runtime 仍需 CARLA Python 3.12 environment。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -62,6 +63,7 @@
 - **Release Artifact Boundary**: Phase 11N 已產生 release zip 與 checksum；`status_clean=false` 被記錄於 git snapshot，代表這是 workspace artifact snapshot，不是 clean git commit/tag release。
 - **Source Commit Boundary**: Phase 11O 已準備 source-only commit boundary 與 Draft PR body；runtime logs、release artifacts、local envs 與 `.env` 仍不得進入 git。遠端 Draft PR、git tag 與 push 需另行執行。
 - **Experiment Kickoff Scaffold**: Phase 12 已建立 controlled experiment planning scaffold；`experiments/phase12/*/runs/` 與 `experiments/phase12/*/raw_outputs/` 不得提交，kickoff 不等於正式實驗結果。
+- **Route Scaling Experiment**: Phase 12A 已建立 multi-route smoke batch runner；dry-run 不啟動 CARLA，真實結果只代表固定 spawn-pair smoke，不等同 CARLA Leaderboard、正式 route benchmark 或 infraction benchmark。
 
 ---
 
@@ -98,6 +100,7 @@
 | **Release Artifact Packaging** | 100% | — | — | 🟢 Phase 11N Pass |
 | **Source Commit Boundary** | 100% | — | — | 🟢 Phase 11O Pass |
 | **Experiment Kickoff Scaffold** | 100% | — | — | 🟢 Phase 12 Kickoff Pass |
+| **CARLA Route Scaling Experiment** | — | 100% | — | 🟡 Phase 12A Prepared |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 ## 🚧 Explicitly Not Verified

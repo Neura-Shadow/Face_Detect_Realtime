@@ -47,6 +47,15 @@ Phase 12 kickoff 只建立計畫與 scaffold：
 
 注意：這仍不是 CARLA Leaderboard，也不是正式 route benchmark。
 
+Phase 12A implementation:
+
+```text
+scripts/run_phase12a_route_scaling_experiment.py
+docs/phase12a_carla_route_scaling_experiment.md
+```
+
+Phase 12A 使用固定 5 組 `Town03` spawn-pair route，逐條呼叫 Phase 11M GRP runner，並把每條 route 的 `metrics.json` 聚合成 `summary.csv` 與 `summary.json`。Batch runner 採 continue-all policy；若任一路線失敗，仍跑完其餘路線後輸出 `Phase 12A Route Scaling Blocked`。
+
 ## Experiment Line B — Controller Ablation
 
 比較：
@@ -114,6 +123,7 @@ experiments/phase12/<timestamp>/
 ```text
 experiments/phase12/*/runs/
 experiments/phase12/*/raw_outputs/
+experiments/phase12/*/
 ```
 
 只允許提交小型 summary template 或 source scaffold，不提交大型 raw logs、影像、CARLA recorder、VLM raw responses 或 simulator dump。
