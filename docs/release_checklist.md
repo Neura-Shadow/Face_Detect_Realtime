@@ -40,6 +40,7 @@
 - [x] **Phase 12A CARLA Route Scaling Evidence Produced**: 已在真實 CARLA runtime 執行 5-route `Town03` GRP smoke batch，產生 aggregate evidence；4/5 routes passed，`route_05` 因 strict goal-reach failure 使 all-route gate 保持 blocked。
 - [x] **Phase 12A-R05 Failure Diagnosis & Recovery Evidence**: 已執行 Route 05 專用 recovery-variant runner；4 個 conservative variants 均未達 strict goal tolerance。`r05_slow_short_lookahead` 無碰撞且進度提升至 71.07%，但 Phase 12A-R05 仍保持 blocked。
 - [x] **Phase 12A-R05B Waypoint Progression Diagnosis**: 已解析 `r05_slow_short_lookahead` late-route waypoint progression；2500-step 末段仍持續推進，5200-step extended diagnostic 於 step 4431 達成 Route 05 goal tolerance。Phase 12A 原 2500-step all-route gate 仍保持 blocked。
+- [x] **Phase 12A-H Horizon Calibration**: 已將 Phase 12A / R05B evidence 校準成 per-route step horizon matrix：`2500, 2800, 2500, 2500, 5400`；此矩陣僅用於 smoke horizon，不是 formal benchmark。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -105,6 +106,7 @@
 | **CARLA Route Scaling Experiment** | — | 100% | — | 🟡 Phase 12A Evidence Produced |
 | **Route 05 Recovery Smoke** | — | 100% | — | 🟡 Phase 12A-R05 Blocked |
 | **Route 05 Waypoint Progression Diagnosis** | — | 100% | — | 🟢 Phase 12A-R05B Pass |
+| **Route Horizon Calibration** | — | 100% | — | 🟢 Phase 12A-H Pass |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 ## 🚧 Explicitly Not Verified

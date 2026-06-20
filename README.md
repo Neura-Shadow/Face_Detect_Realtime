@@ -61,6 +61,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12A CARLA route scaling: **Evidence produced — real 5-route CARLA batch generated aggregate evidence; strict all-route gate blocked by route_05**
   - Phase 12A-R05 route recovery: **Blocked — 4 conservative recovery variants executed; best variant improved progress but did not reach goal**
   - Phase 12A-R05B waypoint progression diagnosis: **Passed — extended 5200-step diagnostic reached Route 05 goal and confirmed 2500-step horizon limitation**
+  - Phase 12A-H horizon calibration: **Passed — generated calibrated per-route step horizons from existing real CARLA evidence**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -215,6 +216,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 > Phase 12A-R05 failure diagnosis / recovery experiment 請見 [docs/phase12a_r05_failure_diagnosis_recovery.md](docs/phase12a_r05_failure_diagnosis_recovery.md)
 >
 > Phase 12A-R05B late-route waypoint progression diagnosis 請見 [docs/phase12a_r05b_late_route_waypoint_progression_diagnosis.md](docs/phase12a_r05b_late_route_waypoint_progression_diagnosis.md)
+>
+> Phase 12A-H horizon calibration experiment 請見 [docs/phase12a_h_horizon_calibration_experiment.md](docs/phase12a_h_horizon_calibration_experiment.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 
@@ -238,6 +241,12 @@ Phase 12A-R05B waypoint progression dry run（解析既有 R05 evidence 並寫 e
 
 ```powershell
 python scripts\run_phase12a_r05b_waypoint_progression_diagnosis.py --dry-run --run-extended --output-dir experiments\phase12
+```
+
+Phase 12A-H horizon calibration（只讀既有 real CARLA evidence，不啟動 CARLA）：
+
+```powershell
+python scripts\run_phase12a_h_horizon_calibration_experiment.py --output-dir experiments\phase12 --require-complete-calibration
 ```
 
 ---

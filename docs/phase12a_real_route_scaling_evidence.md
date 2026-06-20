@@ -63,3 +63,5 @@ Phase 12A successfully produced aggregated real CARLA route-scaling evidence. Th
 Phase 12A-R05 has now run a targeted recovery matrix for `route_05`. The best variant, `r05_slow_short_lookahead`, removed the early collision and reached 71.07% route progress, but still did not reach the goal tolerance under the original 2500-step budget.
 
 Phase 12A-R05B then diagnosed late-route waypoint progression: the source run was still advancing near step 2500, and a 5200-step extended diagnostic reached the goal at step 4431. This confirms a horizon-limited smoke setup for Route 05, not a waypoint-index stall. The original Phase 12A all-route result remains blocked because its strict 2500-step gate did not pass.
+
+Phase 12A-H now converts the same evidence into a calibrated horizon matrix: `route_01=2500`, `route_02=2800`, `route_03=2500`, `route_04=2500`, and `route_05=5400`. This matrix should be used as a smoke-horizon input for later experiments, not as a benchmark score.

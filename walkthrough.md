@@ -1,4 +1,4 @@
-# Walkthrough — Phase 12A-R05B Late-route Waypoint Progression Diagnosis
+# Walkthrough — Phase 12A-H Horizon Calibration Experiment
 
 1. Preserve Phase 11M as the single-route GRP fixed-route smoke runner.
 2. Preserve Phase 12A aggregate evidence as the baseline Route 05 failure.
@@ -11,12 +11,15 @@
 9. Add `docs\phase12a_r05b_late_route_waypoint_progression_diagnosis.md`.
 10. Parse the last 200 source steps to separate waypoint-index stall from horizon limitation.
 11. Run extended-step diagnostics with the unchanged Phase 11M GRP runner.
-12. Keep generated `experiments\phase12\<timestamp>` output local by default.
+12. Add `scripts\run_phase12a_h_horizon_calibration_experiment.py`.
+13. Add `docs\phase12a_h_horizon_calibration_experiment.md`.
+14. Convert Phase 12A / R05B real evidence into a calibrated per-route horizon matrix.
+15. Keep generated `experiments\phase12\<timestamp>` output local by default.
 
 Current result:
 
 ```text
-Phase 12A-R05B Pass — late-route waypoint progression diagnosed; extended 5200-step run reached the fixed Route 05 goal.
+Phase 12A-H Horizon Calibration Pass — calibrated per-route step horizons generated for all five fixed Town03 routes.
 ```
 
 Route matrix:
@@ -36,6 +39,8 @@ docs\phase12a_r05_failure_diagnosis_recovery.md
 scripts\run_phase12a_r05_recovery_experiment.py
 docs\phase12a_r05b_late_route_waypoint_progression_diagnosis.md
 scripts\run_phase12a_r05b_waypoint_progression_diagnosis.py
+docs\phase12a_h_horizon_calibration_experiment.md
+scripts\run_phase12a_h_horizon_calibration_experiment.py
 ```
 
 Boundary fields:
@@ -67,6 +72,9 @@ Phase 12A-R05B 4000-step diagnostic: completed, exit code 1, still progressing b
 Phase 12A-R05B 5200-step diagnostic: passed, goal reached at step 4431
 Phase 12A-R05B py_compile: passed
 Phase 12A-R05B evidence assertions: passed
+Phase 12A-H py_compile: passed
+Phase 12A-H calibration run: passed
+Phase 12A-H evidence assertions: passed
 Base Python Phase 11 checks: 6/6 passed
 Base Python demo checks: 6/6 passed
 ```
@@ -109,4 +117,17 @@ goal_reach_step=4431
 distance_to_goal_m=2.950533
 grp_current_waypoint_index=438
 collision_count=0
+```
+
+Phase 12A-H horizon calibration output:
+
+```text
+experiments\phase12\20260620T140648Z
+calibrated_route_count=5
+all_routes_calibrated=true
+route_01=2500
+route_02=2800
+route_03=2500
+route_04=2500
+route_05=5400
 ```

@@ -1,9 +1,9 @@
-# Current Task — Phase 12A-R05B
+# Current Task — Phase 12A-H
 
 ## Status
 
 ```text
-Phase 12A-R05B Pass — late-route waypoint progression diagnosed; extended 5200-step run reached the fixed Route 05 goal.
+Phase 12A-H Horizon Calibration Pass — calibrated per-route step horizons generated for all five fixed Town03 routes.
 ```
 
 Maintained boundary:
@@ -56,9 +56,17 @@ Phase 12A is controlled multi-route smoke orchestration only; no CARLA Leaderboa
 - Phase 12A-R05B final evidence dir: `experiments\phase12\20260620T115855Z`.
 - Phase 12A-R05B final result: `extended_goal_reached=true`, `goal_reach_step=4431`, `distance_to_goal_m=2.950533`, `collision_count=0`, `lane_invasion_count=8`.
 - R05B conclusion: the 2500-step Route 05 failure was horizon-limited, not a late-route waypoint-index stall. This does not retroactively change the original Phase 12A all-route gate.
+- Added `scripts\run_phase12a_h_horizon_calibration_experiment.py`.
+- Added `docs\phase12a_h_horizon_calibration_experiment.md`.
+- Phase 12A-H py_compile: passed.
+- Phase 12A-H calibration command: passed with `--require-complete-calibration`.
+- Phase 12A-H output dir: `experiments\phase12\20260620T140648Z`.
+- Phase 12A-H calibration result: `calibrated_route_count=5`, `all_routes_calibrated=true`, `max_recommended_horizon_steps=5400`.
+- Phase 12A-H horizon matrix: `route_01=2500`, `route_02=2800`, `route_03=2500`, `route_04=2500`, `route_05=5400`.
+- Phase 12A-H evidence assertions: passed.
 - Base Python Phase 11 checks: 6/6 passed.
 - Base Python demo checks: 6/6 passed.
 
 ## Next Action
 
-Use the R05B diagnosis to decide whether Phase 12B should standardize route-specific horizon budgets or introduce controller-level time/progress normalization. Do not relabel the original 2500-step Phase 12A gate as a benchmark pass, and do not commit generated experiment outputs unless a later packaging phase explicitly requests selected artifacts.
+Use the calibrated horizon matrix as the input budget for future Phase 12B route/controller comparisons. Do not relabel the original 2500-step Phase 12A gate as a benchmark pass, and do not commit generated experiment outputs unless a later packaging phase explicitly requests selected artifacts.

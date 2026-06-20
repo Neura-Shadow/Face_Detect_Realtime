@@ -90,6 +90,16 @@ route_progress_pct=100.0
 grp_route_progress_pct=99.559155
 ```
 
+Latest Phase 12A-H horizon calibration:
+
+```text
+experiments\phase12\20260620T140648Z
+calibrated_route_count=5
+all_routes_calibrated=true
+recommended_horizon_by_route={"route_01":2500,"route_02":2800,"route_03":2500,"route_04":2500,"route_05":5400}
+max_recommended_horizon_steps=5400
+```
+
 ## Experiment Line B — Controller Ablation
 
 比較：
