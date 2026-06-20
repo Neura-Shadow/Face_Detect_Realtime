@@ -1,9 +1,9 @@
-# Current Task — Phase 12A-R05
+# Current Task — Phase 12A-R05B
 
 ## Status
 
 ```text
-Phase 12A-R05 Recovery Blocked — 4 conservative Route 05 recovery variants executed; none reached the strict goal tolerance.
+Phase 12A-R05B Pass — late-route waypoint progression diagnosed; extended 5200-step run reached the fixed Route 05 goal.
 ```
 
 Maintained boundary:
@@ -46,9 +46,19 @@ Phase 12A is controlled multi-route smoke orchestration only; no CARLA Leaderboa
 - R05 recovery conclusion: early traffic-light collision can be avoided with short lookahead / denser sampling, but strict fixed-route goal reach remains blocked.
 - Phase 12A-R05 py_compile: passed.
 - Phase 12A-R05 evidence assertions: passed.
+- Added `scripts\run_phase12a_r05b_waypoint_progression_diagnosis.py`.
+- Added `docs\phase12a_r05b_late_route_waypoint_progression_diagnosis.md`.
+- Phase 12A-R05B py_compile: passed.
+- Phase 12A-R05B dry-run: passed with source reference plus 5200-step extended command.
+- Phase 12A-R05B evidence assertions: passed.
+- Phase 12A-R05B source diagnosis: `r05_slow_short_lookahead` was still progressing at step 2500, with final 200-step `grp_index_delta=21`, `route_progress_delta_m=20.358841`, and `distance_to_goal_delta_m=19.420991`.
+- Phase 12A-R05B 4000-step diagnostic: still blocked, `distance_to_goal_m=45.168395`, `grp_current_waypoint_index=392`, `collision_count=0`, and status remained `progressing_step_budget_limited`.
+- Phase 12A-R05B final evidence dir: `experiments\phase12\20260620T115855Z`.
+- Phase 12A-R05B final result: `extended_goal_reached=true`, `goal_reach_step=4431`, `distance_to_goal_m=2.950533`, `collision_count=0`, `lane_invasion_count=8`.
+- R05B conclusion: the 2500-step Route 05 failure was horizon-limited, not a late-route waypoint-index stall. This does not retroactively change the original Phase 12A all-route gate.
 - Base Python Phase 11 checks: 6/6 passed.
 - Base Python demo checks: 6/6 passed.
 
 ## Next Action
 
-Diagnose the late-route failure mode of `r05_slow_short_lookahead`, especially waypoint-index progression and final approach behavior. Do not relabel the blocked recovery gate as a benchmark pass, and do not commit generated experiment outputs unless a later packaging phase explicitly requests selected artifacts.
+Use the R05B diagnosis to decide whether Phase 12B should standardize route-specific horizon budgets or introduce controller-level time/progress normalization. Do not relabel the original 2500-step Phase 12A gate as a benchmark pass, and do not commit generated experiment outputs unless a later packaging phase explicitly requests selected artifacts.

@@ -58,6 +58,8 @@ status=recovery_blocked
 
 The best observed recovery signal is `r05_slow_short_lookahead`: it removed the early collision failure and improved route progress from 3.89% to 71.07%, but still expired before reaching the goal tolerance. The next engineering step should inspect late-route tracking and waypoint-index progression for this non-collision variant instead of treating the route as recovered.
 
+Follow-up Phase 12A-R05B confirmed that this variant was still progressing at step 2500 rather than stuck. A 5200-step extended diagnostic reached the fixed Route 05 goal at step 4431; see [phase12a_r05b_late_route_waypoint_progression_diagnosis.md](phase12a_r05b_late_route_waypoint_progression_diagnosis.md).
+
 ## Commands
 
 Dry run:

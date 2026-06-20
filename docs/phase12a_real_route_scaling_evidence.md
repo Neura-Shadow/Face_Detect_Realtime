@@ -60,4 +60,6 @@ leaderboard_route_criteria_evaluated=false
 
 Phase 12A successfully produced aggregated real CARLA route-scaling evidence. The batch correctly used continue-all behavior and preserved evidence for every route. The strict all-route pass gate remains blocked because `route_05` did not reach the goal within 2500 steps and accumulated collision events.
 
-Phase 12A-R05 has now run a targeted recovery matrix for `route_05`. The best variant, `r05_slow_short_lookahead`, removed the early collision and reached 71.07% route progress, but still did not reach the goal tolerance. The route remains blocked and should move into late-route tracking / waypoint progression diagnosis, still within the same non-benchmark evidence boundary.
+Phase 12A-R05 has now run a targeted recovery matrix for `route_05`. The best variant, `r05_slow_short_lookahead`, removed the early collision and reached 71.07% route progress, but still did not reach the goal tolerance under the original 2500-step budget.
+
+Phase 12A-R05B then diagnosed late-route waypoint progression: the source run was still advancing near step 2500, and a 5200-step extended diagnostic reached the goal at step 4431. This confirms a horizon-limited smoke setup for Route 05, not a waypoint-index stall. The original Phase 12A all-route result remains blocked because its strict 2500-step gate did not pass.

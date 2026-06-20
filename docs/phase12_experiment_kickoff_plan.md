@@ -77,6 +77,19 @@ best_observed_route_progress_pct=71.067782
 best_observed_distance_to_goal_m=99.482140
 ```
 
+Latest Phase 12A-R05B waypoint progression diagnosis:
+
+```text
+experiments\phase12\20260620T115855Z
+source_waypoint_progression_status=progressing_step_budget_limited
+extended_goal_reached=true
+extended_steps_requested=5200
+goal_reach_step=4431
+distance_to_goal_m=2.950533
+route_progress_pct=100.0
+grp_route_progress_pct=99.559155
+```
+
 ## Experiment Line B — Controller Ablation
 
 比較：

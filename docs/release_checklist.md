@@ -39,6 +39,7 @@
 - [x] **Phase 12 Experiment Kickoff Preparation**: 已新增 experiment kickoff plan 與 scaffold script；此階段只建立計畫與輸出格式，不啟動 CARLA 或大型實驗。
 - [x] **Phase 12A CARLA Route Scaling Evidence Produced**: 已在真實 CARLA runtime 執行 5-route `Town03` GRP smoke batch，產生 aggregate evidence；4/5 routes passed，`route_05` 因 strict goal-reach failure 使 all-route gate 保持 blocked。
 - [x] **Phase 12A-R05 Failure Diagnosis & Recovery Evidence**: 已執行 Route 05 專用 recovery-variant runner；4 個 conservative variants 均未達 strict goal tolerance。`r05_slow_short_lookahead` 無碰撞且進度提升至 71.07%，但 Phase 12A-R05 仍保持 blocked。
+- [x] **Phase 12A-R05B Waypoint Progression Diagnosis**: 已解析 `r05_slow_short_lookahead` late-route waypoint progression；2500-step 末段仍持續推進，5200-step extended diagnostic 於 step 4431 達成 Route 05 goal tolerance。Phase 12A 原 2500-step all-route gate 仍保持 blocked。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -103,6 +104,7 @@
 | **Experiment Kickoff Scaffold** | 100% | — | — | 🟢 Phase 12 Kickoff Pass |
 | **CARLA Route Scaling Experiment** | — | 100% | — | 🟡 Phase 12A Evidence Produced |
 | **Route 05 Recovery Smoke** | — | 100% | — | 🟡 Phase 12A-R05 Blocked |
+| **Route 05 Waypoint Progression Diagnosis** | — | 100% | — | 🟢 Phase 12A-R05B Pass |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 ## 🚧 Explicitly Not Verified
