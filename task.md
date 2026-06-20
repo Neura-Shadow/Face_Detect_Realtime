@@ -1,9 +1,9 @@
-# Current Task — Phase 12A
+# Current Task — Phase 12A-R05
 
 ## Status
 
 ```text
-Phase 12A Real Runtime Evidence Produced — real 5-route CARLA batch completed with aggregated evidence; strict all-route pass gate is blocked by route_05 goal-reach failure.
+Phase 12A-R05 Recovery Blocked — 4 conservative Route 05 recovery variants executed; none reached the strict goal tolerance.
 ```
 
 Maintained boundary:
@@ -35,9 +35,20 @@ Phase 12A is controlled multi-route smoke orchestration only; no CARLA Leaderboa
 - Phase 12A real evidence assertions: passed.
 - Phase 12A real aggregate result: `passed_count=4`, `blocked_or_failed_count=1`, `all_routes_passed=false`.
 - route_05 result: `goal_reach_blocked`, `distance_to_goal_m=322.443754`, `collision_count=2408`.
+- route_05 failure diagnosis: first collision at step 88 against `traffic.traffic_light`; progress stayed near 3.89%.
+- Added `scripts\run_phase12a_r05_recovery_experiment.py`.
+- Added `docs\phase12a_r05_failure_diagnosis_recovery.md`.
+- Phase 12A-R05 dry-run: passed with baseline reference plus 4 recovery variant commands.
+- Phase 11D ready gate: passed before real R05 recovery runtime.
+- Phase 12A-R05 real evidence dir: `experiments\phase12\20260620T110904Z`.
+- Phase 12A-R05 real aggregate result: `recovery_attempt_count=4`, `recovered_count=0`, `recovery_passed=false`.
+- Best observed variant: `r05_slow_short_lookahead`, `route_progress_pct=71.067782`, `distance_to_goal_m=99.482140`, `collision_count=0`, `lane_invasion_count=3`.
+- R05 recovery conclusion: early traffic-light collision can be avoided with short lookahead / denser sampling, but strict fixed-route goal reach remains blocked.
+- Phase 12A-R05 py_compile: passed.
+- Phase 12A-R05 evidence assertions: passed.
 - Base Python Phase 11 checks: 6/6 passed.
 - Base Python demo checks: 6/6 passed.
 
 ## Next Action
 
-Use the Phase 12A aggregate evidence for diagnosis or ablation planning. Do not relabel the blocked all-route gate as a benchmark pass, and do not commit generated experiment outputs unless a later packaging phase explicitly requests selected artifacts.
+Diagnose the late-route failure mode of `r05_slow_short_lookahead`, especially waypoint-index progression and final approach behavior. Do not relabel the blocked recovery gate as a benchmark pass, and do not commit generated experiment outputs unless a later packaging phase explicitly requests selected artifacts.

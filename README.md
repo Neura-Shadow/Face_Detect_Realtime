@@ -59,6 +59,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
 - **Phase 12**:
   - Experiment kickoff preparation: **Passed — controlled experiment plan and scaffold created without running large experiments**
   - Phase 12A CARLA route scaling: **Evidence produced — real 5-route CARLA batch generated aggregate evidence; strict all-route gate blocked by route_05**
+  - Phase 12A-R05 route recovery: **Blocked — 4 conservative recovery variants executed; best variant improved progress but did not reach goal**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -209,6 +210,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 > Phase 12A CARLA route scaling experiment 請見 [docs/phase12a_carla_route_scaling_experiment.md](docs/phase12a_carla_route_scaling_experiment.md)
 >
 > Phase 12A real runtime evidence 請見 [docs/phase12a_real_route_scaling_evidence.md](docs/phase12a_real_route_scaling_evidence.md)
+>
+> Phase 12A-R05 failure diagnosis / recovery experiment 請見 [docs/phase12a_r05_failure_diagnosis_recovery.md](docs/phase12a_r05_failure_diagnosis_recovery.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 
@@ -220,6 +223,12 @@ Phase 12A route-scaling dry run（只寫 summary，不啟動 CARLA）：
 
 ```powershell
 python scripts\run_phase12a_route_scaling_experiment.py --dry-run --output-dir experiments\phase12
+```
+
+Phase 12A-R05 recovery dry run（只寫 recovery variant commands，不啟動 CARLA）：
+
+```powershell
+python scripts\run_phase12a_r05_recovery_experiment.py --dry-run --output-dir experiments\phase12
 ```
 
 ---

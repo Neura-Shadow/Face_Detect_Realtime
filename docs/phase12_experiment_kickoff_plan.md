@@ -65,6 +65,18 @@ blocked_or_failed_count=1
 all_routes_passed=false
 ```
 
+Latest Phase 12A-R05 recovery evidence:
+
+```text
+experiments\phase12\20260620T110904Z
+recovery_attempt_count=4
+recovered_count=0
+recovery_passed=false
+best_observed_variant=r05_slow_short_lookahead
+best_observed_route_progress_pct=71.067782
+best_observed_distance_to_goal_m=99.482140
+```
+
 ## Experiment Line B — Controller Ablation
 
 比較：

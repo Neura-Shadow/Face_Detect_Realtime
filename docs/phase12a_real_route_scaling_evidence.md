@@ -60,4 +60,4 @@ leaderboard_route_criteria_evaluated=false
 
 Phase 12A successfully produced aggregated real CARLA route-scaling evidence. The batch correctly used continue-all behavior and preserved evidence for every route. The strict all-route pass gate remains blocked because `route_05` did not reach the goal within 2500 steps and accumulated collision events.
 
-The next engineering step is not to relabel this as a benchmark, but to start Phase 12B-style diagnosis or ablation: inspect route_05 geometry/control behavior, compare controller variants, and keep the same evidence boundary.
+Phase 12A-R05 has now run a targeted recovery matrix for `route_05`. The best variant, `r05_slow_short_lookahead`, removed the early collision and reached 71.07% route progress, but still did not reach the goal tolerance. The route remains blocked and should move into late-route tracking / waypoint progression diagnosis, still within the same non-benchmark evidence boundary.
