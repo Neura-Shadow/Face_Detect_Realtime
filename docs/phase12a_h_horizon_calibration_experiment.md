@@ -99,6 +99,8 @@ Phase 12A-H shows that a single 2500-step horizon is not a fair smoke horizon ac
 
 This is a calibration result, not a route benchmark. It should inform future Phase 12B-style experiments that compare route outcomes under calibrated horizons, controller settings, and perception modes.
 
+Follow-up Phase 12A-C applied this matrix to a real five-route CARLA runtime confirmation and all five calibrated routes reached the goal. The confirmation evidence is documented in [phase12a_c_calibrated_route_confirmation.md](phase12a_c_calibrated_route_confirmation.md).
+
 ## Boundary
 
 This is evidence-backed calibration smoke only. It is not CARLA Leaderboard, not a formal route benchmark, not an infraction benchmark, and not proof of general driving policy quality.

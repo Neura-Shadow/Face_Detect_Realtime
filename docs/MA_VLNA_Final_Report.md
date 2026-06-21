@@ -50,6 +50,7 @@ MA-VLNA 採用模組化的軟體架構，主要包含以下核心元件：
   - 新增 Phase 12A-R05 Route 05 Failure Diagnosis & Recovery Experiment，針對 `route_05` 的 traffic-light collision/stuck failure 建立專用 recovery-variant runner。此 runner 不修改 GRP controller，只調整 speed、route sampling 與 lookahead 參數來產生可比較 evidence。真實 runtime 已執行 4 個 conservative recovery variants，其中 `r05_slow_short_lookahead` 將 route progress 提升至 71.07% 並消除碰撞，但未達 strict goal tolerance，因此 R05 recovery gate 仍保持 blocked。
   - 新增 Phase 12A-R05B Late-route Waypoint Progression Diagnosis，針對 `r05_slow_short_lookahead` 解析最後 200 步 waypoint progression，確認 2500-step run 末段仍持續推進而非 waypoint index stall。5200-step extended diagnostic 在 step 4431 達成 goal tolerance，證明該失敗主要是原 smoke horizon 不足；此結果不回溯改寫 Phase 12A all-route gate。
   - 新增 Phase 12A-H Horizon Calibration Experiment，將 Phase 12A 與 R05B 的 real CARLA evidence 轉成 per-route step horizon matrix：`route_01=2500`、`route_02=2800`、`route_03=2500`、`route_04=2500`、`route_05=5400`。此階段只校準 smoke horizon，不宣稱 formal route benchmark。
+  - 新增 Phase 12A-C Calibrated 5-Route Runtime Confirmation，將 Phase 12A-H 的 calibrated horizon matrix 回灌到五條 `Town03` route 並實際重跑 CARLA runtime。五條 route 均達成 fixed goal tolerance，且 collision_count 全為 0；此結果確認 calibrated smoke setup，但不等同 CARLA Leaderboard 或正式 benchmark。
   - Phase 11 首版不追求 CARLA Leaderboard，而是先建立可觀測、可回放、可安全退場的仿真閉環。
 
 ### 4. 關鍵技術亮點 (Technical Highlights)

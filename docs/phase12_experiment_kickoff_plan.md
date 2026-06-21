@@ -100,6 +100,19 @@ recommended_horizon_by_route={"route_01":2500,"route_02":2800,"route_03":2500,"r
 max_recommended_horizon_steps=5400
 ```
 
+Latest Phase 12A-C calibrated route confirmation:
+
+```text
+experiments\phase12\20260621T074706Z
+confirmed_route_count=5
+all_routes_confirmed=true
+route_01_goal_reach_step=2073
+route_02_goal_reach_step=2264
+route_03_goal_reach_step=1567
+route_04_goal_reach_step=1320
+route_05_goal_reach_step=4431
+```
+
 ## Experiment Line B — Controller Ablation
 
 比較：

@@ -1,9 +1,9 @@
-# Current Task — Phase 12A-H
+# Current Task — Phase 12A-C
 
 ## Status
 
 ```text
-Phase 12A-H Horizon Calibration Pass — calibrated per-route step horizons generated for all five fixed Town03 routes.
+Phase 12A-C Calibrated Route Confirmation Pass — all five calibrated fixed Town03 routes reached the goal.
 ```
 
 Maintained boundary:
@@ -64,9 +64,18 @@ Phase 12A is controlled multi-route smoke orchestration only; no CARLA Leaderboa
 - Phase 12A-H calibration result: `calibrated_route_count=5`, `all_routes_calibrated=true`, `max_recommended_horizon_steps=5400`.
 - Phase 12A-H horizon matrix: `route_01=2500`, `route_02=2800`, `route_03=2500`, `route_04=2500`, `route_05=5400`.
 - Phase 12A-H evidence assertions: passed.
+- Added `scripts\run_phase12a_c_calibrated_route_confirmation.py`.
+- Added `docs\phase12a_c_calibrated_route_confirmation.md`.
+- Phase 12A-C py_compile: passed.
+- Phase 12A-C dry-run: passed with five calibrated Phase 11M child commands.
+- Phase 12A-C real evidence dir: `experiments\phase12\20260621T074706Z`.
+- Phase 12A-C runtime result: `confirmed_route_count=5`, `all_routes_confirmed=true`.
+- Phase 12A-C per-route goal steps: `route_01=2073`, `route_02=2264`, `route_03=1567`, `route_04=1320`, `route_05=4431`.
+- Phase 12A-C collision counts: all routes `collision_count=0`.
+- Phase 12A-C evidence assertions: passed.
 - Base Python Phase 11 checks: 6/6 passed.
 - Base Python demo checks: 6/6 passed.
 
 ## Next Action
 
-Use the calibrated horizon matrix as the input budget for future Phase 12B route/controller comparisons. Do not relabel the original 2500-step Phase 12A gate as a benchmark pass, and do not commit generated experiment outputs unless a later packaging phase explicitly requests selected artifacts.
+Use the calibrated confirmation evidence as the stable smoke baseline for future Phase 12B route/controller comparisons. Do not relabel the original 2500-step Phase 12A gate as a benchmark pass, and do not commit generated experiment outputs unless a later packaging phase explicitly requests selected artifacts.
