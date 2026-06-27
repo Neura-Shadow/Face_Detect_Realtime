@@ -63,6 +63,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12A-R05B waypoint progression diagnosis: **Passed — extended 5200-step diagnostic reached Route 05 goal and confirmed 2500-step horizon limitation**
   - Phase 12A-H horizon calibration: **Passed — generated calibrated per-route step horizons from existing real CARLA evidence**
   - Phase 12A-C calibrated route confirmation: **Passed — real 5-route CARLA runtime confirmed all calibrated horizons**
+  - Phase 12B controller ablation scaffold: **Prepared — 15-row dry-run matrix for 5 routes x 3 controller modes; no CARLA runtime executed**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -221,6 +222,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 > Phase 12A-H horizon calibration experiment 請見 [docs/phase12a_h_horizon_calibration_experiment.md](docs/phase12a_h_horizon_calibration_experiment.md)
 >
 > Phase 12A-C calibrated 5-route runtime confirmation 請見 [docs/phase12a_c_calibrated_route_confirmation.md](docs/phase12a_c_calibrated_route_confirmation.md)
+>
+> Phase 12B controller ablation scaffold 請見 [docs/phase12b_controller_ablation_experiment.md](docs/phase12b_controller_ablation_experiment.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 
@@ -256,6 +259,12 @@ Phase 12A-C calibrated route confirmation dry run（只寫 calibrated child comm
 
 ```powershell
 python scripts\run_phase12a_c_calibrated_route_confirmation.py --dry-run --output-dir experiments\phase12
+```
+
+Phase 12B controller ablation dry run（只寫 5 routes x 3 controller commands，不啟動 CARLA）：
+
+```powershell
+python scripts\run_phase12b_controller_ablation_experiment.py --dry-run --output-dir experiments\phase12
 ```
 
 ---

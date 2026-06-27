@@ -1,81 +1,50 @@
-# Current Task — Phase 12A-C
+# Current Task - Phase 12B
 
 ## Status
 
 ```text
-Phase 12A-C Calibrated Route Confirmation Pass — all five calibrated fixed Town03 routes reached the goal.
+Phase 12B Controller Ablation Prepared - controller ablation matrix, dry-run scaffold, and summary aggregation are implemented.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12A is controlled multi-route smoke orchestration only; no CARLA Leaderboard, formal route benchmark, infraction benchmark, merge, git tag, GitHub Release, CARLA package commit, Python venv commit, .env commit, runtime_logs commit, or release_artifacts commit is created.
+Phase 12B is dry-run scaffold only; no CARLA Leaderboard, formal route benchmark, infraction benchmark, Runtime Pass claim, merge, git tag, GitHub Release, CARLA package commit, Python venv commit, .env commit, runtime_logs commit, or raw experiment evidence commit is created.
 ```
 
 ## Evidence
 
-- Added `scripts\run_phase12a_route_scaling_experiment.py`.
-- Added `docs\phase12a_carla_route_scaling_experiment.md`.
-- Updated `.gitignore` to keep `experiments\phase12\<timestamp>` output local by default.
+- Added `scripts\run_phase12b_controller_ablation_experiment.py`.
+- Added `docs\phase12b_controller_ablation_experiment.md`.
 - Updated README, Phase 12 kickoff plan, release checklist, final report, task, and walkthrough.
-- Route matrix: `route_01 3->30`, `route_02 8->52`, `route_03 12->74`, `route_04 25->101`, `route_05 40->126`.
-- Batch policy: continue all routes; exit success only if all five child Phase 11M runs pass.
-- Dry-run policy: write manifest, commands, README, and five dry-run summary rows without launching CARLA.
-- Dry-run output dir: `experiments\phase12\20260619T110549Z`.
-- Batch runner does not import CARLA and does not modify VLM, SafetyGate, SemanticPlanner, GRP controller, or baseline requirements.
-- benchmark_boundary_prepared: true.
-- route_benchmark_verified: false.
-- infraction_benchmark_verified: false.
-- leaderboard_evaluated: false.
-- Phase 12A py_compile: passed.
-- Phase 12A dry-run: passed with 5 route rows.
-- Phase 12A dry-run summary assertions: passed.
-- Phase 12A real CARLA run: completed with exit code 1 because strict all-route gate blocked.
-- Phase 12A real evidence dir: `experiments\phase12\20260619T113705Z`.
-- Phase 12A real evidence assertions: passed.
-- Phase 12A real aggregate result: `passed_count=4`, `blocked_or_failed_count=1`, `all_routes_passed=false`.
-- route_05 result: `goal_reach_blocked`, `distance_to_goal_m=322.443754`, `collision_count=2408`.
-- route_05 failure diagnosis: first collision at step 88 against `traffic.traffic_light`; progress stayed near 3.89%.
-- Added `scripts\run_phase12a_r05_recovery_experiment.py`.
-- Added `docs\phase12a_r05_failure_diagnosis_recovery.md`.
-- Phase 12A-R05 dry-run: passed with baseline reference plus 4 recovery variant commands.
-- Phase 11D ready gate: passed before real R05 recovery runtime.
-- Phase 12A-R05 real evidence dir: `experiments\phase12\20260620T110904Z`.
-- Phase 12A-R05 real aggregate result: `recovery_attempt_count=4`, `recovered_count=0`, `recovery_passed=false`.
-- Best observed variant: `r05_slow_short_lookahead`, `route_progress_pct=71.067782`, `distance_to_goal_m=99.482140`, `collision_count=0`, `lane_invasion_count=3`.
-- R05 recovery conclusion: early traffic-light collision can be avoided with short lookahead / denser sampling, but strict fixed-route goal reach remains blocked.
-- Phase 12A-R05 py_compile: passed.
-- Phase 12A-R05 evidence assertions: passed.
-- Added `scripts\run_phase12a_r05b_waypoint_progression_diagnosis.py`.
-- Added `docs\phase12a_r05b_late_route_waypoint_progression_diagnosis.md`.
-- Phase 12A-R05B py_compile: passed.
-- Phase 12A-R05B dry-run: passed with source reference plus 5200-step extended command.
-- Phase 12A-R05B evidence assertions: passed.
-- Phase 12A-R05B source diagnosis: `r05_slow_short_lookahead` was still progressing at step 2500, with final 200-step `grp_index_delta=21`, `route_progress_delta_m=20.358841`, and `distance_to_goal_delta_m=19.420991`.
-- Phase 12A-R05B 4000-step diagnostic: still blocked, `distance_to_goal_m=45.168395`, `grp_current_waypoint_index=392`, `collision_count=0`, and status remained `progressing_step_budget_limited`.
-- Phase 12A-R05B final evidence dir: `experiments\phase12\20260620T115855Z`.
-- Phase 12A-R05B final result: `extended_goal_reached=true`, `goal_reach_step=4431`, `distance_to_goal_m=2.950533`, `collision_count=0`, `lane_invasion_count=8`.
-- R05B conclusion: the 2500-step Route 05 failure was horizon-limited, not a late-route waypoint-index stall. This does not retroactively change the original Phase 12A all-route gate.
-- Added `scripts\run_phase12a_h_horizon_calibration_experiment.py`.
-- Added `docs\phase12a_h_horizon_calibration_experiment.md`.
-- Phase 12A-H py_compile: passed.
-- Phase 12A-H calibration command: passed with `--require-complete-calibration`.
-- Phase 12A-H output dir: `experiments\phase12\20260620T140648Z`.
-- Phase 12A-H calibration result: `calibrated_route_count=5`, `all_routes_calibrated=true`, `max_recommended_horizon_steps=5400`.
-- Phase 12A-H horizon matrix: `route_01=2500`, `route_02=2800`, `route_03=2500`, `route_04=2500`, `route_05=5400`.
-- Phase 12A-H evidence assertions: passed.
-- Added `scripts\run_phase12a_c_calibrated_route_confirmation.py`.
-- Added `docs\phase12a_c_calibrated_route_confirmation.md`.
-- Phase 12A-C py_compile: passed.
-- Phase 12A-C dry-run: passed with five calibrated Phase 11M child commands.
-- Phase 12A-C real evidence dir: `experiments\phase12\20260621T074706Z`.
-- Phase 12A-C runtime result: `confirmed_route_count=5`, `all_routes_confirmed=true`.
-- Phase 12A-C per-route goal steps: `route_01=2073`, `route_02=2264`, `route_03=1567`, `route_04=1320`, `route_05=4431`.
-- Phase 12A-C collision counts: all routes `collision_count=0`.
-- Phase 12A-C evidence assertions: passed.
+- Route matrix: `route_01 3->30 horizon=2500`, `route_02 8->52 horizon=2800`, `route_03 12->74 horizon=2500`, `route_04 25->101 horizon=2500`, `route_05 40->126 horizon=5400`.
+- Controller matrix: `linear_spawn_pair_follower`, `grp_follower`, `baseline_planner_action_mapper`.
+- Dry-run matrix shape: 5 routes x 3 controllers = 15 rows.
+- Dry-run output files: `manifest.json`, `summary.csv`, `summary.json`, `commands.txt`, `README.md`.
+- Dry-run policy: write command matrix and summary aggregation without importing CARLA or launching child runtime processes.
+- Runtime command mapping:
+  - `grp_follower` -> `scripts\run_phase11m_grp_route_following.py`
+  - `linear_spawn_pair_follower` -> `scripts\run_phase11k_fixed_route_smoke.py`
+  - `baseline_planner_action_mapper` -> `python -m workers.CARLA_Closed_Loop_Agent`
+- `runtime_command_status` records scoped readiness instead of fake pass.
+- `result=dry_run` for all rows.
+- `exit_code=null`, `fixed_route_goal_reached=null`, `distance_to_goal_m=null`, `route_progress_pct=null`, `grp_route_progress_pct=null`, `collision_count=null`, `lane_invasion_count=null`, and `evidence_dir=null` for dry-run rows.
+- `route_benchmark_verified=false`.
+- `infraction_benchmark_verified=false`.
+- `leaderboard_evaluated=false`.
+- `leaderboard_routes_exported=false`.
+- `leaderboard_route_criteria_evaluated=false`.
+
+## Validation
+
+- Phase 12B py_compile: passed.
+- Phase 12B dry-run: passed.
+- Phase 12B dry-run output dir: `experiments\phase12\20260627T124452Z`.
+- Phase 12B dry-run assertions: passed with `row_count=15`, `route_count=5`, `controller_count=3`.
 - Base Python Phase 11 checks: 6/6 passed.
 - Base Python demo checks: 6/6 passed.
+- Source commit boundary gate: passed with 8 staged source/docs files and no blocked artifacts.
 
 ## Next Action
 
-Use the calibrated confirmation evidence as the stable smoke baseline for future Phase 12B route/controller comparisons. Do not relabel the original 2500-step Phase 12A gate as a benchmark pass, and do not commit generated experiment outputs unless a later packaging phase explicitly requests selected artifacts.
+Run validation, stage source-only files, commit with `Phase 12B: scaffold controller ablation experiment`, push to `codex/phase-11o-source-commit-boundary`, and verify PR #1 remains Draft/open/unmerged.

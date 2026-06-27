@@ -213,6 +213,45 @@ python scripts\run_demo_checks.py
 - Phase 11 checks 6/6 passed
 - demo checks 6/6 passed
 
+## Phase 12B Addendum - Controller Ablation Scaffold
+
+```text
+Phase 12B Controller Ablation Prepared - controller ablation matrix, dry-run scaffold, and summary aggregation are implemented.
+```
+
+Implementation:
+
+```text
+scripts/run_phase12b_controller_ablation_experiment.py
+docs/phase12b_controller_ablation_experiment.md
+```
+
+Dry-run command:
+
+```powershell
+python scripts\run_phase12b_controller_ablation_experiment.py --dry-run --output-dir experiments\phase12
+```
+
+Prepared matrix:
+
+```text
+row_count=15
+route_count=5
+controller_count=3
+controllers=linear_spawn_pair_follower,grp_follower,baseline_planner_action_mapper
+runtime_scope=dry_run_scaffold_only
+```
+
+Boundary:
+
+```text
+route_benchmark_verified=false
+infraction_benchmark_verified=false
+leaderboard_evaluated=false
+leaderboard_routes_exported=false
+leaderboard_route_criteria_evaluated=false
+```
+
 ## Next Implementation Slice
 
 Phase 12 後續應先實作輕量 orchestrator，讀取 route matrix 與 backend/controller/VLM mode matrix，逐 run 呼叫既有 Phase 11K/11L/11M runner。正式 CARLA runtime 仍應留在 dedicated Python 3.12 + CARLA 0.9.16 environment，不加入 baseline requirements。
