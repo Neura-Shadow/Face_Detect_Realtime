@@ -10,6 +10,14 @@ Phase 12B is a dry-run scaffold only. It prepares the controller ablation
 matrix for later CARLA runtime execution, but it does not launch CARLA, does
 not import the `carla` package, and does not claim runtime pass.
 
+Phase 12B-R later adds the explicit runtime wiring mode:
+
+```powershell
+python scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --output-dir experiments\phase12
+```
+
+See [phase12b_r_controller_ablation_runtime_wiring.md](phase12b_r_controller_ablation_runtime_wiring.md).
+
 ## Scope
 
 Phase 12B compares command coverage for three controller modes over the

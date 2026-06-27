@@ -43,6 +43,7 @@
 - [x] **Phase 12A-H Horizon Calibration**: 已將 Phase 12A / R05B evidence 校準成 per-route step horizon matrix：`2500, 2800, 2500, 2500, 5400`；此矩陣僅用於 smoke horizon，不是 formal benchmark。
 - [x] **Phase 12A-C Calibrated Runtime Confirmation**: 已以 calibrated horizon matrix 重跑五條 `Town03` routes；5/5 routes reached goal，且各 route `collision_count=0`。此結果確認 calibrated smoke setup，不改寫原 2500-step Phase 12A gate。
 - [x] **Phase 12B Controller Ablation Scaffold**: 已建立 5 routes x 3 controller modes 的 15-row dry-run scaffold 與 summary aggregation；此階段不執行大型 CARLA runtime，不是 Runtime Pass。
+- [x] **Phase 12B-R Controller Ablation Runtime Wiring**: 已加入顯式 `--execute-runtime` path、child stdout/stderr 保存、evidence metrics 讀取與 blocked/pass/fail aggregation；本機 smoke 產生 blocked evidence，不是 Runtime Pass。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -111,6 +112,7 @@
 | **Route Horizon Calibration** | — | 100% | — | 🟢 Phase 12A-H Pass |
 | **Calibrated Route Runtime Confirmation** | — | 100% | — | 🟢 Phase 12A-C Pass |
 | **Controller Ablation Scaffold** | — | 100% | — | 🟡 Phase 12B Prepared |
+| **Controller Ablation Runtime Wiring** | — | 100% | — | 🟡 Phase 12B-R Prepared |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 ## 🚧 Explicitly Not Verified

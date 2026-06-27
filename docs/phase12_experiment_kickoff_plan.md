@@ -252,6 +252,36 @@ leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
 
+## Phase 12B-R Addendum - Controller Ablation Runtime Wiring
+
+```text
+Phase 12B-R Controller Ablation Runtime Wiring Prepared - execute-runtime child process wiring, blocked evidence handling, and summary aggregation are implemented.
+```
+
+Implementation:
+
+```text
+scripts/run_phase12b_controller_ablation_experiment.py
+docs/phase12b_r_controller_ablation_runtime_wiring.md
+```
+
+Runtime wiring smoke:
+
+```powershell
+python scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --route-id route_01 --controller-mode linear_spawn_pair_follower --runtime-row-limit 1 --child-timeout-sec 120 --python-executable python --output-dir experiments\phase12
+```
+
+Local blocked evidence:
+
+```text
+experiments\phase12\20260627T131052Z
+row_count=1
+executed_row_count=1
+result=blocked
+metrics_read_status=loaded
+boundary_fields_false=true
+```
+
 ## Next Implementation Slice
 
 Phase 12 後續應先實作輕量 orchestrator，讀取 route matrix 與 backend/controller/VLM mode matrix，逐 run 呼叫既有 Phase 11K/11L/11M runner。正式 CARLA runtime 仍應留在 dedicated Python 3.12 + CARLA 0.9.16 environment，不加入 baseline requirements。

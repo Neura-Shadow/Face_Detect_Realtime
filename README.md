@@ -64,6 +64,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12A-H horizon calibration: **Passed — generated calibrated per-route step horizons from existing real CARLA evidence**
   - Phase 12A-C calibrated route confirmation: **Passed — real 5-route CARLA runtime confirmed all calibrated horizons**
   - Phase 12B controller ablation scaffold: **Prepared — 15-row dry-run matrix for 5 routes x 3 controller modes; no CARLA runtime executed**
+  - Phase 12B-R controller ablation runtime wiring: **Prepared — execute-runtime child process wiring, blocked evidence handling, and aggregation implemented**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -224,6 +225,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 > Phase 12A-C calibrated 5-route runtime confirmation 請見 [docs/phase12a_c_calibrated_route_confirmation.md](docs/phase12a_c_calibrated_route_confirmation.md)
 >
 > Phase 12B controller ablation scaffold 請見 [docs/phase12b_controller_ablation_experiment.md](docs/phase12b_controller_ablation_experiment.md)
+>
+> Phase 12B-R controller ablation runtime wiring 請見 [docs/phase12b_r_controller_ablation_runtime_wiring.md](docs/phase12b_r_controller_ablation_runtime_wiring.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 
@@ -265,6 +268,12 @@ Phase 12B controller ablation dry run（只寫 5 routes x 3 controller commands�
 
 ```powershell
 python scripts\run_phase12b_controller_ablation_experiment.py --dry-run --output-dir experiments\phase12
+```
+
+Phase 12B-R controller ablation runtime wiring smoke（顯式執行 1 row，無 CARLA server 時應產生 blocked evidence，不可宣稱 Runtime Pass）：
+
+```powershell
+python scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --route-id route_01 --controller-mode linear_spawn_pair_follower --runtime-row-limit 1 --child-timeout-sec 120 --python-executable python --output-dir experiments\phase12
 ```
 
 ---

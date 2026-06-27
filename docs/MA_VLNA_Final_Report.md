@@ -52,6 +52,7 @@ MA-VLNA 採用模組化的軟體架構，主要包含以下核心元件：
   - 新增 Phase 12A-H Horizon Calibration Experiment，將 Phase 12A 與 R05B 的 real CARLA evidence 轉成 per-route step horizon matrix：`route_01=2500`、`route_02=2800`、`route_03=2500`、`route_04=2500`、`route_05=5400`。此階段只校準 smoke horizon，不宣稱 formal route benchmark。
   - 新增 Phase 12A-C Calibrated 5-Route Runtime Confirmation，將 Phase 12A-H 的 calibrated horizon matrix 回灌到五條 `Town03` route 並實際重跑 CARLA runtime。五條 route 均達成 fixed goal tolerance，且 collision_count 全為 0；此結果確認 calibrated smoke setup，但不等同 CARLA Leaderboard 或正式 benchmark。
   - 新增 Phase 12B Controller Ablation Scaffold，建立 5 條 calibrated `Town03` routes x 3 種 controller mode 的 15-row dry-run matrix，輸出 `manifest.json`、`summary.csv`、`summary.json`、`commands.txt` 與 `README.md`。此階段只準備 ablation command scaffold，不執行大型 CARLA runtime，也不宣稱 Runtime Pass。
+  - 新增 Phase 12B-R Controller Ablation Runtime Wiring，為同一個 runner 加入顯式 `--execute-runtime` path，能逐 row 啟動既有 child runner、保存 raw stdout/stderr、讀取 child evidence metrics 並聚合 blocked/pass/fail counts。本機 wiring smoke 在沒有 CARLA server 時產生 blocked evidence；此結果只證明 runtime wiring 與 evidence handling，不等同 Runtime Pass。
   - Phase 11 首版不追求 CARLA Leaderboard，而是先建立可觀測、可回放、可安全退場的仿真閉環。
 
 ### 4. 關鍵技術亮點 (Technical Highlights)
