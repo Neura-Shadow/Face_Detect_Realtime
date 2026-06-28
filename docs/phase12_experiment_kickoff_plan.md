@@ -282,6 +282,51 @@ metrics_read_status=loaded
 boundary_fields_false=true
 ```
 
+## Phase 12B-GRP Addendum - GRP Controller Ablation Runtime Pass
+
+```text
+Phase 12B-GRP GRP Controller Ablation Runtime Pass - all five calibrated Town03 routes passed with the grp_follower controller.
+```
+
+Implementation:
+
+```text
+scripts/run_phase12b_controller_ablation_experiment.py
+docs/phase12b_grp_controller_ablation_runtime_pass.md
+```
+
+Runtime evidence:
+
+```text
+experiments\phase12\20260628T065257Z
+row_count=5
+executed_row_count=5
+passed_count=5
+all_runtime_rows_passed=true
+controller_mode=grp_follower
+```
+
+Per-route goal reach:
+
+```text
+route_01_goal_reach_step=2073
+route_02_goal_reach_step=2264
+route_03_goal_reach_step=1567
+route_04_goal_reach_step=1320
+route_05_goal_reach_step=4431
+all_collision_count=0
+```
+
+Boundary:
+
+```text
+route_benchmark_verified=false
+infraction_benchmark_verified=false
+leaderboard_evaluated=false
+leaderboard_routes_exported=false
+leaderboard_route_criteria_evaluated=false
+```
+
 ## Next Implementation Slice
 
 Phase 12 後續應先實作輕量 orchestrator，讀取 route matrix 與 backend/controller/VLM mode matrix，逐 run 呼叫既有 Phase 11K/11L/11M runner。正式 CARLA runtime 仍應留在 dedicated Python 3.12 + CARLA 0.9.16 environment，不加入 baseline requirements。

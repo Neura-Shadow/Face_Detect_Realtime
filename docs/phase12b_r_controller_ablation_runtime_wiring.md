@@ -110,6 +110,21 @@ This proves the runtime wiring can launch a child runner, collect blocked
 evidence, read structured metrics, and preserve raw child output. It is not a
 runtime pass.
 
+## Follow-Up GRP Runtime Pass
+
+The GRP-only controller subset was later executed successfully:
+
+```text
+experiments\phase12\20260628T065257Z
+controller_mode=grp_follower
+row_count=5
+executed_row_count=5
+passed_count=5
+all_runtime_rows_passed=true
+```
+
+See [phase12b_grp_controller_ablation_runtime_pass.md](phase12b_grp_controller_ablation_runtime_pass.md).
+
 ## Boundary
 
 These fields remain false:

@@ -65,6 +65,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12A-C calibrated route confirmation: **Passed — real 5-route CARLA runtime confirmed all calibrated horizons**
   - Phase 12B controller ablation scaffold: **Prepared — 15-row dry-run matrix for 5 routes x 3 controller modes; no CARLA runtime executed**
   - Phase 12B-R controller ablation runtime wiring: **Prepared — execute-runtime child process wiring, blocked evidence handling, and aggregation implemented**
+  - Phase 12B-GRP GRP controller ablation runtime: **Passed — 5/5 calibrated `grp_follower` rows reached goal in real CARLA**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -227,6 +228,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 > Phase 12B controller ablation scaffold 請見 [docs/phase12b_controller_ablation_experiment.md](docs/phase12b_controller_ablation_experiment.md)
 >
 > Phase 12B-R controller ablation runtime wiring 請見 [docs/phase12b_r_controller_ablation_runtime_wiring.md](docs/phase12b_r_controller_ablation_runtime_wiring.md)
+>
+> Phase 12B-GRP GRP controller ablation runtime pass 請見 [docs/phase12b_grp_controller_ablation_runtime_pass.md](docs/phase12b_grp_controller_ablation_runtime_pass.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 
@@ -274,6 +277,13 @@ Phase 12B-R controller ablation runtime wiring smoke（顯式執行 1 row，無 
 
 ```powershell
 python scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --route-id route_01 --controller-mode linear_spawn_pair_follower --runtime-row-limit 1 --child-timeout-sec 120 --python-executable python --output-dir experiments\phase12
+```
+
+Phase 12B-GRP GRP-only controller ablation runtime（需外部 CARLA server 與 Python 3.12 CARLA env）：
+
+```powershell
+$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --controller-mode grp_follower --host 127.0.0.1 --port 2000 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --child-timeout-sec 2400 --output-dir experiments\phase12
 ```
 
 ---
