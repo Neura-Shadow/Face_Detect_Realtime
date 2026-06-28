@@ -73,6 +73,7 @@ def main() -> int:
                 "scripts/run_phase12b_controller_ablation_experiment.py",
                 "scripts/run_phase12b_controller_ablation_summary.py",
                 "scripts/run_phase12c_perception_backend_ablation.py",
+                "scripts/run_phase12c_dummy_runtime_confirmation.py",
             ],
             "expected": [],
         },

@@ -103,3 +103,23 @@ Acceptance assertions：
 - optional YOLO / RT-DETR rows may be `backend_unavailable`
 - `backend_unavailable` rows do not make the scaffold exit nonzero
 - all benchmark boundary fields remain false
+
+## Follow-up Runtime Slice
+
+Phase 12C-DUMMY 已完成第一個 backend runtime confirmation：
+
+```text
+Phase 12C-DUMMY Runtime Confirmation Pass - dummy backend rows confirmed in real CARLA runtime.
+```
+
+Evidence：
+
+```text
+experiments\phase12\20260628T173019Z
+row_count=5
+passed_count=5
+collision_count_total=0
+lane_invasion_count_total=83
+```
+
+詳細記錄請見 [phase12c_dummy_backend_runtime_confirmation.md](phase12c_dummy_backend_runtime_confirmation.md)。

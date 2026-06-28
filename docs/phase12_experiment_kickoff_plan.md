@@ -529,6 +529,56 @@ leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
 
+## Phase 12C-DUMMY Addendum - Dummy Backend Runtime Confirmation
+
+```text
+Phase 12C-DUMMY Runtime Confirmation Pass - dummy backend rows confirmed in real CARLA runtime.
+```
+
+Generated runtime evidence:
+
+```text
+experiments\phase12\20260628T173019Z
+child_experiment_dir=experiments\phase12\20260628T173019Z\runs\20260628T173021Z
+```
+
+Runtime scope:
+
+```text
+controller_mode=grp_follower
+perception_backend=dummy
+routes=5 calibrated Town03 spawn-pair routes
+row_count=5
+passed_count=5
+blocked_count=0
+failed_count=0
+collision_count_total=0
+lane_invasion_count_total=83
+```
+
+Assertions:
+
+```text
+all_rows_goal_reached=true
+all_rows_runtime_passed=true
+phase12b_all_runtime_rows_passed=true
+all_boundary_fields_false=true
+carla_imported_by_wrapper=false
+raw_runtime_evidence_committed=false
+```
+
+Boundary:
+
+```text
+route_benchmark_verified=false
+infraction_benchmark_verified=false
+leaderboard_evaluated=false
+leaderboard_routes_exported=false
+leaderboard_route_criteria_evaluated=false
+```
+
+`lane_invasion_count_total=83` 是 sensor metric record，不是 infraction benchmark score。Phase 12C-DUMMY 只確認 dummy backend 在 calibrated smoke runtime 中可完成五條 route。
+
 ## Next Implementation Slice
 
-Phase 12 後續可在 Phase 12C 的 command scaffold 之上，於 dedicated Python 3.12 + CARLA 0.9.16 environment 顯式執行 selected backend rows。Optional YOLO / RT-DETR dependency unlock 應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。
+Phase 12 後續可在 Phase 12C 的 command scaffold 之上，繼續以 dedicated Python 3.12 + CARLA 0.9.16 environment 顯式執行 selected YOLO / RT-DETR optional backend rows。Optional backend dependency unlock 應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。

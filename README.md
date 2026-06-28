@@ -71,6 +71,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12B-BASE baseline PlannerAction mapper runtime: **Blocked — 5/5 real CARLA baseline rows executed but failed route-progress gate**
   - Phase 12B-SUM controller ablation comparative summary: **Prepared — GRP, linear, and baseline evidence normalized into comparative tables**
   - Phase 12C perception backend ablation: **Prepared — 5 routes x 3 backend modes scaffolded; YOLO/RT-DETR optional rows mark `backend_unavailable` when `ultralytics` is missing**
+  - Phase 12C-DUMMY dummy backend runtime confirmation: **Passed — 5/5 calibrated `grp_follower + dummy` rows reached goal in real CARLA; collision_count_total=0, lane_invasion_count_total=83**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -245,6 +246,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 > Phase 12B-SUM controller ablation comparative summary 請見 [docs/phase12b_sum_controller_ablation_comparative_summary.md](docs/phase12b_sum_controller_ablation_comparative_summary.md)
 >
 > Phase 12C perception backend ablation scaffold 請見 [docs/phase12c_perception_backend_ablation_prepared.md](docs/phase12c_perception_backend_ablation_prepared.md)
+>
+> Phase 12C-DUMMY dummy perception backend runtime confirmation 請見 [docs/phase12c_dummy_backend_runtime_confirmation.md](docs/phase12c_dummy_backend_runtime_confirmation.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 
@@ -331,6 +334,13 @@ Phase 12C perception backend ablation scaffold（固定 `grp_follower`，只做 
 
 ```powershell
 python scripts\run_phase12c_perception_backend_ablation.py --output-dir experiments\phase12
+```
+
+Phase 12C-DUMMY dummy backend runtime confirmation（需外部 CARLA server 與 Python 3.12 CARLA env）：
+
+```powershell
+$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_dummy_runtime_confirmation.py --host 127.0.0.1 --port 2000 --output-dir experiments\phase12 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --child-timeout-sec 2400 --parent-timeout-sec 14400
 ```
 
 ---
