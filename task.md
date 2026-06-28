@@ -1,59 +1,74 @@
-# Current Task - Phase 12B-BASE-M
+# Current Task - Phase 12B-BASE
 
 ## Status
 
 ```text
-Phase 12B-BASE-M Baseline PlannerAction Mapper Route-Metric Wiring Prepared - the baseline mapper controller row now emits structured fixed-route metrics through a dedicated child runner.
+Phase 12B-BASE Runtime Evidence Blocked - all five baseline PlannerAction mapper rows executed in real CARLA, but every row failed the fixed spawn-pair route-progress gate.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12B-BASE-M is route-metric wiring and blocked-evidence verification only. It does not claim baseline mapper runtime pass, CARLA Leaderboard, formal route benchmark, infraction benchmark, fixed-route goal-reach completion, all-controller ablation pass, merge, git tag, GitHub Release, CARLA package commit, Python venv commit, .env commit, runtime_logs commit, or raw experiment evidence commit.
+Phase 12B-BASE is baseline mapper runtime evidence, not a Runtime Pass. It does not claim CARLA Leaderboard, formal route benchmark, infraction benchmark, fixed-route goal-reach completion, all-controller ablation pass, merge, git tag, GitHub Release, CARLA package commit, Python venv commit, .env commit, runtime_logs commit, or raw experiment evidence commit.
 ```
-
-## Implementation
-
-- Added `scripts\run_phase12b_baseline_mapper_route_metrics.py`.
-- Updated `scripts\run_phase12b_controller_ablation_experiment.py` so `baseline_planner_action_mapper` rows now launch the BASE-M child runner.
-- The child runner uses the existing `CarlaClosedLoopAgent` default `CarlaVehicleControlAdapter`.
-- The baseline `PlannerActionToCarlaControl` mapper is not modified.
-- The child runner writes structured `manifest.json`, `metrics.json`, `events.jsonl`, `commands.txt`, `environment.txt`, `regression.txt`, and `raw_outputs/`.
-- Parent summary aggregation now includes:
-  - `steps_completed`
-  - `route_progress_verified`
-  - `avg_speed_kmh`
-  - `max_speed_kmh`
-  - `distance_traveled_m`
 
 ## Evidence
 
-- Dry-run evidence dir: `experiments\phase12\20260628T091403Z`.
-- Dry-run result: `row_count=15`, `controller_count=3`.
-- Baseline rows now use `runtime_command_status=wired_baseline_mapper_route_metrics_smoke`.
-- No-server blocked wiring evidence dir: `experiments\phase12\20260628T091432Z`.
-- Child evidence dir: `experiments\phase12\20260628T091432Z\runs\route_01\baseline_planner_action_mapper\20260628T091433Z`.
-- Blocked smoke command: `scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --route-id route_01 --controller-mode baseline_planner_action_mapper --runtime-row-limit 1`.
-- Blocked smoke result: `row_count=1`, `result=blocked`, `exit_code=1`, `metrics_read_status=loaded`.
-- Child metrics assert:
-  - `phase=Phase 12B-BASE-M`
-  - `controller_mode=baseline_planner_action_mapper`
-  - `server_reachable=false`
-  - `route_progress_verified=false`
-  - route fields are present
+- Pre-flight Phase 11D `--require-ready`: passed.
+- CARLA package: `D:\CARLA\packages\CARLA_0.9.16`.
+- CARLA Python: `D:\CARLA\envs\ma-vlna-carla312\python.exe`.
+- Initial full batch evidence dir: `experiments\phase12\20260628T120210Z`.
+- Initial full batch: `row_count=5`, `executed_row_count=5`, `passed_count=0`, `blocked_count=4`, `failed_count=1`.
+- Initial route_01 issue: CARLA `load_world(Town03_Opt)` timeout before setup.
+- Route_01 warm-up retry evidence dir: `experiments\phase12\20260628T121819Z`.
+- Route_01 retry result: `route_progress_blocked`, `steps_completed=2500`, `route_progress_verified=false`.
+- Final full batch evidence dir: `experiments\phase12\20260628T122108Z`.
+- Final full batch:
+  - `row_count=5`
+  - `executed_row_count=5`
+  - `passed_count=0`
+  - `blocked_count=5`
+  - `failed_count=0`
+  - `all_runtime_rows_passed=false`
+  - `all_rows_baseline=true`
+  - `all_metrics_loaded=true`
+  - `all_route_progress_blocked=true`
+- All final rows recorded:
+  - `ego_spawned=true`
+  - `control_applied=true`
+  - `rgb_frame_received=true`
+  - `world_tick_advanced=true`
+  - `collision_sensor_attached=true`
+  - `lane_invasion_sensor_attached=true`
 - Boundary fields remain false:
   - `route_benchmark_verified=false`
   - `infraction_benchmark_verified=false`
   - `leaderboard_evaluated=false`
   - `leaderboard_routes_exported=false`
   - `leaderboard_route_criteria_evaluated=false`
+- CARLA was stopped after runtime; `127.0.0.1:2000` is no longer reachable and no CARLA/UE4/Unreal process remains.
+
+## Per-Route Final Result
+
+| route_id | result | steps_completed | route_progress_m | route_progress_pct | distance_to_goal_m | collision_count | lane_invasion_count | distance_traveled_m |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `route_01` | `route_progress_blocked` | 2500 | 0.000000 | 0.000000 | 307.662099 | 0 | 0 | 0.310613 |
+| `route_02` | `route_progress_blocked` | 2800 | 0.000000 | 0.000000 | 415.869352 | 0 | 0 | 0.310613 |
+| `route_03` | `route_progress_blocked` | 2500 | 0.000000 | 0.000000 | 183.052607 | 0 | 0 | 0.310612 |
+| `route_04` | `route_progress_blocked` | 2500 | 0.000000 | 0.000000 | 178.796136 | 0 | 0 | 0.521562 |
+| `route_05` | `route_progress_blocked` | 5400 | 0.000000 | 0.000000 | 335.484571 | 0 | 0 | 0.310613 |
+
+## Interpretation
+
+The baseline PlannerAction mapper is executable in CARLA closed loop, but it is
+not a fixed-route controller. It reaches the control/tick/sensor path, yet
+does not make measurable progress along the calibrated spawn-pair routes.
 
 ## Validation
 
-- BASE-M py_compile: passed.
-- Phase 12B dry-run matrix check: passed.
-- Phase 12B-BASE-M no-server blocked wiring smoke assertions: passed.
+- Phase 12B-BASE runtime evidence assertions: passed.
+- CARLA cleanup check: passed.
 
 ## Next Action
 
-Run full regression checks, source commit boundary gate, then stage source-only files, commit, push to `codex/phase-11o-source-commit-boundary`, and update PR #1 while keeping it Draft/open/unmerged.
+Run regression checks, source commit boundary gate, then stage source-only files, commit, push to `codex/phase-11o-source-commit-boundary`, and update PR #1 while keeping it Draft/open/unmerged.

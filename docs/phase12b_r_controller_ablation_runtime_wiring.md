@@ -164,6 +164,28 @@ route_fields_present=true
 
 See [phase12b_base_m_planner_action_mapper_route_metrics.md](phase12b_base_m_planner_action_mapper_route_metrics.md).
 
+## Follow-Up Baseline Mapper Runtime Evidence
+
+The baseline mapper subset was later executed in real CARLA:
+
+```text
+final_batch=experiments\phase12\20260628T122108Z
+controller_mode=baseline_planner_action_mapper
+row_count=5
+executed_row_count=5
+passed_count=0
+blocked_count=5
+failed_count=0
+all_runtime_rows_passed=false
+all_route_progress_blocked=true
+```
+
+The rows reached ego spawn, RGB frame, CARLA tick, PlannerAction control, and
+sensor logging, but did not move along the fixed spawn-pair route. This is
+negative runtime evidence, not a baseline mapper pass.
+
+See [phase12b_base_planner_action_mapper_runtime_evidence.md](phase12b_base_planner_action_mapper_runtime_evidence.md).
+
 ## Boundary
 
 These fields remain false:

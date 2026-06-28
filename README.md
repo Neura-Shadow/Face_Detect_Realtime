@@ -68,6 +68,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12B-GRP GRP controller ablation runtime: **Passed — 5/5 calibrated `grp_follower` rows reached goal in real CARLA**
   - Phase 12B-LIN linear spawn-pair controller runtime: **Passed for route-progress smoke — 5/5 calibrated `linear_spawn_pair_follower` rows passed after CARLA warm-up; high collision counts preserved**
   - Phase 12B-BASE-M baseline PlannerAction mapper route metrics: **Prepared — baseline mapper now emits structured route metrics; no-server blocked wiring smoke verified**
+  - Phase 12B-BASE baseline PlannerAction mapper runtime: **Blocked — 5/5 real CARLA baseline rows executed but failed route-progress gate**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -236,6 +237,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 > Phase 12B-LIN linear spawn-pair controller runtime pass / blocked evidence 請見 [docs/phase12b_lin_controller_ablation_runtime_pass.md](docs/phase12b_lin_controller_ablation_runtime_pass.md)
 >
 > Phase 12B-BASE-M baseline PlannerAction mapper route-metric wiring 請見 [docs/phase12b_base_m_planner_action_mapper_route_metrics.md](docs/phase12b_base_m_planner_action_mapper_route_metrics.md)
+>
+> Phase 12B-BASE baseline PlannerAction mapper runtime evidence 請見 [docs/phase12b_base_planner_action_mapper_runtime_evidence.md](docs/phase12b_base_planner_action_mapper_runtime_evidence.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 
@@ -305,7 +308,7 @@ Phase 12B-BASE-M baseline PlannerAction mapper route-metric wiring smoke（無 C
 python scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --route-id route_01 --controller-mode baseline_planner_action_mapper --runtime-row-limit 1 --child-timeout-sec 120 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --output-dir experiments\phase12
 ```
 
-Phase 12B-BASE-M baseline-only controller ablation runtime（需外部 CARLA server 與 Python 3.12 CARLA env）：
+Phase 12B-BASE baseline-only controller ablation runtime（需外部 CARLA server 與 Python 3.12 CARLA env；可能產生 route-progress blocked evidence）：
 
 ```powershell
 $env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"

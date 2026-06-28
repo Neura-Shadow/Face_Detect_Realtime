@@ -124,6 +124,22 @@ leaderboard_evaluated=false
 This blocked result is expected without a reachable CARLA server. It proves
 the route-metric wiring and evidence handling, not runtime driving success.
 
+## Follow-Up Runtime Evidence
+
+Phase 12B-BASE later executed the baseline mapper rows in real CARLA:
+
+```text
+final_batch=experiments\phase12\20260628T122108Z
+controller_mode=baseline_planner_action_mapper
+row_count=5
+executed_row_count=5
+passed_count=0
+blocked_count=5
+all_route_progress_blocked=true
+```
+
+See [phase12b_base_planner_action_mapper_runtime_evidence.md](phase12b_base_planner_action_mapper_runtime_evidence.md).
+
 ## Boundary
 
 Phase 12B-BASE-M does not claim:

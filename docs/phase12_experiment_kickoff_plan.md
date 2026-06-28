@@ -408,6 +408,48 @@ infraction_benchmark_verified=false
 leaderboard_evaluated=false
 ```
 
+## Phase 12B-BASE Addendum - Baseline PlannerAction Mapper Runtime Evidence
+
+```text
+Phase 12B-BASE Runtime Evidence Blocked - all five baseline PlannerAction mapper rows executed in real CARLA, but every row failed the fixed spawn-pair route-progress gate.
+```
+
+Runtime evidence:
+
+```text
+initial_batch=experiments\phase12\20260628T120210Z
+route_01_retry=experiments\phase12\20260628T121819Z
+final_batch=experiments\phase12\20260628T122108Z
+row_count=5
+executed_row_count=5
+passed_count=0
+blocked_count=5
+failed_count=0
+all_runtime_rows_passed=false
+```
+
+Final row interpretation:
+
+```text
+all_rows_baseline=true
+all_metrics_loaded=true
+all_route_progress_blocked=true
+all_rows_control_applied=true
+all_rows_rgb_frame_received=true
+all_route_progress_m=0.0
+baseline_runtime_pass_not_verified=true
+```
+
+Boundary:
+
+```text
+route_benchmark_verified=false
+infraction_benchmark_verified=false
+leaderboard_evaluated=false
+leaderboard_routes_exported=false
+leaderboard_route_criteria_evaluated=false
+```
+
 ## Next Implementation Slice
 
 Phase 12 後續應先實作輕量 orchestrator，讀取 route matrix 與 backend/controller/VLM mode matrix，逐 run 呼叫既有 Phase 11K/11L/11M runner。正式 CARLA runtime 仍應留在 dedicated Python 3.12 + CARLA 0.9.16 environment，不加入 baseline requirements。
