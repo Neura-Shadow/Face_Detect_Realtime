@@ -370,6 +370,44 @@ infraction_safe_not_verified=true
 routes_02_to_05_collision_counts_high=true
 ```
 
+## Phase 12B-BASE-M Addendum - Baseline PlannerAction Mapper Route-Metric Wiring
+
+```text
+Phase 12B-BASE-M Baseline PlannerAction Mapper Route-Metric Wiring Prepared - the baseline mapper controller row now emits structured fixed-route metrics through a dedicated child runner.
+```
+
+Implementation:
+
+```text
+scripts/run_phase12b_baseline_mapper_route_metrics.py
+scripts/run_phase12b_controller_ablation_experiment.py
+docs/phase12b_base_m_planner_action_mapper_route_metrics.md
+```
+
+Local blocked wiring evidence:
+
+```text
+experiments\phase12\20260628T091432Z
+controller_mode=baseline_planner_action_mapper
+row_count=1
+result=blocked
+metrics_read_status=loaded
+route_fields_present=true
+server_reachable=false
+route_progress_verified=false
+```
+
+Important interpretation:
+
+```text
+baseline_mapper_route_metrics_wired=true
+baseline_runtime_pass_not_verified=true
+planner_action_mapper_modified=false
+route_benchmark_verified=false
+infraction_benchmark_verified=false
+leaderboard_evaluated=false
+```
+
 ## Next Implementation Slice
 
 Phase 12 後續應先實作輕量 orchestrator，讀取 route matrix 與 backend/controller/VLM mode matrix，逐 run 呼叫既有 Phase 11K/11L/11M runner。正式 CARLA runtime 仍應留在 dedicated Python 3.12 + CARLA 0.9.16 environment，不加入 baseline requirements。

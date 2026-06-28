@@ -1,89 +1,81 @@
-# Walkthrough - Phase 12B-LIN Linear Spawn-Pair Controller Runtime Pass / Blocked Evidence
+# Walkthrough - Phase 12B-BASE-M Baseline PlannerAction Mapper Route-Metric Wiring
 
-1. Preserve Phase 12B-R runtime wiring.
-2. Start external CARLA 0.9.16 server from `D:\CARLA\packages\CARLA_0.9.16`.
-3. Verify Python 3.12 CARLA runtime readiness with Phase 11D `--require-ready`.
-4. Run Phase 12B runtime execution filtered to `linear_spawn_pair_follower`.
-5. Preserve the initial 5-row blocked batch if CARLA startup or map load fails.
-6. If the first failure is transient CARLA warm-up rather than controller logic, retry after the world is ready.
-7. Rerun the full five-route linear subset after warm-up.
-8. Read every child `metrics.json`.
-9. Assert route-progress smoke fields for every final pass row.
-10. Record collision counts explicitly because this is not an infraction-safe pass.
-11. Keep generated evidence under `experiments\phase12` and out of git.
-12. Stop CARLA and verify no CARLA process remains.
+1. Preserve Phase 12B-R runtime parent behavior.
+2. Identify that `baseline_planner_action_mapper` was previously command-wired only.
+3. Add a dedicated BASE-M child runner that produces the same evidence shape as 11K/11M child runs.
+4. Run the existing `CarlaClosedLoopAgent` with its default `CarlaVehicleControlAdapter`.
+5. Do not modify VLM, SafetyGate, SemanticPlanner, or `PlannerActionToCarlaControl`.
+6. Attach `CarlaRuntimeMetrics` and `CarlaRouteProgressTracker` to the baseline mapper run.
+7. Update Phase 12B parent command mapping for `baseline_planner_action_mapper`.
+8. Extend parent summary rows with route/sensor metric fields.
+9. Verify dry-run still emits 15 rows across 5 routes x 3 controllers.
+10. Run one no-server baseline mapper runtime row and require structured blocked evidence.
+11. Read the child `metrics.json` through the parent summary path.
+12. Keep generated evidence under `experiments\phase12` and out of git.
 
 Current result:
 
 ```text
-Phase 12B-LIN Linear Spawn-Pair Controller Runtime Pass - all five calibrated Town03 routes passed the linear spawn-pair route-progress smoke gate after CARLA warm-up.
+Phase 12B-BASE-M Baseline PlannerAction Mapper Route-Metric Wiring Prepared - the baseline mapper controller row now emits structured fixed-route metrics through a dedicated child runner.
 ```
 
-Runtime command:
-
-```powershell
-$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
-D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --controller-mode linear_spawn_pair_follower --host 127.0.0.1 --port 2000 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --child-timeout-sec 2400 --output-dir experiments\phase12
-```
-
-Initial blocked evidence:
+New child runner:
 
 ```text
-experiments\phase12\20260628T074345Z
-row_count=5
-passed_count=4
-failed_count=1
-route_01=carla_load_world_timeout_before_setup
+scripts\run_phase12b_baseline_mapper_route_metrics.py
 ```
 
-Warm-up retry:
+Parent dry-run evidence:
 
 ```text
-experiments\phase12\20260628T080432Z
-route_01=passed
+experiments\phase12\20260628T091403Z
+row_count=15
+controller_count=3
+baseline_runtime_command_status=wired_baseline_mapper_route_metrics_smoke
 ```
 
-Final pass evidence:
+No-server blocked wiring evidence:
 
 ```text
-experiments\phase12\20260628T080731Z
-row_count=5
-executed_row_count=5
-passed_count=5
-all_runtime_rows_passed=true
-all_rows_linear=true
-all_child_metrics_verified=true
-boundary_fields_false=true
+experiments\phase12\20260628T091432Z
+child_evidence_dir=experiments\phase12\20260628T091432Z\runs\route_01\baseline_planner_action_mapper\20260628T091433Z
+row_count=1
+controller_mode=baseline_planner_action_mapper
+result=blocked
+exit_code=1
+metrics_read_status=loaded
+server_reachable=false
+route_progress_verified=false
 ```
 
-Per-route final result:
+Validated assertions:
 
 ```text
-route_01: route_progress_m=307.662099, distance_to_goal_m=6.914185, collision_count=0
-route_02: route_progress_m=24.236822, distance_to_goal_m=391.652049, collision_count=2677
-route_03: route_progress_m=10.515416, distance_to_goal_m=172.609764, collision_count=2428
-route_04: route_progress_m=6.983494, distance_to_goal_m=171.816015, collision_count=2439
-route_05: route_progress_m=10.109821, distance_to_goal_m=325.427040, collision_count=7678
-```
-
-Boundary fields:
-
-```text
-benchmark_boundary_prepared=true
+child_phase=Phase 12B-BASE-M
+child_controller_mode=baseline_planner_action_mapper
+route_fields_present=true
+benchmark_boundary_scope=baseline_mapper_route_metrics_only_not_carla_leaderboard
 route_benchmark_verified=false
 infraction_benchmark_verified=false
 leaderboard_evaluated=false
-leaderboard_routes_exported=false
-leaderboard_route_criteria_evaluated=false
+```
+
+Baseline mapper runtime command:
+
+```powershell
+$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --controller-mode baseline_planner_action_mapper --host 127.0.0.1 --port 2000 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --child-timeout-sec 2400 --output-dir experiments\phase12
 ```
 
 Validation checklist:
 
 ```text
-python -m py_compile scripts\run_phase12b_controller_ablation_experiment.py
+python -m py_compile scripts\run_phase12b_baseline_mapper_route_metrics.py scripts\run_phase12b_controller_ablation_experiment.py
+python scripts\run_phase12b_controller_ablation_experiment.py --dry-run --output-dir experiments\phase12
+python scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --route-id route_01 --controller-mode baseline_planner_action_mapper --runtime-row-limit 1 --child-timeout-sec 120 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --output-dir experiments\phase12
 python scripts\run_phase11_carla_checks.py
 python scripts\run_demo_checks.py
 python scripts\run_phase11o_source_commit_checks.py --require-staged
 ```
 
-Phase 12B-LIN is not a fixed-route goal-reach completion pass and not an infraction-safe controller pass.
+Phase 12B-BASE-M is not a baseline mapper runtime pass. It proves structured route-metric wiring and blocked evidence handling for the baseline mapper controller rows.

@@ -55,12 +55,17 @@ SUMMARY_COLUMNS = (
     "runtime_command_status",
     "result",
     "exit_code",
+    "steps_completed",
+    "route_progress_verified",
     "fixed_route_goal_reached",
     "distance_to_goal_m",
     "route_progress_pct",
     "grp_route_progress_pct",
     "collision_count",
     "lane_invasion_count",
+    "avg_speed_kmh",
+    "max_speed_kmh",
+    "distance_traveled_m",
     "evidence_dir",
     "runtime_execution_status",
     "duration_sec",
@@ -135,9 +140,9 @@ CONTROLLER_MATRIX = (
     ),
     ControllerSpec(
         mode="baseline_planner_action_mapper",
-        source="workers.CARLA_Closed_Loop_Agent",
-        runtime_command_status="wired_closed_loop_mapper_only",
-        notes="Existing closed-loop agent exercises PlannerAction-to-VehicleControl mapping, but has no fixed end-spawn route gate yet.",
+        source="scripts/run_phase12b_baseline_mapper_route_metrics.py",
+        runtime_command_status="wired_baseline_mapper_route_metrics_smoke",
+        notes="Phase 12B-BASE-M child runner exercises the existing PlannerAction-to-VehicleControl mapper and records fixed spawn-pair route metrics without modifying the mapper.",
     ),
 )
 
@@ -265,23 +270,36 @@ def _build_linear_command(args: argparse.Namespace, route: RouteSpec, output_dir
     ]
 
 
-def _build_baseline_mapper_command(args: argparse.Namespace, route: RouteSpec) -> list[str]:
+def _build_baseline_mapper_command(args: argparse.Namespace, route: RouteSpec, output_dir: Path) -> list[str]:
     return [
         args.python_executable,
-        "-m",
-        "workers.CARLA_Closed_Loop_Agent",
+        str(REPO_ROOT / "scripts" / "run_phase12b_baseline_mapper_route_metrics.py"),
         "--host",
         args.host,
         "--port",
         str(args.port),
         "--town",
         args.town,
-        "--spawn-point-index",
+        "--start-spawn-index",
         str(route.start_spawn_index),
+        "--end-spawn-index",
+        str(route.end_spawn_index),
         "--steps",
         str(route.horizon_steps),
         "--perception-backend",
         args.perception_backend,
+        "--require-server",
+        "--enable-metric-sensors",
+        "--require-sensors",
+        "--require-route-progress",
+        "--min-route-progress-m",
+        str(args.min_route_progress_m),
+        "--output-dir",
+        str(output_dir),
+        "--carla-root",
+        str(args.carla_root),
+        "--base-python",
+        args.base_python,
     ]
 
 
@@ -296,7 +314,7 @@ def _build_controller_command(
     if controller.mode == "linear_spawn_pair_follower":
         return _build_linear_command(args, route, output_dir)
     if controller.mode == "baseline_planner_action_mapper":
-        return _build_baseline_mapper_command(args, route)
+        return _build_baseline_mapper_command(args, route, output_dir)
     raise ValueError(f"unknown controller mode: {controller.mode}")
 
 
@@ -332,12 +350,17 @@ def _row_from_entry(args: argparse.Namespace, entry: MatrixEntry) -> dict[str, A
         "runtime_command_status": entry.controller.runtime_command_status,
         "result": result,
         "exit_code": None,
+        "steps_completed": None,
+        "route_progress_verified": None,
         "fixed_route_goal_reached": None,
         "distance_to_goal_m": None,
         "route_progress_pct": None,
         "grp_route_progress_pct": None,
         "collision_count": None,
         "lane_invasion_count": None,
+        "avg_speed_kmh": None,
+        "max_speed_kmh": None,
+        "distance_traveled_m": None,
         "evidence_dir": None,
         "runtime_execution_status": "not_started",
         "duration_sec": None,
@@ -481,12 +504,17 @@ def _row_from_runtime_result(args: argparse.Namespace, result: RuntimeResult) ->
         {
             "result": _runtime_result_name(result),
             "exit_code": result.exit_code,
+            "steps_completed": metrics.get("steps_completed"),
+            "route_progress_verified": metrics.get("route_progress_verified"),
             "fixed_route_goal_reached": metrics.get("fixed_route_goal_reached"),
             "distance_to_goal_m": metrics.get("distance_to_goal_m"),
             "route_progress_pct": metrics.get("route_progress_pct"),
             "grp_route_progress_pct": metrics.get("grp_route_progress_pct"),
             "collision_count": metrics.get("collision_count"),
             "lane_invasion_count": metrics.get("lane_invasion_count"),
+            "avg_speed_kmh": metrics.get("avg_speed_kmh"),
+            "max_speed_kmh": metrics.get("max_speed_kmh"),
+            "distance_traveled_m": metrics.get("distance_traveled_m"),
             "evidence_dir": result.evidence_dir,
             "runtime_execution_status": "timeout" if result.timed_out else "completed",
             "duration_sec": result.duration_sec,

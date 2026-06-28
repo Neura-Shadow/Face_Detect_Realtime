@@ -69,6 +69,8 @@ def main() -> int:
                 "scripts/run_phase11m_grp_route_following.py",
                 "scripts/run_phase11n_release_packaging.py",
                 "scripts/run_phase11o_source_commit_checks.py",
+                "scripts/run_phase12b_baseline_mapper_route_metrics.py",
+                "scripts/run_phase12b_controller_ablation_experiment.py",
             ],
             "expected": [],
         },

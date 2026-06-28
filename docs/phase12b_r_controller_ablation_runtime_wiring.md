@@ -47,11 +47,13 @@ child runtime commands and then aggregates the resulting evidence.
 | --- | --- |
 | `linear_spawn_pair_follower` | `scripts/run_phase11k_fixed_route_smoke.py` |
 | `grp_follower` | `scripts/run_phase11m_grp_route_following.py` |
-| `baseline_planner_action_mapper` | `python -m workers.CARLA_Closed_Loop_Agent` |
+| `baseline_planner_action_mapper` | `scripts/run_phase12b_baseline_mapper_route_metrics.py` |
 
-The baseline mapper path is command-wired, but it still has no fixed end-spawn
-route metrics. It must not be treated as a route-completion benchmark row until
-a later phase adds structured route evidence for that controller mode.
+The baseline mapper path is now command-wired through Phase 12B-BASE-M route
+metrics. It exercises the existing PlannerAction-to-VehicleControl mapper and
+records fixed end-spawn route metrics, but it must still not be treated as a
+baseline runtime pass until the baseline subset is executed successfully in
+real CARLA.
 
 ## Output Layout
 
@@ -85,6 +87,11 @@ duration_sec
 metrics_read_status
 stdout_path
 stderr_path
+steps_completed
+route_progress_verified
+avg_speed_kmh
+max_speed_kmh
+distance_traveled_m
 ```
 
 `all_runtime_rows_passed=true` is the only condition that allows the runner to
@@ -141,6 +148,22 @@ all_runtime_rows_passed=true
 
 See [phase12b_lin_controller_ablation_runtime_pass.md](phase12b_lin_controller_ablation_runtime_pass.md).
 
+## Follow-Up Baseline Mapper Route-Metric Wiring
+
+The baseline mapper controller row was later upgraded from command-only wiring
+to structured route-metric child evidence:
+
+```text
+script=scripts/run_phase12b_baseline_mapper_route_metrics.py
+local_smoke=experiments\phase12\20260628T091432Z
+controller_mode=baseline_planner_action_mapper
+result=blocked
+metrics_read_status=loaded
+route_fields_present=true
+```
+
+See [phase12b_base_m_planner_action_mapper_route_metrics.md](phase12b_base_m_planner_action_mapper_route_metrics.md).
+
 ## Boundary
 
 These fields remain false:
@@ -167,8 +190,10 @@ Phase 12B-R does not claim:
 
 ```powershell
 python -m py_compile scripts\run_phase12b_controller_ablation_experiment.py
+python -m py_compile scripts\run_phase12b_baseline_mapper_route_metrics.py
 python scripts\run_phase12b_controller_ablation_experiment.py --dry-run --output-dir experiments\phase12
 python scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --route-id route_01 --controller-mode linear_spawn_pair_follower --runtime-row-limit 1 --child-timeout-sec 120 --python-executable python --output-dir experiments\phase12
+python scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --route-id route_01 --controller-mode baseline_planner_action_mapper --runtime-row-limit 1 --child-timeout-sec 120 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --output-dir experiments\phase12
 python scripts\run_phase11_carla_checks.py
 python scripts\run_demo_checks.py
 python scripts\run_phase11o_source_commit_checks.py --require-staged

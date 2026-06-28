@@ -37,12 +37,14 @@ Controller modes:
 | --- | --- | --- |
 | `linear_spawn_pair_follower` | `scripts/run_phase11k_fixed_route_smoke.py` | `wired_route_progress_smoke_only` |
 | `grp_follower` | `scripts/run_phase11m_grp_route_following.py` | `wired_goal_reach_smoke` |
-| `baseline_planner_action_mapper` | `python -m workers.CARLA_Closed_Loop_Agent` | `wired_closed_loop_mapper_only` |
+| `baseline_planner_action_mapper` | `scripts/run_phase12b_baseline_mapper_route_metrics.py` | `wired_baseline_mapper_route_metrics_smoke` |
 
 The linear path currently maps to the existing Phase 11K route-progress smoke
-controller. The baseline mapper path exercises the existing
-PlannerAction-to-VehicleControl bridge but does not yet provide fixed end-spawn
-route metrics. Phase 12B keeps those rows in the matrix and does not fake pass.
+controller. The baseline mapper path now maps to the Phase 12B-BASE-M child
+runner, which exercises the existing PlannerAction-to-VehicleControl bridge and
+records fixed end-spawn route metrics without modifying the mapper. Phase 12B
+still does not fake a runtime pass; evidence must come from executed child
+rows.
 
 ## Command
 
@@ -86,12 +88,17 @@ command
 runtime_command_status
 result=dry_run
 exit_code=null
+steps_completed=null
+route_progress_verified=null
 fixed_route_goal_reached=null
 distance_to_goal_m=null
 route_progress_pct=null
 grp_route_progress_pct=null
 collision_count=null
 lane_invasion_count=null
+avg_speed_kmh=null
+max_speed_kmh=null
+distance_traveled_m=null
 evidence_dir=null
 ```
 
@@ -129,6 +136,7 @@ Phase 12B does not claim:
 
 ```powershell
 python -m py_compile scripts\run_phase12b_controller_ablation_experiment.py
+python -m py_compile scripts\run_phase12b_baseline_mapper_route_metrics.py
 python scripts\run_phase12b_controller_ablation_experiment.py --dry-run --output-dir experiments\phase12
 python scripts\run_phase11_carla_checks.py
 python scripts\run_demo_checks.py

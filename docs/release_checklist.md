@@ -46,6 +46,7 @@
 - [x] **Phase 12B-R Controller Ablation Runtime Wiring**: 已加入顯式 `--execute-runtime` path、child stdout/stderr 保存、evidence metrics 讀取與 blocked/pass/fail aggregation；本機 smoke 產生 blocked evidence，不是 Runtime Pass。
 - [x] **Phase 12B-GRP GRP Controller Ablation Runtime Pass**: 已在真實 CARLA runtime 執行 5 條 calibrated `grp_follower` rows；5/5 rows passed，且各 route `collision_count=0`。此為 GRP subset pass，不代表所有 controller modes 或 formal benchmark。
 - [x] **Phase 12B-LIN Linear Spawn-Pair Controller Runtime Pass / Blocked Evidence**: 初次 full batch 保留 `route_01` map-load timeout blocked evidence；warm-up 後 5/5 `linear_spawn_pair_follower` rows passed route-progress smoke。此結果 collision counts 很高，只代表 route-progress smoke pass。
+- [x] **Phase 12B-BASE-M Baseline PlannerAction Mapper Route-Metric Wiring**: 已為 `baseline_planner_action_mapper` rows 接上 dedicated child runner 與 fixed-route metrics aggregation；no-server smoke 產生 structured blocked evidence，不是 baseline runtime pass。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -117,6 +118,7 @@
 | **Controller Ablation Runtime Wiring** | — | 100% | — | 🟡 Phase 12B-R Prepared |
 | **GRP Controller Ablation Runtime** | — | 100% | — | 🟢 Phase 12B-GRP Pass |
 | **Linear Controller Route-Progress Runtime** | — | 100% | — | 🟢 Phase 12B-LIN Smoke Pass |
+| **Baseline Mapper Route-Metric Wiring** | — | 100% | — | 🟡 Phase 12B-BASE-M Prepared |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 ## 🚧 Explicitly Not Verified
