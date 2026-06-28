@@ -487,6 +487,48 @@ infraction_benchmark_verified=false
 leaderboard_evaluated=false
 ```
 
+## Phase 12C Addendum - Perception Backend Ablation Prepared
+
+```text
+Phase 12C Perception Backend Ablation Prepared - backend matrix, optional dependency preflight, and command scaffold are implemented.
+```
+
+Generated scaffold:
+
+```text
+experiments\phase12\20260628T170342Z
+manifest.json
+summary.csv
+summary.json
+commands.txt
+README.md
+```
+
+Matrix:
+
+```text
+routes=5 calibrated Town03 spawn-pair routes
+controller_mode=grp_follower
+perception_backend_modes=dummy,yolo_optional,rt_detr_optional
+row_count=15
+available_row_count=5
+backend_unavailable_count=10
+```
+
+本機目前未安裝 `ultralytics`，因此 YOLO / RT-DETR optional rows 正確標記為 `backend_unavailable`。這是 Phase 12C 的預期語義，不是 scaffold failure；optional backend missing 不得阻塞 dummy baseline rows。
+
+Boundary:
+
+```text
+carla_import_required=false
+carla_server_required=false
+route_benchmark_verified=false
+infraction_benchmark_verified=false
+leaderboard_evaluated=false
+leaderboard_routes_exported=false
+leaderboard_route_criteria_evaluated=false
+```
+
 ## Next Implementation Slice
 
-Phase 12 後續應先實作輕量 orchestrator，讀取 route matrix 與 backend/controller/VLM mode matrix，逐 run 呼叫既有 Phase 11K/11L/11M runner。正式 CARLA runtime 仍應留在 dedicated Python 3.12 + CARLA 0.9.16 environment，不加入 baseline requirements。
+Phase 12 後續可在 Phase 12C 的 command scaffold 之上，於 dedicated Python 3.12 + CARLA 0.9.16 environment 顯式執行 selected backend rows。Optional YOLO / RT-DETR dependency unlock 應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。

@@ -70,6 +70,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12B-BASE-M baseline PlannerAction mapper route metrics: **Prepared — baseline mapper now emits structured route metrics; no-server blocked wiring smoke verified**
   - Phase 12B-BASE baseline PlannerAction mapper runtime: **Blocked — 5/5 real CARLA baseline rows executed but failed route-progress gate**
   - Phase 12B-SUM controller ablation comparative summary: **Prepared — GRP, linear, and baseline evidence normalized into comparative tables**
+  - Phase 12C perception backend ablation: **Prepared — 5 routes x 3 backend modes scaffolded; YOLO/RT-DETR optional rows mark `backend_unavailable` when `ultralytics` is missing**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -242,6 +243,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 > Phase 12B-BASE baseline PlannerAction mapper runtime evidence 請見 [docs/phase12b_base_planner_action_mapper_runtime_evidence.md](docs/phase12b_base_planner_action_mapper_runtime_evidence.md)
 >
 > Phase 12B-SUM controller ablation comparative summary 請見 [docs/phase12b_sum_controller_ablation_comparative_summary.md](docs/phase12b_sum_controller_ablation_comparative_summary.md)
+>
+> Phase 12C perception backend ablation scaffold 請見 [docs/phase12c_perception_backend_ablation_prepared.md](docs/phase12c_perception_backend_ablation_prepared.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 
@@ -322,6 +325,12 @@ Phase 12B-SUM controller ablation comparative summary（讀取既有 evidence，
 
 ```powershell
 python scripts\run_phase12b_controller_ablation_summary.py --require-complete --output-dir experiments\phase12
+```
+
+Phase 12C perception backend ablation scaffold（固定 `grp_follower`，只做 backend preflight / command scaffold，不啟動 CARLA）：
+
+```powershell
+python scripts\run_phase12c_perception_backend_ablation.py --output-dir experiments\phase12
 ```
 
 ---

@@ -1,56 +1,58 @@
-# Current Task - Phase 12B-SUM
+# Current Task - Phase 12C
 
 ## Status
 
 ```text
-Phase 12B-SUM Controller Ablation Comparative Summary Prepared - GRP, linear, and baseline mapper evidence has been normalized into comparable controller and route tables.
+Phase 12C Perception Backend Ablation Prepared - backend matrix, optional dependency preflight, and command scaffold are implemented.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12B-SUM is a comparative evidence summary, not a new runtime pass. It does not claim CARLA Leaderboard, formal route benchmark, infraction benchmark, all-controller runtime pass, merge, git tag, GitHub Release, CARLA package commit, Python venv commit, .env commit, runtime_logs commit, or raw experiment evidence commit.
+Phase 12C is a perception backend ablation scaffold, not a runtime pass. It does not claim YOLO runtime validation, RT-DETR runtime validation, CARLA Leaderboard, formal route benchmark, infraction benchmark, merge, git tag, GitHub Release, CARLA package commit, Python venv commit, .env commit, runtime_logs commit, or raw experiment evidence commit.
 ```
 
-## Source Evidence
+## Matrix
 
-- GRP final evidence: `experiments\phase12\20260628T065257Z`.
-- Linear final evidence: `experiments\phase12\20260628T080731Z`.
-- Baseline final evidence: `experiments\phase12\20260628T122108Z`.
+- Routes: calibrated 5-route `Town03` spawn-pair matrix.
+- Controller: fixed `grp_follower`.
+- Backends:
+  - `dummy`
+  - `yolo_optional`
+  - `rt_detr_optional`
 
 ## Generated Local Summary
 
-- SUM output dir: `experiments\phase12\20260628T125344Z`.
+- Output dir: `experiments\phase12\20260628T170342Z`.
 - Generated files:
-  - `controller_summary.csv`
-  - `route_comparison.csv`
-  - `summary.json`
   - `manifest.json`
+  - `summary.csv`
+  - `summary.json`
+  - `commands.txt`
   - `README.md`
 - Generated output remains local and is not committed.
 
-## Controller-Level Result
+## Result
 
-| controller_mode | outcome | passed_count | blocked_count | total_collision_count | avg_route_progress_pct | avg_distance_to_goal_m |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| `grp_follower` | strongest goal-reach smoke controller | 5 | 0 | 0 | 99.884826 | 2.474271 |
-| `linear_spawn_pair_follower` | route-progress smoke pass with high collision counts | 5 | 0 | 15222 | 23.698371 | 213.683811 |
-| `baseline_planner_action_mapper` | closed-loop executable but route-progress blocked | 0 | 5 | 0 | 0.000000 | 284.172953 |
+```text
+row_count=15
+route_count=5
+backend_count=3
+available_row_count=5
+backend_unavailable_count=10
+```
 
-## Comparative Conclusion
-
-- `grp_follower` is the only 5/5 fixed-route goal-reach smoke controller.
-- `linear_spawn_pair_follower` passes only the route-progress smoke gate; it is not completion-proven and records high collision counts.
-- `baseline_planner_action_mapper` executes closed-loop control and telemetry but makes no measurable spawn-pair route progress.
-- Phase 12B remains a differentiated controller-ablation outcome, not an all-controller pass.
+本機目前未安裝 `ultralytics`，因此 YOLO / RT-DETR optional rows 正確標記為 `backend_unavailable`。這是預期的 prepared-state behavior，不會讓 Phase 12C scaffold 失敗。
 
 ## Validation
 
-- `python -m py_compile scripts\run_phase12b_controller_ablation_summary.py`: passed.
-- `python scripts\run_phase12b_controller_ablation_summary.py --require-complete --output-dir experiments\phase12`: passed.
-- SUM assertions:
-  - controller rows = 3
-  - route rows = 15
+- `python -m py_compile scripts\run_phase12c_perception_backend_ablation.py`: passed.
+- `python scripts\run_phase12c_perception_backend_ablation.py --output-dir experiments\phase12`: passed.
+- Summary assertions:
+  - `row_count=15`
+  - dummy rows available
+  - optional backend unavailable rows do not fail scaffold
+  - CARLA import/server not required
   - benchmark boundary fields false
 
 ## Next Action
