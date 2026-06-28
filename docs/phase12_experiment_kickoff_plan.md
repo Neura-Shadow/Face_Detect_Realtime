@@ -327,6 +327,49 @@ leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
 
+## Phase 12B-LIN Addendum - Linear Spawn-Pair Controller Runtime Pass / Blocked Evidence
+
+```text
+Phase 12B-LIN Linear Spawn-Pair Controller Runtime Pass - all five calibrated Town03 routes passed the linear spawn-pair route-progress smoke gate after CARLA warm-up.
+```
+
+Implementation:
+
+```text
+scripts/run_phase12b_controller_ablation_experiment.py
+docs/phase12b_lin_controller_ablation_runtime_pass.md
+```
+
+Initial blocked evidence:
+
+```text
+experiments\phase12\20260628T074345Z
+row_count=5
+passed_count=4
+failed_count=1
+route_01=carla_load_world_timeout_before_setup
+```
+
+Warm-up retry evidence:
+
+```text
+experiments\phase12\20260628T080731Z
+row_count=5
+executed_row_count=5
+passed_count=5
+all_runtime_rows_passed=true
+controller_mode=linear_spawn_pair_follower
+```
+
+Important interpretation:
+
+```text
+linear_scope=route_progress_smoke_only
+fixed_route_goal_reach_not_verified=true
+infraction_safe_not_verified=true
+routes_02_to_05_collision_counts_high=true
+```
+
 ## Next Implementation Slice
 
 Phase 12 後續應先實作輕量 orchestrator，讀取 route matrix 與 backend/controller/VLM mode matrix，逐 run 呼叫既有 Phase 11K/11L/11M runner。正式 CARLA runtime 仍應留在 dedicated Python 3.12 + CARLA 0.9.16 environment，不加入 baseline requirements。

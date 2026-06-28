@@ -125,6 +125,22 @@ all_runtime_rows_passed=true
 
 See [phase12b_grp_controller_ablation_runtime_pass.md](phase12b_grp_controller_ablation_runtime_pass.md).
 
+## Follow-Up Linear Runtime Pass / Blocked Evidence
+
+The linear-only controller subset was later executed with both blocked and pass
+evidence:
+
+```text
+initial_batch=experiments\phase12\20260628T074345Z
+initial_batch_status=blocked_by_route_01_carla_load_world_timeout
+final_batch=experiments\phase12\20260628T080731Z
+final_batch_status=route_progress_smoke_pass
+passed_count=5
+all_runtime_rows_passed=true
+```
+
+See [phase12b_lin_controller_ablation_runtime_pass.md](phase12b_lin_controller_ablation_runtime_pass.md).
+
 ## Boundary
 
 These fields remain false:
