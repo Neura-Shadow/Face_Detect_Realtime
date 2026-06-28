@@ -1,93 +1,69 @@
-# Walkthrough - Phase 12B-BASE Baseline PlannerAction Mapper Runtime Evidence
+# Walkthrough - Phase 12B-SUM Controller Ablation Comparative Summary
 
-1. Start from Phase 12B-BASE-M route-metric wiring.
-2. Start external CARLA 0.9.16 server from `D:\CARLA\packages\CARLA_0.9.16`.
-3. Verify Python 3.12 CARLA runtime readiness with Phase 11D `--require-ready`.
-4. Run Phase 12B runtime execution filtered to `baseline_planner_action_mapper`.
-5. Preserve initial blocked evidence if CARLA map load fails.
-6. Retry route_01 after warm-up if the first failure is a simulator warm-up timeout.
-7. Rerun the full five-route baseline subset after CARLA is warm.
-8. Read every child `metrics.json`.
-9. Assert closed-loop runtime fields: ego spawn, RGB frame, world tick, control, and sensors.
-10. Assert fixed-route outcome fields: route progress, distance to goal, and boundary flags.
-11. Keep generated evidence under `experiments\phase12` and out of git.
-12. Stop CARLA and verify no CARLA process remains.
+1. Use the current source tree as authoritative.
+2. Preserve the Phase 12B-GRP, Phase 12B-LIN, and Phase 12B-BASE runtime boundaries.
+3. Do not rerun CARLA for SUM.
+4. Read the three final parent `summary.json` files.
+5. For each route row, read the child `metrics.json`.
+6. Normalize controller-level fields into `controller_summary.csv`.
+7. Normalize route-level fields into `route_comparison.csv`.
+8. Generate a local SUM evidence directory under `experiments\phase12`.
+9. Record a source doc with the comparative interpretation.
+10. Keep generated SUM output local and out of git.
 
-Current result:
+Source evidence:
 
 ```text
-Phase 12B-BASE Runtime Evidence Blocked - all five baseline PlannerAction mapper rows executed in real CARLA, but every row failed the fixed spawn-pair route-progress gate.
+grp_follower=experiments\phase12\20260628T065257Z
+linear_spawn_pair_follower=experiments\phase12\20260628T080731Z
+baseline_planner_action_mapper=experiments\phase12\20260628T122108Z
 ```
 
-Runtime command:
+Generated summary:
+
+```text
+experiments\phase12\20260628T125344Z
+controller_summary.csv
+route_comparison.csv
+summary.json
+manifest.json
+README.md
+```
+
+Command:
 
 ```powershell
-$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
-D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --controller-mode baseline_planner_action_mapper --host 127.0.0.1 --port 2000 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --child-timeout-sec 2400 --output-dir experiments\phase12
+python scripts\run_phase12b_controller_ablation_summary.py --require-complete --output-dir experiments\phase12
 ```
 
-Initial full batch:
+Controller comparison:
 
 ```text
-experiments\phase12\20260628T120210Z
-row_count=5
-executed_row_count=5
-passed_count=0
-blocked_count=4
-failed_count=1
-route_01=load_world_timeout_before_setup
-routes_02_to_05=route_progress_blocked
-```
+grp_follower:
+  passed_count=5
+  completion_verified_count=5
+  total_collision_count=0
+  avg_route_progress_pct=99.884826
+  outcome=strongest_goal_reach_controller
 
-Route 01 warm-up retry:
+linear_spawn_pair_follower:
+  passed_count=5
+  completion_verified_count=0
+  total_collision_count=15222
+  avg_route_progress_pct=23.698371
+  outcome=route_progress_smoke_pass_with_high_collision_counts
 
-```text
-experiments\phase12\20260628T121819Z
-result=route_progress_blocked
-steps_completed=2500
-route_progress_verified=false
-```
-
-Final full batch:
-
-```text
-experiments\phase12\20260628T122108Z
-row_count=5
-executed_row_count=5
-passed_count=0
-blocked_count=5
-failed_count=0
-all_runtime_rows_passed=false
-all_rows_baseline=true
-all_metrics_loaded=true
-all_route_progress_blocked=true
-```
-
-Per-route final result:
-
-```text
-route_01: route_progress_m=0.000000, distance_to_goal_m=307.662099, collision_count=0
-route_02: route_progress_m=0.000000, distance_to_goal_m=415.869352, collision_count=0
-route_03: route_progress_m=0.000000, distance_to_goal_m=183.052607, collision_count=0
-route_04: route_progress_m=0.000000, distance_to_goal_m=178.796136, collision_count=0
-route_05: route_progress_m=0.000000, distance_to_goal_m=335.484571, collision_count=0
-```
-
-Closed-loop fields verified on every final row:
-
-```text
-ego_spawned=true
-control_applied=true
-rgb_frame_received=true
-world_tick_advanced=true
-collision_sensor_attached=true
-lane_invasion_sensor_attached=true
+baseline_planner_action_mapper:
+  passed_count=0
+  blocked_count=5
+  total_collision_count=0
+  avg_route_progress_pct=0.000000
+  outcome=closed_loop_executable_but_route_progress_blocked
 ```
 
 Boundary fields:
 
 ```text
-benchmark_boundary_prepared=true
 route_benchmark_verified=false
 infraction_benchmark_verified=false
 leaderboard_evaluated=false
@@ -98,10 +74,11 @@ leaderboard_route_criteria_evaluated=false
 Validation checklist:
 
 ```text
-python -m py_compile scripts\run_phase12b_baseline_mapper_route_metrics.py scripts\run_phase12b_controller_ablation_experiment.py scripts\run_phase11_carla_checks.py
+python -m py_compile scripts\run_phase12b_controller_ablation_summary.py
+python scripts\run_phase12b_controller_ablation_summary.py --require-complete --output-dir experiments\phase12
 python scripts\run_phase11_carla_checks.py
 python scripts\run_demo_checks.py
 python scripts\run_phase11o_source_commit_checks.py --require-staged
 ```
 
-Phase 12B-BASE is negative runtime evidence. It proves the baseline mapper can execute closed-loop CARLA control and telemetry, but not fixed-route progress.
+Phase 12B-SUM is a differentiated controller-ablation summary. It does not upgrade Phase 12B to an all-controller runtime pass.

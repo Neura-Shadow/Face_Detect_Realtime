@@ -450,6 +450,43 @@ leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
 
+## Phase 12B-SUM Addendum - Controller Ablation Comparative Summary
+
+```text
+Phase 12B-SUM Controller Ablation Comparative Summary Prepared - GRP, linear, and baseline mapper evidence has been normalized into comparable controller and route tables.
+```
+
+Generated summary:
+
+```text
+experiments\phase12\20260628T125344Z
+controller_summary.csv
+route_comparison.csv
+summary.json
+manifest.json
+README.md
+```
+
+Controller comparison:
+
+```text
+grp_follower=5/5 goal-reach smoke pass, total_collision_count=0
+linear_spawn_pair_follower=5/5 route-progress smoke pass, total_collision_count=15222, not completion
+baseline_planner_action_mapper=0/5 pass, 5/5 route-progress blocked, closed-loop executable
+```
+
+Comparative conclusion:
+
+```text
+strongest_controller=grp_follower
+linear_scope=route_progress_smoke_only_not_completion
+baseline_scope=closed_loop_executable_but_route_progress_blocked
+all_controller_runtime_pass=false
+route_benchmark_verified=false
+infraction_benchmark_verified=false
+leaderboard_evaluated=false
+```
+
 ## Next Implementation Slice
 
 Phase 12 後續應先實作輕量 orchestrator，讀取 route matrix 與 backend/controller/VLM mode matrix，逐 run 呼叫既有 Phase 11K/11L/11M runner。正式 CARLA runtime 仍應留在 dedicated Python 3.12 + CARLA 0.9.16 environment，不加入 baseline requirements。

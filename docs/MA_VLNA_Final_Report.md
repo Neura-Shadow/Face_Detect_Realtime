@@ -57,6 +57,7 @@ MA-VLNA 採用模組化的軟體架構，主要包含以下核心元件：
   - 新增 Phase 12B-LIN Linear Spawn-Pair Controller Runtime Pass / Blocked Evidence，使用同一 runtime wiring 執行 `linear_spawn_pair_follower` controller rows。初次 batch 保留 `route_01` CARLA map-load timeout blocked evidence；warm-up 後完整 5-row rerun 通過 route-progress smoke gate，但 route 02-05 collision_count 很高且未達 goal，因此只代表 linear route-progress smoke pass，不代表安全完成或 infraction benchmark。
   - 新增 Phase 12B-BASE-M Baseline PlannerAction Mapper Route-Metric Wiring，為 `baseline_planner_action_mapper` controller rows 加入 dedicated child runner，沿用既有 `PlannerActionToCarlaControl` mapper 並輸出 fixed spawn-pair route metrics。已完成 no-server blocked wiring smoke，證明 parent 可讀取 child `metrics.json` 與 boundary fields；此階段不代表 baseline mapper runtime pass。
   - 新增 Phase 12B-BASE Baseline PlannerAction Mapper Runtime Evidence，使用真實 CARLA runtime 執行 5 條 calibrated baseline mapper rows。所有 rows 都完成 ego spawn、RGB frame、world tick、PlannerAction control 與 sensor logging，但 route_progress_m 皆為 0，因此 5/5 rows 正確標記為 `route_progress_blocked`；此為 baseline mapper 的負向 runtime evidence，不是 Runtime Pass。
+  - 新增 Phase 12B-SUM Controller Ablation Comparative Summary，將 GRP、linear、baseline mapper 三條 evidence line 正規化為 controller-level 與 route-level comparative tables。結論是 GRP 為唯一 5/5 goal-reach smoke controller，linear 僅為 route-progress smoke 且 collision_count 高，baseline mapper 可執行 closed-loop control 但 5/5 route-progress blocked。
   - Phase 11 首版不追求 CARLA Leaderboard，而是先建立可觀測、可回放、可安全退場的仿真閉環。
 
 ### 4. 關鍵技術亮點 (Technical Highlights)
