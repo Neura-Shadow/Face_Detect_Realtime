@@ -143,7 +143,7 @@ YOLOv9 optional
 RT-DETR optional
 ```
 
-若 YOLOv9 / RT-DETR optional dependency 未安裝，不讓整體實驗失敗，該 backend 的 run 標記為：
+若 YOLOv9 / RT-DETR optional dependency 未安裝於 target runtime，不讓整體實驗失敗，該 backend 的 run 標記為：
 
 ```text
 backend_unavailable
@@ -496,7 +496,7 @@ Phase 12C Perception Backend Ablation Prepared - backend matrix, optional depend
 Generated scaffold:
 
 ```text
-experiments\phase12\20260629T063233Z
+experiments\phase12\20260629T070603Z
 manifest.json
 summary.csv
 summary.json
@@ -515,7 +515,7 @@ available_row_count=5
 backend_unavailable_count=10
 ```
 
-本機目前未具備 YOLOv9 optional dependency / EdgePerception YOLOv9 backend，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 正確標記為 `backend_unavailable`。這是 Phase 12C 的預期語義，不是 scaffold failure；optional backend missing 不得阻塞 dummy baseline rows。
+本機目前在 target CARLA Python 3.12 runtime 中未具備 YOLOv9 optional dependency，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 正確標記為 `backend_unavailable`。這是 Phase 12C 的預期語義，不是 scaffold failure；optional backend missing 不得阻塞 dummy baseline rows。Dependency preflight 已改為使用 `--python-executable` 指向的 target runtime。
 
 Boundary:
 
@@ -670,6 +670,44 @@ runtime_confirmation_executed=false
 
 Phase 12C-YOLOv9-B 只證明 EdgePerception 已有 `backend=yolov9` / `--test yolov9` adapter path；缺少 YOLOv9 dependency 時仍保留 graceful fallback。它沒有啟動 CARLA，也沒有執行 YOLOv9 runtime confirmation。
 
+## Phase 12C-YOLOv9-V Addendum - YOLOv9 Post-Unlock Verification
+
+```text
+Phase 12C-YOLOv9-V Blocked — post-unlock verification attempted, but the CARLA Python 3.12 runtime still lacks the YOLOv9 dependency.
+```
+
+Generated post-unlock verification evidence:
+
+```text
+experiments\phase12\20260629T070450Z
+```
+
+Verification status:
+
+```text
+post_unlock_verification_attempted=true
+post_unlock_verified=false
+target_python_exists=true
+carla_root_exists=true
+yolov9_import_ready=false
+yolov9_pip_metadata_ready=false
+edge_yolov9_command_passed=true
+edge_yolov9_fallback_used=true
+edge_yolov9_no_fallback_verified=false
+phase12b_yolov9_dry_run_command_ready=true
+phase11m_yolov9_cli_ready=true
+phase11k_yolov9_cli_ready=true
+phase12b_baseline_yolov9_cli_ready=true
+phase12c_yolov9_rows_available=false
+phase12c_yolov9_backend_unavailable_count=5
+auto_install_performed=false
+baseline_requirements_modified=false
+carla_server_started=false
+runtime_confirmation_executed=false
+```
+
+Phase 12C-YOLOv9-V also verifies that the runner command path accepts `--perception-backend yolov9` for Phase 12B / Phase 11M / Phase 11K / baseline mapper. This is command wiring readiness only; it is not YOLOv9 runtime route validation.
+
 ## Next Implementation Slice
 
-Phase 12 後續應先由 operator 顯式選定 YOLOv9 package 或 repository install source，再重跑 post-unlock verification。只有當 `edge_yolov9_command_supported=true` 且 `edge_yolov9_fallback_used=false` 後，才進入 YOLOv9 runtime confirmation。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。
+Phase 12 後續應先由 operator 顯式選定 YOLOv9 package 或 repository install source，再重跑 `scripts\run_phase12c_yolov9_post_unlock_verification.py --require-verified`。只有當 `post_unlock_verified=true` 且 `edge_yolov9_fallback_used=false` 後，才進入 YOLOv9 runtime confirmation。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。

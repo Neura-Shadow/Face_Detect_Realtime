@@ -25,13 +25,13 @@ Perception backend matrix：
 | perception_backend_mode | runtime backend | model hint | dependency | behavior |
 | --- | --- | --- | --- | --- |
 | `dummy` | `dummy` | `dummy` | none | always available |
-| `yolov9_optional` | `yolov9` | `yolov9` | YOLOv9 optional dependency | dependency missing 或 EdgePerception 尚未支援 YOLOv9 時標記 `backend_unavailable` |
+| `yolov9_optional` | `yolov9` | `yolov9` | YOLOv9 optional dependency | target CARLA Python dependency missing 時標記 `backend_unavailable` |
 | `rt_detr_optional` | `rtdetr` | `rtdetr-l.pt` | `ultralytics` | dependency missing 時標記 `backend_unavailable` |
 
 ## Generated Local Evidence
 
 ```text
-experiments\phase12\20260629T063233Z
+experiments\phase12\20260629T070603Z
 ```
 
 本次 scaffold output：
@@ -45,7 +45,9 @@ available_row_count=5
 backend_unavailable_count=10
 ```
 
-本機目前未具備 YOLOv9 optional dependency / EdgePerception YOLOv9 backend，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 被正確標記為 `backend_unavailable`。這不是失敗；Phase 12C 的設計要求 optional backend missing 不得阻塞 dummy baseline scaffold。
+本機目前在 target CARLA Python 3.12 runtime 中未具備 YOLOv9 optional dependency，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 被正確標記為 `backend_unavailable`。這不是失敗；Phase 12C 的設計要求 optional backend missing 不得阻塞 dummy baseline scaffold。
+
+Dependency preflight 使用 `--python-executable` 指向的 target runtime，而不是 base Python。這可避免 YOLOv9 只安裝在 `D:\CARLA\envs\ma-vlna-carla312` 時被 base Python 誤判為 unavailable。
 
 Generated files：
 
@@ -102,6 +104,7 @@ Acceptance assertions：
 - dummy rows are available
 - optional YOLO / RT-DETR rows may be `backend_unavailable`
 - `backend_unavailable` rows do not make the scaffold exit nonzero
+- optional backend dependency checks use the target Python runtime
 - all benchmark boundary fields remain false
 
 ## Follow-up Runtime Slice
@@ -178,3 +181,27 @@ runtime_confirmation_executed=false
 ```
 
 詳細記錄請見 [phase12c_yolov9_backend_adapter_prepared.md](phase12c_yolov9_backend_adapter_prepared.md)。
+
+## YOLOv9 Post-Unlock Verification
+
+Phase 12C-YOLOv9-V 已建立 strict post-unlock verification gate，並在目前本機環境產生 blocked evidence：
+
+```text
+Phase 12C-YOLOv9-V Blocked — post-unlock verification attempted, but the CARLA Python 3.12 runtime still lacks the YOLOv9 dependency.
+```
+
+Evidence：
+
+```text
+experiments\phase12\20260629T070450Z
+post_unlock_verified=false
+yolov9_import_ready=false
+yolov9_pip_metadata_ready=false
+edge_yolov9_command_passed=true
+edge_yolov9_fallback_used=true
+phase12b_yolov9_dry_run_command_ready=true
+phase11m_yolov9_cli_ready=true
+phase12c_yolov9_rows_available=false
+```
+
+詳細記錄請見 [phase12c_yolov9_post_unlock_verification.md](phase12c_yolov9_post_unlock_verification.md)。

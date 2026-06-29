@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import importlib.util
 import json
 import subprocess
 import sys
@@ -51,6 +50,8 @@ SUMMARY_COLUMNS = (
     "runtime_backend",
     "model_hint",
     "dependency",
+    "dependency_probe_python",
+    "dependency_import_available",
     "backend_optional",
     "backend_available",
     "backend_status",
@@ -164,14 +165,28 @@ def _command_text(command: list[str]) -> str:
     return subprocess.list2cmdline(command)
 
 
-def _dependency_import_available(spec: BackendSpec) -> bool:
+def _dependency_import_available(spec: BackendSpec, python_executable: str) -> bool:
     if spec.dependency_name is None:
         return True
-    return importlib.util.find_spec(spec.dependency_name) is not None
-
-
-def _backend_available(spec: BackendSpec) -> bool:
-    return _dependency_import_available(spec) and spec.runtime_backend_supported
+    code = (
+        "import importlib.util; "
+        f"module={spec.dependency_name!r}; "
+        "raise SystemExit(0 if importlib.util.find_spec(module) is not None else 1)"
+    )
+    try:
+        completed = subprocess.run(
+            [python_executable, "-c", code],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30.0,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return completed.returncode == 0
 
 
 def _build_runtime_command(args: argparse.Namespace, route: RouteSpec, backend: BackendSpec) -> list[str]:
@@ -211,8 +226,9 @@ def _row_from_matrix(
     route: RouteSpec,
     backend: BackendSpec,
     *,
-    backend_available: bool,
+    dependency_available: bool,
 ) -> dict[str, Any]:
+    backend_available = dependency_available and backend.runtime_backend_supported
     backend_status = "available" if backend_available else "backend_unavailable"
     runtime_status = (
         "wired_runtime_command"
@@ -223,7 +239,7 @@ def _row_from_matrix(
     command = _build_runtime_command(args, route, backend) if backend_available else []
     notes = backend.notes
     if not backend_available:
-        if not _dependency_import_available(backend):
+        if not dependency_available:
             notes = f"{notes} dependency_missing={backend.dependency_name}"
         if not backend.runtime_backend_supported:
             notes = f"{notes} runtime_backend_supported=false"
@@ -240,6 +256,8 @@ def _row_from_matrix(
         "runtime_backend": backend.backend,
         "model_hint": backend.model_name,
         "dependency": backend.dependency_label,
+        "dependency_probe_python": args.python_executable if backend.dependency_name else args.base_python,
+        "dependency_import_available": dependency_available,
         "backend_optional": backend.optional,
         "backend_available": backend_available,
         "backend_status": backend_status,
@@ -252,7 +270,10 @@ def _row_from_matrix(
 
 def _build_rows(args: argparse.Namespace) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    availability = {backend.mode: _backend_available(backend) for backend in BACKEND_MATRIX}
+    availability = {
+        backend.mode: _dependency_import_available(backend, args.python_executable)
+        for backend in BACKEND_MATRIX
+    }
     for route in ROUTE_MATRIX:
         if args.route_id and route.route_id not in args.route_id:
             continue
@@ -264,7 +285,7 @@ def _build_rows(args: argparse.Namespace) -> list[dict[str, Any]]:
                     args,
                     route,
                     backend,
-                    backend_available=availability[backend.mode],
+                    dependency_available=availability[backend.mode],
                 )
             )
     return rows
@@ -297,8 +318,10 @@ def _summary_payload(args: argparse.Namespace, rows: list[dict[str, Any]]) -> di
                 if row["perception_backend_mode"] == "dummy"
             ),
             "optional_unavailable_rows_do_not_fail_scaffold": True,
-            "yolov9_rows_backend_unavailable_when_dependency_missing": all(
-                row["result"] == "backend_unavailable"
+            "yolov9_rows_match_dependency_probe": all(
+                (row["result"] != "backend_unavailable")
+                if row["dependency_import_available"]
+                else row["result"] == "backend_unavailable"
                 for row in rows
                 if row["perception_backend_mode"] == "yolov9_optional"
             ),

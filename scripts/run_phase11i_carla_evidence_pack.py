@@ -329,7 +329,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--port", type=int, default=2000)
     parser.add_argument("--steps", type=int, default=50)
     parser.add_argument("--short-steps", type=int, default=5)
-    parser.add_argument("--perception-backend", default="dummy", choices=["dummy", "yolo", "rtdetr"])
+    parser.add_argument("--perception-backend", default="dummy", choices=["dummy", "yolo", "yolov9", "rtdetr"])
     parser.add_argument("--require-server", action="store_true")
     parser.add_argument("--enable-vlm", action="store_true")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)

@@ -135,7 +135,7 @@ def _experiment_lines() -> list[ExperimentLine]:
                 "missing_backend_result": "backend_unavailable",
             },
             metrics=route_metrics,
-            boundary="YOLOv9 / RT-DETR 未安裝或尚未接上 backend 時不得讓整體實驗失敗，只標記 backend_unavailable。",
+            boundary="YOLOv9 / RT-DETR 未安裝於 target runtime 時不得讓整體實驗失敗，只標記 backend_unavailable。",
         ),
         ExperimentLine(
             key="D",

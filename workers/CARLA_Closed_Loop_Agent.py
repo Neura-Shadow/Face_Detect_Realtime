@@ -437,7 +437,7 @@ async def _async_main() -> None:
     parser.add_argument("--async-world", action="store_true", help="Disable CARLA synchronous_mode")
     parser.add_argument("--enable-vlm", action="store_true", help="Allow TriggerPolicy to call VLMReasoner")
     parser.add_argument("--force-vlm-every", type=int, default=0)
-    parser.add_argument("--perception-backend", default=None, choices=["dummy", "yolo", "rtdetr"])
+    parser.add_argument("--perception-backend", default=None, choices=["dummy", "yolo", "yolov9", "rtdetr"])
     parser.add_argument("--vlm-provider", default=None, choices=["local_stub", "openai_compatible", "gemma"])
     args = parser.parse_args()
 

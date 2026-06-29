@@ -588,7 +588,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--goal-tolerance-m", type=float, default=3.0)
     parser.add_argument("--route-sampling-resolution-m", type=float, default=1.0)
     parser.add_argument("--lookahead-waypoints", type=int, default=3)
-    parser.add_argument("--perception-backend", default="dummy", choices=["dummy", "yolo", "rtdetr"])
+    parser.add_argument("--perception-backend", default="dummy", choices=["dummy", "yolo", "yolov9", "rtdetr"])
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--timestamp", default=None)
     parser.add_argument("--carla-root", type=Path, default=DEFAULT_CARLA_ROOT)

@@ -368,7 +368,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--camera-width", type=int, default=320)
     parser.add_argument("--camera-height", type=int, default=180)
     parser.add_argument("--async-world", action="store_true")
-    parser.add_argument("--perception-backend", default="dummy", choices=["dummy", "yolo", "rtdetr"])
+    parser.add_argument("--perception-backend", default="dummy", choices=["dummy", "yolo", "yolov9", "rtdetr"])
     parser.add_argument("--perception-model", default="dummy")
     parser.add_argument("--enable-vlm", action="store_true")
     parser.add_argument("--force-vlm-every", type=int, default=0)

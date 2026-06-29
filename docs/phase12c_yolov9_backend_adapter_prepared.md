@@ -52,6 +52,14 @@ runtime_confirmation_executed=false
 
 Interpretation: the YOLOv9 adapter path is registered, but the optional dependency is still missing. The fallback is expected and confirms the adapter preserves the existing graceful-degradation contract.
 
+Phase 12C-YOLOv9-V now checks the post-unlock condition. Current local evidence remains blocked because `yolov9` is not importable in the CARLA Python 3.12 runtime, so the adapter still falls back:
+
+```text
+experiments\phase12\20260629T070450Z
+post_unlock_verified=false
+edge_yolov9_fallback_used=true
+```
+
 ## Code Scope
 
 - `workers/core/edge_perception.py`

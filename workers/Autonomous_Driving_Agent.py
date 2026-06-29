@@ -718,7 +718,7 @@ async def _async_main() -> None:
     parser.add_argument("--mode", type=str, default=None, choices=["mock", "simulator", "webcam", "camera", "ros2", "isaac_sim"], help="代理執行模式")
     parser.add_argument("--source", type=str, default=None, help="攝影機來源")
     parser.add_argument("--steps", type=int, default=None, help="最大執行步數")
-    parser.add_argument("--perception-backend", type=str, default=None, help="強制覆蓋 Perception Backend (dummy, yolo, rtdetr)")
+    parser.add_argument("--perception-backend", type=str, default=None, help="強制覆蓋 Perception Backend (dummy, yolo, yolov9, rtdetr)")
     parser.add_argument("--force-vlm-every", type=int, default=None, help="每隔N幀強制觸發VLM")
     parser.add_argument("--vlm-provider", type=str, default=None, help="強制覆蓋 VLM Provider (local_stub, openai_compatible, gemma)")
     args = parser.parse_args()

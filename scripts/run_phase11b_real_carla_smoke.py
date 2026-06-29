@@ -183,7 +183,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--enable-vlm", action="store_true", help="允許 Phase 11B 觸發 VLM path")
     parser.add_argument("--force-vlm-every", type=int, default=0)
     parser.add_argument("--vlm-provider", default="local_stub", choices=["local_stub", "openai_compatible", "gemma"])
-    parser.add_argument("--perception-backend", default="dummy", choices=["dummy", "yolo", "rtdetr"])
+    parser.add_argument("--perception-backend", default="dummy", choices=["dummy", "yolo", "yolov9", "rtdetr"])
     parser.add_argument("--perception-model", default="dummy")
     parser.add_argument("--publish-telemetry", action="store_true", help="使用 .env Supabase 設定寫入 telemetry")
     parser.add_argument("--preflight-only", action="store_true", help="只檢查 carla package 與 TCP endpoint")

@@ -70,10 +70,11 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12B-BASE-M baseline PlannerAction mapper route metrics: **Prepared — baseline mapper now emits structured route metrics; no-server blocked wiring smoke verified**
   - Phase 12B-BASE baseline PlannerAction mapper runtime: **Blocked — 5/5 real CARLA baseline rows executed but failed route-progress gate**
   - Phase 12B-SUM controller ablation comparative summary: **Prepared — GRP, linear, and baseline evidence normalized into comparative tables**
-  - Phase 12C perception backend ablation: **Prepared — 5 routes x 3 backend modes scaffolded; YOLOv9/RT-DETR optional rows mark `backend_unavailable` when dependency/backend support is missing**
+  - Phase 12C perception backend ablation: **Prepared — 5 routes x 3 backend modes scaffolded; YOLOv9/RT-DETR optional rows mark `backend_unavailable` when target-runtime dependency is missing**
   - Phase 12C-DUMMY dummy backend runtime confirmation: **Passed — 5/5 calibrated `grp_follower + dummy` rows reached goal in real CARLA; collision_count_total=0, lane_invasion_count_total=83**
-  - Phase 12C-YOLOv9-U YOLOv9 optional dependency unlock: **Prepared — CARLA Python 3.12 preflight confirms YOLOv9 dependency/backend support missing; manual unlock and post-unlock verification commands generated**
+  - Phase 12C-YOLOv9-U YOLOv9 optional dependency unlock: **Prepared — CARLA Python 3.12 preflight confirms YOLOv9 dependency missing; manual unlock and post-unlock verification commands generated**
   - Phase 12C-YOLOv9-B EdgePerception YOLOv9 backend adapter: **Prepared — `EdgePerception --test yolov9` is registered in base and CARLA Python; missing dependency still falls back safely**
+  - Phase 12C-YOLOv9-V YOLOv9 post-unlock verification: **Blocked — strict verifier is implemented; local CARLA Python 3.12 runtime still lacks YOLOv9 package, so no-fallback backend readiness is not verified**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -255,6 +256,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 >
 > Phase 12C-YOLOv9-B EdgePerception YOLOv9 backend adapter preparation 請見 [docs/phase12c_yolov9_backend_adapter_prepared.md](docs/phase12c_yolov9_backend_adapter_prepared.md)
 >
+> Phase 12C-YOLOv9-V YOLOv9 post-unlock verification 請見 [docs/phase12c_yolov9_post_unlock_verification.md](docs/phase12c_yolov9_post_unlock_verification.md)
+>
 > Phase 12C-YOLO-U generic YOLO unlock preparation 是早期歷史紀錄，請見 [docs/phase12c_yolo_optional_dependency_unlock_prepared.md](docs/phase12c_yolo_optional_dependency_unlock_prepared.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
@@ -361,6 +364,12 @@ Phase 12C-YOLOv9-B EdgePerception YOLOv9 backend adapter checks（只驗證 adap
 
 ```powershell
 python scripts\run_phase12c_yolov9_backend_adapter_checks.py --output-dir experiments\phase12
+```
+
+Phase 12C-YOLOv9-V post-unlock verification（operator 安裝 YOLOv9 後才可通過；目前本機會產生 blocked evidence）：
+
+```powershell
+python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified
 ```
 
 Manual YOLOv9 unlock commands（需 operator 顯式選擇/執行）：

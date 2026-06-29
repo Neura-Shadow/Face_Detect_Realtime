@@ -1,77 +1,61 @@
-# Walkthrough - Phase 12C-YOLOv9-B EdgePerception YOLOv9 Backend Adapter Prepared
+# Walkthrough - Phase 12C-YOLOv9-V YOLOv9 Post-Unlock Verification
 
 1. Preserve Phase 12C-DUMMY as the only runtime-confirmed perception backend slice.
-2. Keep Phase 12C-YOLOv9-U as dependency unlock preparation only.
-3. Add an explicit `YOLOv9PerceptionBackend` adapter in `workers.core.edge_perception`.
-4. Register `backend="yolov9"` in the `EdgePerception` backend factory.
-5. Register `--test yolov9` in the module CLI.
-6. Keep fallback behavior unchanged when the optional `yolov9` dependency is missing.
-7. Do not auto-install YOLOv9 packages.
-8. Do not add YOLOv9 to baseline requirements.
-9. Do not start CARLA.
-10. Do not execute YOLOv9 runtime confirmation.
-11. Keep generated evidence local under `experiments\phase12`.
+2. Preserve Phase 12C-YOLOv9-U as manual dependency unlock preparation.
+3. Preserve Phase 12C-YOLOv9-B as adapter-path preparation.
+4. Add a strict post-unlock verifier for `perception_backend=yolov9`.
+5. Verify `yolov9` import inside `D:\CARLA\envs\ma-vlna-carla312`.
+6. Verify `pip show yolov9` inside the same target runtime.
+7. Verify `workers.core.edge_perception --test yolov9` exits successfully without fallback.
+8. Verify Phase 12B / Phase 11M / Phase 11K / baseline mapper CLIs accept `--perception-backend yolov9`.
+9. Refresh Phase 12C YOLOv9 rows using the target Python dependency probe.
+10. Do not auto-install packages.
+11. Do not modify baseline requirements.
+12. Do not start CARLA.
+13. Do not execute YOLOv9 route runtime confirmation.
 
 Generated evidence:
 
 ```text
-yolov9_backend_adapter=experiments\phase12\20260629T063232Z-1-1
-yolov9_unlock=experiments\phase12\20260629T063232Z
-phase12c_matrix=experiments\phase12\20260629T063233Z
+yolov9_post_unlock_verification=experiments\phase12\20260629T070450Z
+yolov9_rows_refresh=experiments\phase12\20260629T070501Z
+phase12c_matrix=experiments\phase12\20260629T070603Z
 ```
 
-YOLOv9-B adapter result:
+YOLOv9-V result:
 
 ```text
-adapter_prepared=true
-edge_yolov9_backend_registered=true
-base_edge_yolov9_command_supported=true
-carla312_edge_yolov9_command_supported=true
-base_edge_yolov9_command_passed=true
-carla312_edge_yolov9_command_passed=true
-base_edge_yolov9_fallback_used=true
-carla312_edge_yolov9_fallback_used=true
-dependency_ready=false
-dependency_missing=true
-runtime_confirmation_executed=false
+post_unlock_verified=false
+yolov9_import_ready=false
+yolov9_pip_metadata_ready=false
+edge_yolov9_command_passed=true
+edge_yolov9_fallback_used=true
+edge_yolov9_no_fallback_verified=false
+phase12b_yolov9_dry_run_command_ready=true
+phase11m_yolov9_cli_ready=true
+phase11k_yolov9_cli_ready=true
+phase12b_baseline_yolov9_cli_ready=true
+phase12c_yolov9_rows_available=false
+phase12c_yolov9_backend_unavailable_count=5
 ```
 
-Phase 12C matrix result:
-
-```text
-perception_backend_modes=dummy,rt_detr_optional,yolov9_optional
-row_count=15
-available_row_count=5
-backend_unavailable_count=10
-dummy rows=dry_run
-yolov9_optional rows=backend_unavailable
-rt_detr_optional rows=backend_unavailable
-```
-
-Manual unlock commands:
+Strict post-unlock command:
 
 ```powershell
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install <YOLOV9_PACKAGE_SPEC>
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install -r <YOLOV9_REQUIREMENTS_PATH>
+python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified
 ```
 
-Post-unlock verification:
+Current local result with `--require-verified` should remain nonzero until the selected YOLOv9 dependency is installed in the CARLA Python 3.12 runtime.
 
-```powershell
-D:\CARLA\envs\ma-vlna-carla312\python.exe -c "import importlib.util; module='yolov9'; available = importlib.util.find_spec(module) is not None; print(f'yolov9_import_ready={available}'); raise SystemExit(0 if available else 1)"
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip show yolov9
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m workers.core.edge_perception --test yolov9
-python scripts\run_phase12c_perception_backend_ablation.py --perception-backend-mode yolov9_optional --output-dir experiments\phase12
-```
-
-Ready condition:
+Pass condition:
 
 ```text
 yolov9_import_ready=true
 yolov9_pip_metadata_ready=true
-edge_yolov9_command_supported=true
 edge_yolov9_command_passed=true
 edge_yolov9_fallback_used=false
+phase12c_yolov9_rows_available=true
+post_unlock_verified=true
 ```
 
 Boundary fields:
@@ -79,8 +63,8 @@ Boundary fields:
 ```text
 auto_install_performed=false
 baseline_requirements_modified=false
-runtime_confirmation_executed=false
 carla_server_started=false
+runtime_confirmation_executed=false
 route_benchmark_verified=false
 infraction_benchmark_verified=false
 leaderboard_evaluated=false
@@ -91,12 +75,12 @@ leaderboard_route_criteria_evaluated=false
 Validation checklist:
 
 ```text
-python -m py_compile workers\core\edge_perception.py scripts\run_phase12c_yolov9_backend_adapter_checks.py scripts\run_phase12c_yolov9_optional_dependency_unlock.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py
-python -m workers.core.edge_perception --test yolov9
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m workers.core.edge_perception --test yolov9
+python -m py_compile scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase12b_controller_ablation_experiment.py scripts\run_phase11m_grp_route_following.py scripts\run_phase11k_fixed_route_smoke.py scripts\run_phase12b_baseline_mapper_route_metrics.py scripts\run_phase11_carla_checks.py
+python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12
+python scripts\run_phase12c_perception_backend_ablation.py --output-dir experiments\phase12
 python scripts\run_phase11_carla_checks.py
 python scripts\run_demo_checks.py
 python scripts\run_phase11o_source_commit_checks.py --require-staged
 ```
 
-Phase 12C-YOLO-U was the earlier generic YOLO unlock preparation. Phase 12C-YOLOv9-U is the revised YOLOv9-specific dependency unlock target. Phase 12C-YOLOv9-B adds the EdgePerception adapter path but still does not claim YOLOv9 runtime verification.
+Phase 12C-YOLOv9-V blocked evidence is not a failure of the adapter path. It means the environment has not actually been unlocked with a YOLOv9 dependency yet.
