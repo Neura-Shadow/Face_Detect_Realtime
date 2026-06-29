@@ -25,7 +25,7 @@ Perception backend matrix：
 | perception_backend_mode | runtime backend | model hint | dependency | behavior |
 | --- | --- | --- | --- | --- |
 | `dummy` | `dummy` | `dummy` | none | always available |
-| `yolov9_optional` | `yolov9` | `yolov9` | YOLOv9 optional dependency | target CARLA Python dependency missing 時標記 `backend_unavailable` |
+| `yolov9_optional` | `yolov9` | `yolov9` | YOLOv9 external source adapter | `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` no-fallback gate 未通過時標記 `backend_unavailable` |
 | `rt_detr_optional` | `rtdetr` | `rtdetr-l.pt` | `ultralytics` | dependency missing 時標記 `backend_unavailable` |
 
 ## Generated Local Evidence
@@ -45,9 +45,9 @@ available_row_count=5
 backend_unavailable_count=10
 ```
 
-本機目前在 target CARLA Python 3.12 runtime 中未具備 YOLOv9 optional dependency，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 被正確標記為 `backend_unavailable`。這不是失敗；Phase 12C 的設計要求 optional backend missing 不得阻塞 dummy baseline scaffold。
+本機目前在 target CARLA Python 3.12 runtime 中尚未配置 `YOLOV9_ROOT` / `YOLOV9_WEIGHTS`，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 被正確標記為 `backend_unavailable`。這不是失敗；Phase 12C 的設計要求 optional backend missing 或 source adapter 未驗證時不得阻塞 dummy baseline scaffold。
 
-Dependency preflight 使用 `--python-executable` 指向的 target runtime，而不是 base Python。這可避免 YOLOv9 只安裝在 `D:\CARLA\envs\ma-vlna-carla312` 時被 base Python 誤判為 unavailable。
+YOLOv9 preflight 使用 `--python-executable` 指向的 target runtime 執行 `workers.core.edge_perception --test yolov9`，並要求 `edge_yolov9_fallback_used=false` 才讓 rows available。這可避免只靠 base Python 或 package metadata 誤判 YOLOv9 readiness。
 
 Generated files：
 
@@ -187,7 +187,7 @@ runtime_confirmation_executed=false
 Phase 12C-YOLOv9-V 已建立 strict post-unlock verification gate，並在目前本機環境產生 blocked evidence：
 
 ```text
-Phase 12C-YOLOv9-V Blocked — strict post-unlock verification was executed, but YOLOv9 no-fallback readiness could not be verified because the selected YOLOv9 package is not installed/importable in the CARLA Python 3.12 runtime.
+Phase 12C-YOLOv9-V Blocked — strict post-unlock verification was executed, but YOLOv9 no-fallback readiness could not be verified because `YOLOV9_ROOT` and `YOLOV9_WEIGHTS` are not configured in the CARLA Python 3.12 runtime.
 ```
 
 Evidence：
@@ -208,3 +208,27 @@ phase12c_yolov9_rows_available=false
 ```
 
 詳細記錄請見 [phase12c_yolov9_post_unlock_verification.md](phase12c_yolov9_post_unlock_verification.md)。
+
+## YOLOv9 Official Source Adapter
+
+Phase 12C-YOLOv9-SRC 已實作官方 source-repo adapter 與 no-fallback verification gate：
+
+```text
+Phase 12C-YOLOv9-SRC Prepared — official YOLOv9 external source adapter, environment contract, and no-fallback verification gate are implemented.
+```
+
+Local source-adapter evidence：
+
+```text
+source_adapter_evidence_dir=experiments\phase12\20260629T134856Z
+yolov9_rows_refresh_dir=experiments\phase12\20260629T134856Z-1-2
+source_adapter_verified=false
+yolov9_source_root_configured=false
+yolov9_weights_configured=false
+edge_yolov9_fallback_used=true
+runtime_confirmation_executed=false
+```
+
+YOLOv9 rows remain `backend_unavailable` until the operator provides external source and weights and the no-fallback gate passes. YOLOv9 source and weights are not committed to this repository.
+
+詳細記錄請見 [phase12c_yolov9_source_adapter_verification.md](phase12c_yolov9_source_adapter_verification.md)。

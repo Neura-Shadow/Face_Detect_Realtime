@@ -50,13 +50,25 @@ dependency_missing=true
 runtime_confirmation_executed=false
 ```
 
-Interpretation: the YOLOv9 adapter path is registered, but the optional dependency is still missing. The fallback is expected and confirms the adapter preserves the existing graceful-degradation contract.
+Interpretation: the YOLOv9 adapter path is registered. The official path now uses an external `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` contract rather than requiring a fake `yolov9` pip package. When those operator-provided assets are missing, fallback is expected and confirms the adapter preserves the existing graceful-degradation contract.
 
-Phase 12C-YOLOv9-V now checks the post-unlock condition. Current local evidence remains blocked because `yolov9` is not importable in the CARLA Python 3.12 runtime, so the adapter still falls back:
+Phase 12C-YOLOv9-SRC adds the official source-root adapter and no-fallback verification gate:
+
+```text
+source_adapter_evidence_dir=experiments\phase12\20260629T134856Z
+source_adapter_verified=false
+yolov9_source_root_configured=false
+yolov9_weights_configured=false
+edge_yolov9_fallback_used=true
+runtime_confirmation_executed=false
+```
+
+Phase 12C-YOLOv9-V now checks the post-unlock condition. Current local evidence remains blocked because the official source root and weights are not configured in the CARLA Python 3.12 runtime, so the adapter still falls back:
 
 ```text
 authoritative_evidence_dir=experiments\phase12\20260629T125701Z
 historical_strict_evidence_dir=experiments\phase12\20260629T124925Z
+post_unlock_external_source_evidence_dir=experiments\phase12\20260629T134856Z-1
 post_unlock_verified=false
 strict_gate_exit_code=1
 edge_yolov9_fallback_used=true
@@ -65,15 +77,16 @@ edge_yolov9_fallback_used=true
 ## Code Scope
 
 - `workers/core/edge_perception.py`
-  - adds `YOLOv9PerceptionBackend`;
+  - adds `YOLOv9PerceptionBackend` with official external source-root support;
   - accepts `backend="yolov9"`;
   - accepts CLI `--test yolov9`;
-  - preserves graceful fallback to `DummyPerceptionBackend` when the YOLOv9 dependency is missing.
+  - preserves graceful fallback to `DummyPerceptionBackend` when `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` are missing or blocked.
 - `config/agent_config.yaml`
-  - documents `dummy | yolo | yolov9 | rtdetr`.
+  - documents `dummy | yolo | yolov9 | rtdetr`;
+  - records YOLOv9 env var names, image size, thresholds, and device without hard-coded local paths.
 - `scripts/run_phase12c_perception_backend_ablation.py`
   - keeps `yolov9_optional` in the Phase 12C backend matrix;
-  - records YOLOv9 rows as `backend_unavailable` while the optional dependency is missing.
+  - records YOLOv9 rows as `backend_unavailable` until the source adapter verifies no fallback.
 
 ## Boundary
 

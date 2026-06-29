@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol
 
 import numpy as np
@@ -26,13 +28,7 @@ except ImportError:
     _HAS_ULTRALYTICS = False
     logger.info("ultralytics 未安裝 — YOLO/RT-DETR 將不可用")
 
-try:
-    import yolov9 as _YOLOV9_MODULE  # type: ignore[import-untyped]
-    _HAS_YOLOV9 = True
-except ImportError:
-    _YOLOV9_MODULE = None
-    _HAS_YOLOV9 = False
-    logger.info("YOLOv9 optional dependency 未安裝 — YOLOv9 backend 將不可用")
+YOLOV9_REQUIRED_SOURCE_ENTRIES = ("detect.py", "detect_dual.py", "models", "utils")
 
 
 # ════════════════════════════════════════════════════════════════
@@ -86,6 +82,104 @@ class PerceptionResult:
     backend: str = "dummy"                     # dummy | yolo | yolov9 | rtdetr
     model_name: str = "dummy"
     fallback_used: bool = False                # 是否觸發了 fallback
+    backend_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class YOLOv9SourceStatus:
+    """YOLOv9 官方 source-repo 外部合約檢查結果。"""
+
+    source_root_env: str
+    weights_env: str
+    source_root_value: str | None
+    weights_value: str | None
+    source_root_path: str | None
+    weights_path: str | None
+    source_root_configured: bool
+    weights_configured: bool
+    source_root_ready: bool
+    weights_ready: bool
+    expected_source_files_ready: bool
+    missing_source_entries: list[str]
+    configured: bool
+    blocked_reason: str | None
+
+    @property
+    def source_adapter_ready(self) -> bool:
+        return self.source_root_ready and self.weights_ready and self.expected_source_files_ready
+
+    def to_metadata(self) -> dict[str, Any]:
+        return {
+            "yolov9_source_root_env": self.source_root_env,
+            "yolov9_weights_env": self.weights_env,
+            "yolov9_source_root": self.source_root_path or "<missing>",
+            "yolov9_weights": self.weights_path or "<missing>",
+            "yolov9_source_root_configured": self.source_root_configured,
+            "yolov9_weights_configured": self.weights_configured,
+            "yolov9_source_ready": self.source_root_ready and self.expected_source_files_ready,
+            "yolov9_source_root_ready": self.source_root_ready,
+            "yolov9_weights_ready": self.weights_ready,
+            "yolov9_expected_source_files_ready": self.expected_source_files_ready,
+            "yolov9_missing_source_entries": self.missing_source_entries,
+            "yolov9_source_adapter_ready": self.source_adapter_ready,
+            "blocked_reason": self.blocked_reason,
+        }
+
+
+def inspect_yolov9_source_contract(
+    *,
+    source_root_env: str = "YOLOV9_ROOT",
+    weights_env: str = "YOLOV9_WEIGHTS",
+) -> YOLOv9SourceStatus:
+    """檢查 operator 提供的 YOLOv9 source root 與 weights 是否符合外部合約。"""
+
+    source_root_value = os.getenv(source_root_env)
+    weights_value = os.getenv(weights_env)
+    source_root_configured = bool(source_root_value)
+    weights_configured = bool(weights_value)
+    source_root = Path(source_root_value).expanduser() if source_root_value else None
+    weights = Path(weights_value).expanduser() if weights_value else None
+    source_root_ready = bool(source_root and source_root.exists() and source_root.is_dir())
+    weights_ready = bool(weights and weights.exists() and weights.is_file())
+
+    missing_source_entries: list[str] = []
+    if source_root_ready and source_root is not None:
+        for entry in YOLOV9_REQUIRED_SOURCE_ENTRIES:
+            if not (source_root / entry).exists():
+                missing_source_entries.append(entry)
+    elif source_root_configured:
+        missing_source_entries = list(YOLOV9_REQUIRED_SOURCE_ENTRIES)
+
+    expected_source_files_ready = source_root_ready and not missing_source_entries
+    configured = source_root_configured or weights_configured
+    blocked_parts: list[str] = []
+    if not source_root_configured:
+        blocked_parts.append(f"{source_root_env} is not set")
+    elif not source_root_ready:
+        blocked_parts.append(f"{source_root_env} path is missing or not a directory")
+    if source_root_ready and missing_source_entries:
+        blocked_parts.append("missing YOLOv9 source entries: " + ", ".join(missing_source_entries))
+    if not weights_configured:
+        blocked_parts.append(f"{weights_env} is not set")
+    elif not weights_ready:
+        blocked_parts.append(f"{weights_env} path is missing or not a file")
+
+    return YOLOv9SourceStatus(
+        source_root_env=source_root_env,
+        weights_env=weights_env,
+        source_root_value=source_root_value,
+        weights_value=weights_value,
+        source_root_path=str(source_root.resolve()) if source_root and source_root.exists() else (str(source_root) if source_root else None),
+        weights_path=str(weights.resolve()) if weights and weights.exists() else (str(weights) if weights else None),
+        source_root_configured=source_root_configured,
+        weights_configured=weights_configured,
+        source_root_ready=source_root_ready,
+        weights_ready=weights_ready,
+        expected_source_files_ready=expected_source_files_ready,
+        missing_source_entries=missing_source_entries,
+        configured=configured,
+        blocked_reason="; ".join(blocked_parts) if blocked_parts else None,
+    )
 
 
 # ════════════════════════════════════════════════════════════════
@@ -192,28 +286,75 @@ def _detections_from_yolo_like_results(raw_results: Any, conf_threshold: float) 
 
 
 class YOLOv9PerceptionBackend:
-    """YOLOv9 optional backend adapter.
+    """YOLOv9 官方 source-repo backend adapter.
 
-    此 adapter 先建立明確的 EdgePerception backend 入口；實際 YOLOv9
-    package/repository 來源仍由 operator 在 Phase 12C-YOLOv9-U 解鎖。
-    目前若缺少 dependency 或缺少相容推理 API，會讓 EdgePerception
-    走既有 graceful fallback，不會讓主流程崩潰。
+    此 adapter 不 vendor YOLOv9 source，也不要求本 repo 安裝假的
+    `yolov9` pip package。operator 必須透過 YOLOV9_ROOT / YOLOV9_WEIGHTS
+    指向外部官方 source repository 與選定 weights。
     """
 
-    def __init__(self, model_name: str, conf_threshold: float):
-        if not _HAS_YOLOV9 or _YOLOV9_MODULE is None:
-            raise RuntimeError("YOLOv9 optional dependency is required for YOLOv9 backend")
-        self._model_name = model_name
+    def __init__(
+        self,
+        model_name: str,
+        conf_threshold: float,
+        *,
+        source_status: YOLOv9SourceStatus,
+        img_size: int = 640,
+        iou_threshold: float = 0.45,
+        device: str = "auto",
+    ):
+        if not source_status.configured:
+            raise RuntimeError("YOLOv9 external source is not configured: set YOLOV9_ROOT and YOLOV9_WEIGHTS")
+        if not source_status.source_adapter_ready:
+            raise RuntimeError(f"YOLOv9 external source is blocked: {source_status.blocked_reason}")
+        self._source_status = source_status
+        self._model_name = Path(source_status.weights_path or model_name).name
         self._conf_threshold = conf_threshold
-        self._model = self._build_model(_YOLOV9_MODULE, model_name)
+        self._img_size = img_size
+        self._iou_threshold = iou_threshold
+        self._device_hint = device
+        self._model, self._device = self._build_model(source_status)
 
     @staticmethod
-    def _build_model(module: Any, model_name: str) -> Any:
-        for attr in ("YOLOv9", "YOLO"):
-            factory = getattr(module, attr, None)
-            if callable(factory):
-                return factory(model_name)
-        raise RuntimeError("YOLOv9 dependency is present but no supported YOLOv9/YOLO factory was found")
+    def _add_source_root_to_path(source_root: str) -> None:
+        if source_root not in sys.path:
+            sys.path.insert(0, source_root)
+
+    def _build_model(self, source_status: YOLOv9SourceStatus) -> tuple[Any, Any]:
+        source_root = source_status.source_root_path
+        weights = source_status.weights_path
+        if source_root is None or weights is None:
+            raise RuntimeError("YOLOv9 source root and weights must be resolved before model loading")
+        self._add_source_root_to_path(source_root)
+        try:
+            import torch  # type: ignore[import-untyped]
+            from models.common import DetectMultiBackend  # type: ignore[import-not-found]
+            from utils.torch_utils import select_device  # type: ignore[import-not-found]
+        except Exception as exc:
+            raise RuntimeError(f"YOLOv9 source import failed: {exc}") from exc
+
+        device_arg = "" if self._device_hint == "auto" else self._device_hint
+        device_obj = select_device(device_arg)
+        try:
+            model = DetectMultiBackend(weights, device=device_obj, fp16=False)
+            if hasattr(model, "eval"):
+                model.eval()
+            else:
+                getattr(model, "model", model).eval()
+            # 觸發極輕量 smoke，確認 weights 可被 target runtime 載入。
+            stride = int(getattr(model, "stride", 32) or 32)
+            smoke_size = max(stride, int(self._img_size))
+            dummy = torch.zeros(1, 3, smoke_size, smoke_size, device=device_obj)
+            with torch.no_grad():
+                if callable(model):
+                    _ = model(dummy)
+                elif hasattr(model, "model") and callable(model.model):
+                    _ = model.model(dummy)
+                else:
+                    raise RuntimeError("YOLOv9 DetectMultiBackend has no callable inference path")
+        except Exception as exc:
+            raise RuntimeError(f"YOLOv9 weights/model smoke failed: {exc}") from exc
+        return model, device_obj
 
     @property
     def model_name(self) -> str:
@@ -221,15 +362,50 @@ class YOLOv9PerceptionBackend:
 
     def detect(self, frame: np.ndarray) -> tuple[list[Detection], int]:
         start = time.monotonic()
-        if callable(self._model):
-            raw_results = self._model(frame)
-        elif hasattr(self._model, "predict"):
-            raw_results = self._model.predict(frame)
-        else:
-            raise RuntimeError("YOLOv9 model object has no callable or predict interface")
-        detections = _detections_from_yolo_like_results(raw_results, self._conf_threshold)
+        try:
+            import torch  # type: ignore[import-untyped]
+            from utils.general import non_max_suppression  # type: ignore[import-not-found]
+        except Exception as exc:
+            raise RuntimeError(f"YOLOv9 inference dependencies unavailable: {exc}") from exc
+
+        # 第一版採用簡化前處理；正式 runtime calibration 可在後續 phase 接入
+        # official letterbox/scale_boxes，但這裡已足以驗證 no-fallback adapter path。
+        image = frame[:, :, ::-1].transpose(2, 0, 1)
+        image = np.ascontiguousarray(image)
+        tensor = torch.from_numpy(image).to(self._device).float() / 255.0
+        if tensor.ndimension() == 3:
+            tensor = tensor.unsqueeze(0)
+        with torch.no_grad():
+            raw = self._model(tensor) if callable(self._model) else self._model.model(tensor)
+        prediction = raw[0] if isinstance(raw, (list, tuple)) else raw
+        nms_results = non_max_suppression(
+            prediction,
+            self._conf_threshold,
+            self._iou_threshold,
+            classes=None,
+            agnostic=False,
+        )
+        detections: list[Detection] = []
+        names = getattr(self._model, "names", {})
+        if nms_results:
+            for det in nms_results[0]:
+                x1, y1, x2, y2, conf, cls_id = det.tolist()
+                class_id = int(cls_id)
+                label = names.get(class_id, f"class_{class_id}") if isinstance(names, dict) else f"class_{class_id}"
+                detections.append(
+                    Detection(
+                        label=label,
+                        confidence=float(conf),
+                        bbox=(float(x1), float(y1), float(x2), float(y2)),
+                        class_id=class_id,
+                    )
+                )
         inf_ms = int((time.monotonic() - start) * 1000)
         return detections, inf_ms
+
+    @property
+    def source_status(self) -> YOLOv9SourceStatus:
+        return self._source_status
 
 
 class RTDETRPerceptionBackend:
@@ -398,16 +574,35 @@ class EdgePerception:
         
         backend_type = cfg.perception.backend.lower()
         model_name = cfg.perception.model_name
-        conf = cfg.perception.confidence_threshold
+        conf = (
+            cfg.perception.yolov9_confidence_threshold
+            if backend_type == "yolov9"
+            else cfg.perception.confidence_threshold
+        )
         
         self._backend: PerceptionBackend
         self._fallback_used = False
+        self._fallback_reason: str | None = None
+        self._requested_backend = backend_type
+        self._backend_metadata: dict[str, Any] = {}
         
         try:
             if backend_type == "yolo":
                 self._backend = YOLOPerceptionBackend(model_name, conf)
             elif backend_type == "yolov9":
-                self._backend = YOLOv9PerceptionBackend(model_name, conf)
+                source_status = inspect_yolov9_source_contract(
+                    source_root_env=cfg.perception.yolov9_source_root_env,
+                    weights_env=cfg.perception.yolov9_weights_env,
+                )
+                self._backend_metadata = source_status.to_metadata()
+                self._backend = YOLOv9PerceptionBackend(
+                    model_name,
+                    conf,
+                    source_status=source_status,
+                    img_size=cfg.perception.yolov9_default_img_size,
+                    iou_threshold=cfg.perception.yolov9_iou_threshold,
+                    device=cfg.perception.yolov9_device,
+                )
             elif backend_type == "rtdetr":
                 self._backend = RTDETRPerceptionBackend(model_name, conf)
             else:
@@ -415,6 +610,9 @@ class EdgePerception:
         except Exception as e:
             logger.error("無法初始化 PerceptionBackend '%s': %s", backend_type, e)
             logger.info("Graceful fallback to DummyPerceptionBackend")
+            self._fallback_reason = str(e)
+            if backend_type == "yolov9":
+                self._backend_metadata.setdefault("blocked_reason", str(e))
             self._backend = DummyPerceptionBackend()
             self._fallback_used = True
             
@@ -486,8 +684,21 @@ class EdgePerception:
             backend=self._backend.__class__.__name__,
             model_name=self._backend.model_name,
             fallback_used=self._fallback_used,
+            backend_metadata=dict(self._backend_metadata),
         )
         return result
+
+    @property
+    def fallback_reason(self) -> str | None:
+        return self._fallback_reason
+
+    @property
+    def requested_backend(self) -> str:
+        return self._requested_backend
+
+    @property
+    def backend_metadata(self) -> dict[str, Any]:
+        return dict(self._backend_metadata)
 
     @property
     def tracker_id_switch_count(self) -> int:
@@ -572,7 +783,7 @@ if __name__ == "__main__":
     if args.test == "yolo":
         p_model = "yolov8n.pt"
     elif args.test == "yolov9":
-        p_model = "yolov9"
+        p_model = os.getenv("YOLOV9_WEIGHTS", "yolov9")
     elif args.test == "rtdetr":
         p_model = "rtdetr-l.pt"
     
@@ -595,6 +806,23 @@ if __name__ == "__main__":
         logger.info(f" - Tracks: {len(result.tracks)}")
         for i, t in enumerate(result.tracks):
             logger.info(f"   [{i}] id={t.track_id} status={t.status} age={t.age_frames}")
+
+        if args.test == "yolov9":
+            meta = perception.backend_metadata
+            blocked_reason = perception.fallback_reason or meta.get("blocked_reason")
+            no_fallback_verified = not result.fallback_used
+            print("backend=yolov9")
+            print(f"runtime_backend={result.backend}")
+            print(f"yolov9_source_root={meta.get('yolov9_source_root', '<missing>')}")
+            print(f"yolov9_weights={meta.get('yolov9_weights', '<missing>')}")
+            print(f"yolov9_source_ready={str(bool(meta.get('yolov9_source_ready'))).lower()}")
+            print(f"yolov9_source_root_ready={str(bool(meta.get('yolov9_source_root_ready'))).lower()}")
+            print(f"yolov9_weights_ready={str(bool(meta.get('yolov9_weights_ready'))).lower()}")
+            print(f"yolov9_expected_source_files_ready={str(bool(meta.get('yolov9_expected_source_files_ready'))).lower()}")
+            print(f"edge_yolov9_command_passed=true")
+            print(f"edge_yolov9_fallback_used={str(result.fallback_used).lower()}")
+            print(f"edge_yolov9_no_fallback_verified={str(no_fallback_verified).lower()}")
+            print(f"blocked_reason={blocked_reason or 'null'}")
             
         logger.info("[PASS] Edge Perception 測試成功！")
     except Exception as e:

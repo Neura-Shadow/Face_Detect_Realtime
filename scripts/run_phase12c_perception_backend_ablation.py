@@ -3,9 +3,10 @@ Phase 12C perception backend ablation scaffold.
 
 This runner prepares a controlled 5-route x 3-perception-backend matrix for
 later CARLA runtime work. It intentionally does not import CARLA and does not
-start a CARLA server. Optional backends are preflighted at import level only;
-when YOLOv9 or RT-DETR dependencies are missing, rows are marked
-``backend_unavailable`` instead of failing the whole scaffold.
+start a CARLA server. Optional backends are preflighted before command
+scaffolding; YOLOv9 uses the official external source-root adapter gate, and
+unavailable optional rows are marked ``backend_unavailable`` instead of failing
+the whole scaffold.
 """
 
 from __future__ import annotations
@@ -109,10 +110,10 @@ BACKEND_MATRIX = (
         backend="yolov9",
         model_name="yolov9",
         optional=True,
-        dependency_name="yolov9",
-        dependency_label="YOLOv9 optional dependency",
+        dependency_name="yolov9_source_adapter",
+        dependency_label="YOLOv9 external source adapter",
         runtime_backend_supported=True,
-        notes="Optional YOLOv9 backend; mark backend_unavailable when dependency is missing.",
+        notes="Optional YOLOv9 backend; mark backend_unavailable until YOLOV9_ROOT/YOLOV9_WEIGHTS verify no-fallback source adapter readiness.",
     ),
     BackendSpec(
         mode="rt_detr_optional",
@@ -189,6 +190,50 @@ def _dependency_import_available(spec: BackendSpec, python_executable: str) -> b
     return completed.returncode == 0
 
 
+def _parse_key_values(text: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        if key and all(ch.isalnum() or ch == "_" for ch in key):
+            values[key] = value.strip()
+    return values
+
+
+def _yolov9_source_adapter_available(python_executable: str) -> bool:
+    try:
+        completed = subprocess.run(
+            [python_executable, "-m", "workers.core.edge_perception", "--test", "yolov9"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=180.0,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    values = _parse_key_values(completed.stdout + "\n" + completed.stderr)
+    return (
+        completed.returncode == 0
+        and values.get("edge_yolov9_command_passed", "").lower() == "true"
+        and values.get("edge_yolov9_fallback_used", "").lower() == "false"
+        and values.get("edge_yolov9_no_fallback_verified", "").lower() == "true"
+    )
+
+
+def _backend_available(backend: BackendSpec, python_executable: str) -> bool:
+    if backend.dependency_name is None:
+        return True
+    if backend.mode == "yolov9_optional":
+        return _yolov9_source_adapter_available(python_executable)
+    return _dependency_import_available(backend, python_executable)
+
+
 def _build_runtime_command(args: argparse.Namespace, route: RouteSpec, backend: BackendSpec) -> list[str]:
     return [
         args.python_executable,
@@ -240,7 +285,7 @@ def _row_from_matrix(
     notes = backend.notes
     if not backend_available:
         if not dependency_available:
-            notes = f"{notes} dependency_missing={backend.dependency_name}"
+            notes = f"{notes} dependency_or_source_adapter_unavailable={backend.dependency_name}"
         if not backend.runtime_backend_supported:
             notes = f"{notes} runtime_backend_supported=false"
     return {
@@ -271,7 +316,7 @@ def _row_from_matrix(
 def _build_rows(args: argparse.Namespace) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     availability = {
-        backend.mode: _dependency_import_available(backend, args.python_executable)
+        backend.mode: _backend_available(backend, args.python_executable)
         for backend in BACKEND_MATRIX
     }
     for route in ROUTE_MATRIX:
@@ -318,7 +363,7 @@ def _summary_payload(args: argparse.Namespace, rows: list[dict[str, Any]]) -> di
                 if row["perception_backend_mode"] == "dummy"
             ),
             "optional_unavailable_rows_do_not_fail_scaffold": True,
-            "yolov9_rows_match_dependency_probe": all(
+            "yolov9_rows_match_source_adapter_probe": all(
                 (row["result"] != "backend_unavailable")
                 if row["dependency_import_available"]
                 else row["result"] == "backend_unavailable"
@@ -329,6 +374,12 @@ def _summary_payload(args: argparse.Namespace, rows: list[dict[str, Any]]) -> di
             "carla_import_required": False,
             "carla_server_required": False,
         },
+        "yolov9_source_adapter_probe_required": True,
+        "yolov9_source_adapter_verified": any(
+            row["dependency_import_available"] is True
+            for row in rows
+            if row["perception_backend_mode"] == "yolov9_optional"
+        ),
         "benchmark_boundary_prepared": True,
         "benchmark_boundary_scope": BENCHMARK_BOUNDARY_SCOPE,
         **BOUNDARY_FIELDS,

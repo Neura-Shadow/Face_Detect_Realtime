@@ -178,6 +178,12 @@ class PerceptionConfig:
     backend: str = "dummy"
     model_name: str = "dummy"
     confidence_threshold: float = 0.5
+    yolov9_source_root_env: str = "YOLOV9_ROOT"
+    yolov9_weights_env: str = "YOLOV9_WEIGHTS"
+    yolov9_default_img_size: int = 640
+    yolov9_confidence_threshold: float = 0.25
+    yolov9_iou_threshold: float = 0.45
+    yolov9_device: str = "auto"
 
 
 # ════════════════════════════════════════════════════════════════
@@ -296,6 +302,12 @@ class AgentConfig:
             backend=_env("PERCEPTION_BACKEND", _yaml_nested("perception.backend", "dummy")),
             model_name=_env("DETECTION_MODEL", _yaml_nested("perception.model_name", "yolov8n.pt")),
             confidence_threshold=float(_env("PERCEPTION_CONFIDENCE", _yaml_nested("perception.confidence_threshold", 0.5))),
+            yolov9_source_root_env=_env("YOLOV9_SOURCE_ROOT_ENV", _yaml_nested("perception.yolov9.source_root_env", "YOLOV9_ROOT")),
+            yolov9_weights_env=_env("YOLOV9_WEIGHTS_ENV", _yaml_nested("perception.yolov9.weights_env", "YOLOV9_WEIGHTS")),
+            yolov9_default_img_size=int(_env("YOLOV9_DEFAULT_IMG_SIZE", _yaml_nested("perception.yolov9.default_img_size", 640))),
+            yolov9_confidence_threshold=float(_env("YOLOV9_CONFIDENCE_THRESHOLD", _yaml_nested("perception.yolov9.confidence_threshold", 0.25))),
+            yolov9_iou_threshold=float(_env("YOLOV9_IOU_THRESHOLD", _yaml_nested("perception.yolov9.iou_threshold", 0.45))),
+            yolov9_device=_env("YOLOV9_DEVICE", _yaml_nested("perception.yolov9.device", "auto")),
         )
 
         embedding_cfg = EmbeddingConfig(

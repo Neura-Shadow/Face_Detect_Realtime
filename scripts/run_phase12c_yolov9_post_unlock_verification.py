@@ -1,10 +1,11 @@
 """
 Phase 12C-YOLOv9-V post-unlock verification gate.
 
-This runner verifies the operator-managed YOLOv9 unlock after dependencies have
-already been installed in the dedicated CARLA Python 3.12 runtime. It never
-installs packages, never edits baseline requirements, never starts CARLA, and
-never claims CARLA Leaderboard / route benchmark / infraction benchmark status.
+This runner verifies the operator-managed YOLOv9 unlock after dependencies or
+the official external YOLOv9 source-root contract have been prepared in the
+dedicated CARLA Python 3.12 runtime. It never installs packages, never edits
+baseline requirements, never starts CARLA, and never claims CARLA Leaderboard /
+route benchmark / infraction benchmark status.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ DEFAULT_CARLA_PYTHON = r"D:\CARLA\envs\ma-vlna-carla312\python.exe"
 DEFAULT_CARLA_ROOT = Path(r"D:\CARLA\packages\CARLA_0.9.16")
 DEFAULT_DEPENDENCY_MODULE = "yolov9"
 DEFAULT_PIP_PACKAGE = "yolov9"
+EXPECTED_SOURCE_ENTRIES = ("detect.py", "detect_dual.py", "models", "utils")
 
 PHASE = "Phase 12C-YOLOv9-V"
 STATUS_VERIFIED = "yolov9_post_unlock_verified"
@@ -247,9 +249,57 @@ def _phase12b_dry_run_command(args: argparse.Namespace) -> list[str]:
     ]
 
 
+def _parse_key_values(text: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        if key and all(ch.isalnum() or ch == "_" for ch in key):
+            values[key] = value.strip()
+    return values
+
+
+def _edge_key_values(edge_result: CommandResult) -> dict[str, str]:
+    stdout = Path(edge_result.stdout_path).read_text(encoding="utf-8", errors="replace")
+    stderr = Path(edge_result.stderr_path).read_text(encoding="utf-8", errors="replace")
+    return _parse_key_values(stdout + "\n" + stderr)
+
+
 def _edge_fallback_used(edge_result: CommandResult) -> bool:
+    values = _edge_key_values(edge_result)
+    if "edge_yolov9_fallback_used" in values:
+        return values["edge_yolov9_fallback_used"].lower() == "true"
     text = f"{edge_result.stdout_tail}\n{edge_result.stderr_tail}".lower()
     return "fallback used: true" in text or "graceful fallback" in text
+
+
+def _source_contract(args: argparse.Namespace) -> dict[str, Any]:
+    source_root_value = os.getenv(args.source_root_env)
+    weights_value = os.getenv(args.weights_env)
+    source_root = Path(source_root_value).expanduser() if source_root_value else None
+    weights = Path(weights_value).expanduser() if weights_value else None
+    source_root_ready = bool(source_root and source_root.exists() and source_root.is_dir())
+    weights_ready = bool(weights and weights.exists() and weights.is_file())
+    missing_entries: list[str] = []
+    if source_root_ready and source_root is not None:
+        missing_entries = [entry for entry in EXPECTED_SOURCE_ENTRIES if not (source_root / entry).exists()]
+    elif source_root_value:
+        missing_entries = list(EXPECTED_SOURCE_ENTRIES)
+    return {
+        "source_root_env": args.source_root_env,
+        "weights_env": args.weights_env,
+        "yolov9_source_root": str(source_root.resolve()) if source_root and source_root.exists() else (str(source_root) if source_root else None),
+        "yolov9_weights": str(weights.resolve()) if weights and weights.exists() else (str(weights) if weights else None),
+        "yolov9_source_root_configured": bool(source_root_value),
+        "yolov9_weights_configured": bool(weights_value),
+        "yolov9_source_root_ready": source_root_ready,
+        "yolov9_weights_ready": weights_ready,
+        "yolov9_expected_source_files_ready": source_root_ready and not missing_entries,
+        "yolov9_missing_source_entries": missing_entries,
+    }
 
 
 def _extract_experiment_dir(result: CommandResult) -> str | None:
@@ -295,8 +345,10 @@ def _build_summary(
     import_ready = by_name["carla312_import_yolov9_dependency"].exit_code == 0
     pip_ready = by_name["carla312_pip_show_yolov9_dependency"].exit_code == 0
     edge_result = by_name["carla312_edge_yolov9_no_fallback_probe"]
+    edge_values = _edge_key_values(edge_result)
     edge_passed = edge_result.exit_code == 0
     edge_fallback = _edge_fallback_used(edge_result)
+    edge_no_fallback = edge_passed and edge_values.get("edge_yolov9_no_fallback_verified", str(not edge_fallback)).lower() == "true" and not edge_fallback
     phase12b_cli_ready = by_name["phase12b_yolov9_dry_run_command_probe"].exit_code == 0
     phase11m_cli_ready = by_name["phase11m_yolov9_cli_parser_probe"].exit_code == 0
     phase11k_cli_ready = by_name["phase11k_yolov9_cli_parser_probe"].exit_code == 0
@@ -304,11 +356,28 @@ def _build_summary(
     phase12c_rows_available, phase12c_unavailable_count, phase12c_run_dir = _phase12c_yolov9_rows_available(
         by_name["phase12c_yolov9_rows_refresh"]
     )
+    source_contract = _source_contract(args)
+    source_adapter_verified = all(
+        [
+            source_contract["yolov9_source_root_configured"],
+            source_contract["yolov9_weights_configured"],
+            source_contract["yolov9_source_root_ready"],
+            source_contract["yolov9_expected_source_files_ready"],
+            source_contract["yolov9_weights_ready"],
+            edge_passed,
+            not edge_fallback,
+            edge_no_fallback,
+        ]
+    )
+    dependency_ready = (
+        import_ready and pip_ready
+        if args.unlock_mode == "package"
+        else source_adapter_verified
+    )
     post_unlock_verified = all(
         [
             Path(args.python_executable).exists(),
-            import_ready,
-            pip_ready,
+            dependency_ready,
             edge_passed,
             not edge_fallback,
             phase12b_cli_ready,
@@ -321,11 +390,13 @@ def _build_summary(
     assertions = {
         "target_python_exists": Path(args.python_executable).exists(),
         "carla_root_exists": args.carla_root.exists(),
+        "unlock_mode": args.unlock_mode,
         "yolov9_import_ready": import_ready,
         "yolov9_pip_metadata_ready": pip_ready,
+        "source_adapter_verified": source_adapter_verified,
         "edge_yolov9_command_passed": edge_passed,
         "edge_yolov9_fallback_used": edge_fallback,
-        "edge_yolov9_no_fallback_verified": edge_passed and not edge_fallback,
+        "edge_yolov9_no_fallback_verified": edge_no_fallback,
         "phase12b_yolov9_dry_run_command_ready": phase12b_cli_ready,
         "phase11m_yolov9_cli_ready": phase11m_cli_ready,
         "phase11k_yolov9_cli_ready": phase11k_cli_ready,
@@ -340,6 +411,7 @@ def _build_summary(
     return {
         "phase": PHASE,
         "status": STATUS_VERIFIED if post_unlock_verified else STATUS_BLOCKED,
+        "unlock_mode": args.unlock_mode,
         "post_unlock_verification_attempted": True,
         "post_unlock_verified": post_unlock_verified,
         "require_verified_requested": args.require_verified,
@@ -352,13 +424,15 @@ def _build_summary(
         "pip_package": args.pip_package,
         "perception_backend": "yolov9",
         "perception_backend_mode": "yolov9_optional",
-        "dependency_ready": import_ready and pip_ready,
-        "dependency_missing": not (import_ready and pip_ready),
+        "dependency_ready": dependency_ready,
+        "dependency_missing": not dependency_ready,
         "yolov9_import_ready": import_ready,
         "yolov9_pip_metadata_ready": pip_ready,
+        "source_adapter_verified": source_adapter_verified,
+        **source_contract,
         "edge_yolov9_command_passed": edge_passed,
         "edge_yolov9_fallback_used": edge_fallback,
-        "edge_yolov9_no_fallback_verified": edge_passed and not edge_fallback,
+        "edge_yolov9_no_fallback_verified": edge_no_fallback,
         "phase12b_yolov9_dry_run_command_ready": phase12b_cli_ready,
         "phase11m_yolov9_cli_ready": phase11m_cli_ready,
         "phase11k_yolov9_cli_ready": phase11k_cli_ready,
@@ -375,7 +449,7 @@ def _build_summary(
         "assertions": assertions,
         "blocked_reason": None
         if post_unlock_verified
-        else "YOLOv9 dependency or no-fallback backend readiness is not verified in the target CARLA Python environment.",
+        else "YOLOv9 package-mode dependency or external-source no-fallback readiness is not verified in the target CARLA Python environment.",
         "benchmark_boundary_prepared": True,
         "benchmark_boundary_scope": BENCHMARK_BOUNDARY_SCOPE,
         **BOUNDARY_FIELDS,
@@ -418,6 +492,9 @@ def _write_environment(path: Path, args: argparse.Namespace) -> None:
             "carla_root_exists": args.carla_root.exists(),
             "dependency_module": args.dependency_module,
             "pip_package": args.pip_package,
+            "unlock_mode": args.unlock_mode,
+            "source_root_env": args.source_root_env,
+            "weights_env": args.weights_env,
         },
     )
 
@@ -432,11 +509,15 @@ Status:
 ```
 
 ```text
+unlock_mode={summary["unlock_mode"]}
 post_unlock_verified={str(summary["post_unlock_verified"]).lower()}
 require_verified_requested={str(summary["require_verified_requested"]).lower()}
 strict_gate_exit_code={summary["strict_gate_exit_code"]}
 yolov9_import_ready={str(summary["yolov9_import_ready"]).lower()}
 yolov9_pip_metadata_ready={str(summary["yolov9_pip_metadata_ready"]).lower()}
+source_adapter_verified={str(summary["source_adapter_verified"]).lower()}
+yolov9_source_root_configured={str(summary["yolov9_source_root_configured"]).lower()}
+yolov9_weights_configured={str(summary["yolov9_weights_configured"]).lower()}
 edge_yolov9_command_passed={str(summary["edge_yolov9_command_passed"]).lower()}
 edge_yolov9_fallback_used={str(summary["edge_yolov9_fallback_used"]).lower()}
 phase12c_yolov9_rows_available={str(summary["phase12c_yolov9_rows_available"]).lower()}
@@ -446,9 +527,10 @@ carla_server_started=false
 runtime_confirmation_executed=false
 ```
 
-This gate verifies the YOLOv9 unlock after the operator has installed the
-selected dependency in the CARLA Python 3.12 runtime. A blocked result means
-the environment is not unlocked yet; it is not converted into a runtime pass.
+This gate verifies the YOLOv9 unlock after the operator has prepared either
+package mode or the official external source-root mode in the CARLA Python 3.12
+runtime. A blocked result means the environment is not unlocked yet; it is not
+converted into a runtime pass.
 """
     path.write_text(body, encoding="utf-8")
 
@@ -462,6 +544,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--base-python", default="python")
     parser.add_argument("--dependency-module", default=DEFAULT_DEPENDENCY_MODULE)
     parser.add_argument("--pip-package", default=DEFAULT_PIP_PACKAGE)
+    parser.add_argument("--unlock-mode", choices=["external_source", "package"], default="external_source")
+    parser.add_argument("--source-root-env", default="YOLOV9_ROOT")
+    parser.add_argument("--weights-env", default="YOLOV9_WEIGHTS")
     parser.add_argument("--timeout-sec", type=float, default=120.0)
     parser.add_argument("--require-verified", action="store_true")
     return parser
@@ -510,6 +595,7 @@ def main(argv: list[str] | None = None) -> int:
                 "README.md",
                 "raw_outputs/",
             ],
+            "unlock_mode": summary["unlock_mode"],
             "post_unlock_verification_attempted": True,
             "post_unlock_verified": summary["post_unlock_verified"],
             "require_verified_requested": args.require_verified,

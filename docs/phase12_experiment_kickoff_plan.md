@@ -515,7 +515,7 @@ available_row_count=5
 backend_unavailable_count=10
 ```
 
-本機目前在 target CARLA Python 3.12 runtime 中未具備 YOLOv9 optional dependency，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 正確標記為 `backend_unavailable`。這是 Phase 12C 的預期語義，不是 scaffold failure；optional backend missing 不得阻塞 dummy baseline rows。Dependency preflight 已改為使用 `--python-executable` 指向的 target runtime。
+本機目前在 target CARLA Python 3.12 runtime 中尚未完成 YOLOv9 source adapter no-fallback verification，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 正確標記為 `backend_unavailable`。這是 Phase 12C 的預期語義，不是 scaffold failure；optional backend missing 或 source adapter 未驗證不得阻塞 dummy baseline rows。YOLOv9 preflight 已改為使用 `--python-executable` 指向的 target runtime。
 
 Boundary:
 
@@ -673,7 +673,7 @@ Phase 12C-YOLOv9-B 只證明 EdgePerception 已有 `backend=yolov9` / `--test yo
 ## Phase 12C-YOLOv9-V Addendum - YOLOv9 Post-Unlock Verification
 
 ```text
-Phase 12C-YOLOv9-V Blocked — strict post-unlock verification was executed, but YOLOv9 no-fallback readiness could not be verified because the selected YOLOv9 package is not installed/importable in the CARLA Python 3.12 runtime.
+Phase 12C-YOLOv9-V Blocked — strict post-unlock verification was executed, but YOLOv9 no-fallback readiness could not be verified because `YOLOV9_ROOT` and `YOLOV9_WEIGHTS` are not configured in the CARLA Python 3.12 runtime.
 ```
 
 Generated post-unlock verification evidence:
@@ -714,4 +714,49 @@ Phase 12C-YOLOv9-V also verifies that the runner command path accepts `--percept
 
 ## Next Implementation Slice
 
-Phase 12 後續應先由 operator 顯式選定 YOLOv9 package 或 repository install source，執行 `D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install <YOLOV9_PACKAGE_SPEC>`，再重跑 `python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified`。只有當 `post_unlock_verified=true` 且 `edge_yolov9_fallback_used=false` 後，才進入 YOLOv9 runtime confirmation。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。
+## Phase 12C-YOLOv9-SRC Addendum - Official YOLOv9 Source Adapter Prepared
+
+```text
+Phase 12C-YOLOv9-SRC Prepared — official YOLOv9 external source adapter, environment contract, and no-fallback verification gate are implemented.
+```
+
+Phase 12C-YOLOv9-SRC 將官方 YOLOv9 路徑從 package-only readiness 改為 external source-root readiness。operator 必須提供：
+
+```text
+YOLOV9_ROOT=<path to official YOLOv9 source repository>
+YOLOV9_WEIGHTS=<path to selected YOLOv9 weights>
+```
+
+Local source-adapter evidence:
+
+```text
+post_unlock_external_source_evidence_dir=experiments\phase12\20260629T134856Z-1
+source_adapter_evidence_dir=experiments\phase12\20260629T134856Z
+yolov9_rows_refresh_dir=experiments\phase12\20260629T134856Z-1-2
+source_adapter_verified=false
+yolov9_source_root_configured=false
+yolov9_weights_configured=false
+edge_yolov9_command_passed=true
+edge_yolov9_fallback_used=true
+edge_yolov9_no_fallback_verified=false
+runtime_confirmation_executed=false
+auto_install_performed=false
+baseline_requirements_modified=false
+carla_server_started=false
+```
+
+Manual operator setup example:
+
+```powershell
+$env:YOLOV9_ROOT = "D:\AIModels\yolov9"
+$env:YOLOV9_WEIGHTS = "D:\AIModels\yolov9\yolov9-c-converted.pt"
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install -r "$env:YOLOV9_ROOT\requirements.txt"
+python scripts\run_phase12c_yolov9_source_adapter_verification.py --output-dir experiments\phase12 --require-verified
+python scripts\run_phase12c_perception_backend_ablation.py --perception-backend-mode yolov9_optional --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --output-dir experiments\phase12
+```
+
+YOLOv9 source repo and weights are not committed, not vendored, and not packaged into MA-VLNA. This remains preparation and no-fallback verification only; it does not start CARLA, does not execute YOLOv9 route runtime confirmation, and does not claim YOLOv9 accuracy, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Next Implementation Slice
+
+Phase 12 後續應先由 operator 顯式提供官方 YOLOv9 source repo 與 weights，讓 `source_adapter_verified=true` 且 `edge_yolov9_fallback_used=false`。只有 source adapter gate 通過後，才進入 YOLOv9 runtime confirmation。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。

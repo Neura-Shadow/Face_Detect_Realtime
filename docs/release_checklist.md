@@ -52,8 +52,9 @@
 - [x] **Phase 12C Perception Backend Ablation Prepared**: 已建立 5 calibrated routes x 3 perception backend modes 的 scaffold；固定 `grp_follower`，dummy rows 可用，YOLOv9/RT-DETR optional rows 在缺少 dependency 時標記為 `backend_unavailable`，不阻塞整體 scaffold。
 - [x] **Phase 12C-DUMMY Dummy Backend Runtime Confirmation**: 已在真實 CARLA runtime 執行 5 條 calibrated `grp_follower + dummy` rows；5/5 rows reached goal，`collision_count_total=0`，`lane_invasion_count_total=83`。此為 dummy backend smoke confirmation，不是 infraction benchmark。
 - [x] **Phase 12C-YOLOv9-U YOLOv9 Optional Dependency Unlock Prepared**: 已針對 CARLA Python 3.12 runtime 產生 YOLOv9 dependency / EdgePerception backend support preflight evidence、manual unlock commands 與 post-unlock verification commands；目前 dependency_missing，但 `edge_yolov9_command_supported=true` 且透過 graceful fallback 通過，未自動安裝，未執行 YOLOv9 runtime confirmation。
-- [x] **Phase 12C-YOLOv9-B EdgePerception YOLOv9 Backend Adapter Prepared**: 已新增 `YOLOv9PerceptionBackend` adapter path、`backend="yolov9"` factory branch、CLI `--test yolov9` 與 dedicated adapter evidence；base Python 與 CARLA Python 3.12 均可執行 `EdgePerception --test yolov9` 並在 dependency missing 時安全 fallback。此階段不是 YOLOv9 runtime pass。
+- [x] **Phase 12C-YOLOv9-B EdgePerception YOLOv9 Backend Adapter Prepared**: 已新增 `YOLOv9PerceptionBackend` adapter path、`backend="yolov9"` factory branch、CLI `--test yolov9` 與 dedicated adapter evidence；base Python 與 CARLA Python 3.12 均可執行 `EdgePerception --test yolov9`，並在 source/weights 未配置時安全 fallback。此階段不是 YOLOv9 runtime pass。
 - [x] **Phase 12C-YOLOv9-V YOLOv9 Post-Unlock Verification Blocked**: 已新增 strict post-unlock verification runner，檢查 CARLA Python 3.12 import、pip metadata、EdgePerception no-fallback、Phase 12B/11M/11K/baseline mapper `yolov9` CLI wiring 與 Phase 12C rows refresh；目前權威 evidence `experiments\phase12\20260629T125701Z` 顯示本機仍缺可安裝/可匯入的 YOLOv9 dependency，因此 `post_unlock_verified=false`，`--require-verified` strict gate 實測 exit code 1，並保留 blocked evidence，不自動安裝。
+- [x] **Phase 12C-YOLOv9-SRC Official YOLOv9 Source Adapter Prepared**: 已將 YOLOv9 官方路徑改為 external source-root contract，新增 `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` 設定、source entries / weights / no-fallback verification gate 與 source-adapter evidence；目前本機未配置 source/weights，因此 `source_adapter_verified=false`，YOLOv9 rows 維持 `backend_unavailable`。不提交 source repo、不提交 weights、不啟動 CARLA、不宣稱 YOLOv9 runtime pass。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -80,11 +81,12 @@
 - **Source Commit Boundary**: Phase 11O 已準備 source-only commit boundary 與 Draft PR body；runtime logs、release artifacts、local envs 與 `.env` 仍不得進入 git。遠端 Draft PR、git tag 與 push 需另行執行。
 - **Experiment Kickoff Scaffold**: Phase 12 已建立 controlled experiment planning scaffold；`experiments/phase12/*/runs/` 與 `experiments/phase12/*/raw_outputs/` 不得提交，kickoff 不等於正式實驗結果。
 - **Route Scaling Experiment**: Phase 12A 已產生 real CARLA 5-route aggregate evidence；`passed_count=4` 與 `route_05 goal_reach_blocked` 只代表 controlled fixed spawn-pair smoke 結果，不等同 CARLA Leaderboard、正式 route benchmark 或 infraction benchmark。
-- **Perception Backend Ablation Scaffold**: Phase 12C 只做 backend availability preflight 與 command scaffold；`backend_unavailable` 是 optional dependency missing 的結構化狀態，不代表整體 Phase 12C failure，也不代表 YOLOv9 / RT-DETR runtime 已驗證。
+- **Perception Backend Ablation Scaffold**: Phase 12C 只做 backend availability preflight 與 command scaffold；`backend_unavailable` 是 optional dependency missing 或 source adapter 未驗證的結構化狀態，不代表整體 Phase 12C failure，也不代表 YOLOv9 / RT-DETR runtime 已驗證。
 - **Dummy Backend Runtime Confirmation**: Phase 12C-DUMMY 已確認 `dummy` backend 可在 fixed calibrated routes 中完成 5/5 goal-reach smoke；lane invasion counts 保留為 sensor metrics，不升格為 infraction benchmark。
 - **YOLOv9 Optional Dependency Unlock**: Phase 12C-YOLOv9-U 只準備 YOLOv9 dependency/backend unlock，不修改 baseline requirements，不自動安裝 dependencies，不啟動 CARLA，也不宣稱 YOLOv9 runtime pass。Phase 12C-YOLO-U 是早期 generic YOLO unlock preparation 歷史紀錄。
-- **YOLOv9 Backend Adapter**: Phase 12C-YOLOv9-B 只證明 EdgePerception 已註冊 `backend="yolov9"` 與 `--test yolov9` adapter path；目前仍因 optional dependency missing 而 fallback，不代表 YOLOv9 real inference 或模型準確率驗證。
+- **YOLOv9 Backend Adapter**: Phase 12C-YOLOv9-B 只證明 EdgePerception 已註冊 `backend="yolov9"` 與 `--test yolov9` adapter path；目前仍因 source/weights 未配置而 fallback，不代表 YOLOv9 real inference 或模型準確率驗證。
 - **YOLOv9 Post-Unlock Verification**: Phase 12C-YOLOv9-V 只驗證 operator unlock 之後的 dependency/no-fallback readiness；權威 evidence `experiments\phase12\20260629T125701Z` 記錄 `yolov9_import_ready=false`、`yolov9_pip_metadata_ready=false`、`edge_yolov9_fallback_used=true`，且 strict gate exit code 1，因此 blocked，不代表 runtime pass。
+- **YOLOv9 Source Adapter**: Phase 12C-YOLOv9-SRC 只準備官方 YOLOv9 external source adapter 與 no-fallback gate；YOLOv9 source repo 與 weights 必須由 operator 在本機提供，且不得提交到 git。`experiments\phase12\20260629T134856Z` 記錄目前 `source_adapter_verified=false`。
 
 ---
 
@@ -138,6 +140,7 @@
 | **YOLOv9 Optional Dependency Unlock** | — | 100% | — | 🟡 Phase 12C-YOLOv9-U Prepared |
 | **YOLOv9 Backend Adapter** | — | 100% | — | 🟡 Phase 12C-YOLOv9-B Prepared |
 | **YOLOv9 Post-Unlock Verification** | — | 100% | — | 🟠 Phase 12C-YOLOv9-V Blocked |
+| **YOLOv9 Source Adapter Verification** | — | 100% | — | 🟡 Phase 12C-YOLOv9-SRC Prepared |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 ## 🚧 Explicitly Not Verified

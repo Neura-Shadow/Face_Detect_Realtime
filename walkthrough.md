@@ -1,65 +1,72 @@
-# Walkthrough - Phase 12C-YOLOv9-V YOLOv9 Post-Unlock Verification
+# Walkthrough - Phase 12C-YOLOv9-SRC Source Adapter Verification
 
 1. Preserve Phase 12C-DUMMY as the only runtime-confirmed perception backend slice.
-2. Preserve Phase 12C-YOLOv9-U as manual dependency unlock preparation.
-3. Preserve Phase 12C-YOLOv9-B as adapter-path preparation.
-4. Add a strict post-unlock verifier for `perception_backend=yolov9`.
-5. Verify `yolov9` import inside `D:\CARLA\envs\ma-vlna-carla312`.
-6. Verify `pip show yolov9` inside the same target runtime.
-7. Verify `workers.core.edge_perception --test yolov9` exits successfully without fallback.
-8. Verify Phase 12B / Phase 11M / Phase 11K / baseline mapper CLIs accept `--perception-backend yolov9`.
-9. Refresh Phase 12C YOLOv9 rows using the target Python dependency probe.
-10. Do not auto-install packages.
-11. Do not modify baseline requirements.
-12. Do not start CARLA.
-13. Do not execute YOLOv9 route runtime confirmation.
+2. Preserve Phase 12C-YOLOv9-U and Phase 12C-YOLOv9-B as historical dependency/adapter preparation.
+3. Add an official YOLOv9 external source adapter for `perception_backend=yolov9`.
+4. Require operator-provided `YOLOV9_ROOT` and `YOLOV9_WEIGHTS`.
+5. Do not commit YOLOv9 source.
+6. Do not commit YOLOv9 weights.
+7. Do not vendor YOLOv9 into this repository.
+8. Verify source entries: `detect.py`, `detect_dual.py`, `models/`, `utils/`.
+9. Verify `workers.core.edge_perception --test yolov9` in the target CARLA Python runtime.
+10. Require no fallback for strict source-adapter pass.
+11. Refresh Phase 12C YOLOv9 rows using source-adapter readiness.
+12. Do not auto-install packages.
+13. Do not modify baseline requirements.
+14. Do not start CARLA.
+15. Do not execute YOLOv9 route runtime confirmation.
 
 Generated evidence:
 
 ```text
-authoritative_yolov9_post_unlock_verification=experiments\phase12\20260629T125701Z
-historical_yolov9_post_unlock_verification=experiments\phase12\20260629T124925Z
-yolov9_rows_refresh=experiments\phase12\20260629T124940Z
-phase12c_matrix=experiments\phase12\20260629T070603Z
+yolov9_source_adapter_verification=experiments\phase12\20260629T134856Z
+yolov9_post_unlock_external_source=experiments\phase12\20260629T134856Z-1
+yolov9_rows_refresh=experiments\phase12\20260629T134856Z-1-2
 ```
 
-YOLOv9-V result:
+YOLOv9-SRC result:
 
 ```text
-authoritative_evidence_dir=experiments\phase12\20260629T125701Z
-post_unlock_verified=false
-require_verified_requested=true
-strict_gate_exit_code=1
-yolov9_import_ready=false
-yolov9_pip_metadata_ready=false
+source_adapter_verified=false
+yolov9_source_root_configured=false
+yolov9_weights_configured=false
+yolov9_source_root_ready=false
+yolov9_weights_ready=false
 edge_yolov9_command_passed=true
 edge_yolov9_fallback_used=true
 edge_yolov9_no_fallback_verified=false
-phase12b_yolov9_dry_run_command_ready=true
-phase11m_yolov9_cli_ready=true
-phase11k_yolov9_cli_ready=true
-phase12b_baseline_yolov9_cli_ready=true
-phase12c_yolov9_rows_available=false
-phase12c_yolov9_backend_unavailable_count=5
+runtime_confirmation_executed=false
 ```
 
-Strict post-unlock command:
+Manual operator setup:
 
 ```powershell
-python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified
+$env:YOLOV9_ROOT = "D:\AIModels\yolov9"
+$env:YOLOV9_WEIGHTS = "D:\AIModels\yolov9\yolov9-c-converted.pt"
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install -r "$env:YOLOV9_ROOT\requirements.txt"
 ```
 
-Current local result with `--require-verified` should remain nonzero until the selected YOLOv9 dependency is installed in the CARLA Python 3.12 runtime.
+Strict source-adapter command:
+
+```powershell
+python scripts\run_phase12c_yolov9_source_adapter_verification.py --output-dir experiments\phase12 --require-verified
+```
+
+Refresh Phase 12C YOLOv9 rows:
+
+```powershell
+python scripts\run_phase12c_perception_backend_ablation.py --perception-backend-mode yolov9_optional --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --output-dir experiments\phase12
+```
 
 Pass condition:
 
 ```text
-yolov9_import_ready=true
-yolov9_pip_metadata_ready=true
+yolov9_source_root_ready=true
+yolov9_weights_ready=true
 edge_yolov9_command_passed=true
 edge_yolov9_fallback_used=false
-phase12c_yolov9_rows_available=true
-post_unlock_verified=true
+edge_yolov9_no_fallback_verified=true
+source_adapter_verified=true
 ```
 
 Boundary fields:
@@ -79,12 +86,12 @@ leaderboard_route_criteria_evaluated=false
 Validation checklist:
 
 ```text
-python -m py_compile scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase12b_controller_ablation_experiment.py scripts\run_phase11m_grp_route_following.py scripts\run_phase11k_fixed_route_smoke.py scripts\run_phase12b_baseline_mapper_route_metrics.py scripts\run_phase11_carla_checks.py
-python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified
-python scripts\run_phase12c_perception_backend_ablation.py --output-dir experiments\phase12
+python -m py_compile workers\core\edge_perception.py scripts\run_phase12c_yolov9_source_adapter_verification.py scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py
+python scripts\run_phase12c_yolov9_source_adapter_verification.py --output-dir experiments\phase12
+python scripts\run_phase12c_perception_backend_ablation.py --perception-backend-mode yolov9_optional --output-dir experiments\phase12
 python scripts\run_phase11_carla_checks.py
 python scripts\run_demo_checks.py
 python scripts\run_phase11o_source_commit_checks.py --require-staged
 ```
 
-Phase 12C-YOLOv9-V blocked evidence is not a failure of the adapter path. It means the environment has not actually been unlocked with a YOLOv9 dependency yet.
+Phase 12C-YOLOv9-SRC prepared evidence is not a YOLOv9 route runtime pass. It means the official source adapter contract and no-fallback gate now exist; local no-fallback verification remains blocked until the operator provides source and weights.

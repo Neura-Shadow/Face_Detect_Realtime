@@ -38,6 +38,13 @@ perception:
   backend: "dummy"                    # dummy | yolo | yolov9 | rtdetr
   model_name: "yolov8n.pt"            # yolo/yolov9/rtdetr 依 backend 指定模型或權重 hint
   confidence_threshold: 0.5           # 感知物件過濾門檻
+  yolov9:
+    source_root_env: "YOLOV9_ROOT"     # operator 指向外部官方 YOLOv9 source repo；不可提交 source
+    weights_env: "YOLOV9_WEIGHTS"      # operator 指向外部 weights；不可提交權重
+    default_img_size: 640
+    confidence_threshold: 0.25
+    iou_threshold: 0.45
+    device: "auto"
 
 # ---- 觸發策略 ----
 trigger_policy:

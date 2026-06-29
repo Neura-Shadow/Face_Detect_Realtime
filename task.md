@@ -1,79 +1,75 @@
-# Current Task - Phase 12C-YOLOv9-V
+# Current Task - Phase 12C-YOLOv9-SRC
 
 ## Status
 
 ```text
-Phase 12C-YOLOv9-V Blocked — strict post-unlock verification was executed, but YOLOv9 no-fallback readiness could not be verified because the selected YOLOv9 package is not installed/importable in the CARLA Python 3.12 runtime.
+Phase 12C-YOLOv9-SRC Prepared — official YOLOv9 external source adapter, environment contract, and no-fallback verification gate are implemented.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-YOLOv9-V is strict post-unlock verification only. It does not install YOLOv9 dependencies automatically, does not modify baseline requirements, does not start CARLA, does not execute YOLOv9 route runtime confirmation, does not claim CARLA Leaderboard, formal route benchmark, or infraction benchmark, and does not commit raw experiment evidence.
+Phase 12C-YOLOv9-SRC prepares source-root integration and verification logic only. It does not commit YOLOv9 source, does not commit YOLOv9 weights, does not vendor YOLOv9 into this repository, does not modify baseline requirements, does not start CARLA, does not execute YOLOv9 route runtime confirmation, and does not claim CARLA Leaderboard, formal route benchmark, infraction benchmark, YOLOv9 accuracy, or YOLOv9 route runtime pass.
 ```
 
-## Target Runtime
+## Operator Contract
 
 ```text
-base_python=python
+YOLOV9_ROOT=<path to official YOLOv9 source repository>
+YOLOV9_WEIGHTS=<path to selected YOLOv9 weights>
 target_python=D:\CARLA\envs\ma-vlna-carla312\python.exe
-carla_root=D:\CARLA\packages\CARLA_0.9.16
-perception_backend=yolov9
-perception_backend_mode=yolov9_optional
+```
+
+Example local setup, not committed:
+
+```powershell
+$env:YOLOV9_ROOT = "D:\AIModels\yolov9"
+$env:YOLOV9_WEIGHTS = "D:\AIModels\yolov9\yolov9-c-converted.pt"
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install -r "$env:YOLOV9_ROOT\requirements.txt"
 ```
 
 ## Generated Local Evidence
 
-- YOLOv9-V authoritative strict post-unlock verification output dir: `experiments\phase12\20260629T125701Z`.
-- YOLOv9-V historical strict post-unlock verification output dir: `experiments\phase12\20260629T124925Z`.
-- YOLOv9-only Phase 12C refresh output dir: `experiments\phase12\20260629T124940Z`.
-- Latest full Phase 12C matrix output dir: `experiments\phase12\20260629T070603Z`.
+- YOLOv9-SRC source adapter verification output dir: `experiments\phase12\20260629T134856Z`.
+- YOLOv9-V external-source post-unlock verification output dir: `experiments\phase12\20260629T134856Z-1`.
+- YOLOv9-only Phase 12C source-adapter matrix refresh output dir: `experiments\phase12\20260629T134856Z-1-2`.
 - Generated output remains local and is not committed.
 
 ## Result
 
 ```text
-authoritative_evidence_dir=experiments\phase12\20260629T125701Z
-post_unlock_verification_attempted=true
-post_unlock_verified=false
-require_verified_requested=true
-strict_gate_exit_code=1
-target_python_exists=true
-carla_root_exists=true
-yolov9_import_ready=false
-yolov9_pip_metadata_ready=false
+source_adapter_verified=false
+strict_gate_exit_code=0
+yolov9_source_root_configured=false
+yolov9_weights_configured=false
+yolov9_source_root_ready=false
+yolov9_weights_ready=false
 edge_yolov9_command_passed=true
 edge_yolov9_fallback_used=true
 edge_yolov9_no_fallback_verified=false
-phase12b_yolov9_dry_run_command_ready=true
-phase11m_yolov9_cli_ready=true
-phase11k_yolov9_cli_ready=true
-phase12b_baseline_yolov9_cli_ready=true
-phase12c_yolov9_rows_available=false
-phase12c_yolov9_backend_unavailable_count=5
+runtime_confirmation_executed=false
 auto_install_performed=false
 baseline_requirements_modified=false
 carla_server_started=false
-runtime_confirmation_executed=false
 ```
 
-## Pass Condition
+## Strict Pass Condition
 
 ```text
-yolov9_import_ready=true
-yolov9_pip_metadata_ready=true
+yolov9_source_root_ready=true
+yolov9_weights_ready=true
 edge_yolov9_command_passed=true
 edge_yolov9_fallback_used=false
-phase12c_yolov9_rows_available=true
-post_unlock_verified=true
+edge_yolov9_no_fallback_verified=true
+source_adapter_verified=true
 ```
 
 ## Validation
 
-- `python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified`: produced blocked evidence with exit code 1 as expected.
-- `python scripts\run_phase12c_perception_backend_ablation.py --output-dir experiments\phase12`: produced latest 15-row scaffold with target-runtime dependency probing.
+- `python scripts\run_phase12c_yolov9_source_adapter_verification.py --output-dir experiments\phase12`: produced structured local blocked evidence because `YOLOV9_ROOT` and `YOLOV9_WEIGHTS` are not configured.
+- `python scripts\run_phase12c_perception_backend_ablation.py --perception-backend-mode yolov9_optional --output-dir experiments\phase12`: produced 5 YOLOv9 rows with `backend_unavailable`.
 - Benchmark boundary fields remain false.
 
 ## Next Action
 
-Run full regression checks, source commit boundary gate, then stage source-only files, commit, push to `codex/phase-11o-source-commit-boundary`, and update PR #1 while keeping it Draft/open/unmerged. Full Phase 12C-YOLOv9-V Pass remains pending until the operator installs a YOLOv9 package into `D:\CARLA\envs\ma-vlna-carla312`.
+Run full regression checks, source commit boundary gate, then stage source-only files, commit, push to `codex/phase-11o-source-commit-boundary`, and update PR #1 while keeping it Draft/open/unmerged. Full YOLOv9 no-fallback verification remains pending until the operator provides official YOLOv9 source and weights through `YOLOV9_ROOT` and `YOLOV9_WEIGHTS`.
