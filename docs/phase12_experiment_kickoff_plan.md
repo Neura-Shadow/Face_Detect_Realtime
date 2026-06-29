@@ -143,7 +143,7 @@ YOLOv9 optional
 RT-DETR optional
 ```
 
-若 YOLOv9 / RT-DETR dependency 未安裝或 backend 尚未接上，不讓整體實驗失敗，該 backend 的 run 標記為：
+若 YOLOv9 / RT-DETR optional dependency 未安裝，不讓整體實驗失敗，該 backend 的 run 標記為：
 
 ```text
 backend_unavailable
@@ -496,7 +496,7 @@ Phase 12C Perception Backend Ablation Prepared - backend matrix, optional depend
 Generated scaffold:
 
 ```text
-experiments\phase12\20260629T034842Z-1
+experiments\phase12\20260629T063233Z
 manifest.json
 summary.csv
 summary.json
@@ -588,7 +588,7 @@ Phase 12C-YOLOv9-U Prepared — YOLOv9 optional dependency unlock commands and e
 Generated unlock-preparation evidence:
 
 ```text
-experiments\phase12\20260629T034842Z
+experiments\phase12\20260629T063232Z
 ```
 
 Preflight status:
@@ -601,9 +601,9 @@ target_python_exists=true
 carla_root_exists=true
 yolov9_import_ready=false
 yolov9_pip_metadata_ready=false
-edge_yolov9_command_supported=false
-edge_yolov9_command_passed=null
-edge_yolov9_fallback_used=null
+edge_yolov9_command_supported=true
+edge_yolov9_command_passed=true
+edge_yolov9_fallback_used=true
 auto_install_performed=false
 baseline_requirements_modified=false
 runtime_confirmation_executed=false
@@ -639,6 +639,36 @@ leaderboard_route_criteria_evaluated=false
 Phase 12C-YOLO-U 是早期 generic YOLO unlock preparation 歷史紀錄；Phase 12C-YOLOv9-U 是修訂後的 YOLOv9-specific target。舊 evidence 不會被改寫成 YOLOv9 evidence。
 
 Phase 12C-YOLOv9-U 只準備 dependency unlock；它沒有自動安裝 dependencies，也沒有執行 YOLOv9 runtime confirmation。
+
+## Phase 12C-YOLOv9-B Addendum - EdgePerception YOLOv9 Backend Adapter Prepared
+
+```text
+Phase 12C-YOLOv9-B Prepared — EdgePerception YOLOv9 backend adapter path is registered.
+```
+
+Generated adapter evidence:
+
+```text
+experiments\phase12\20260629T063232Z-1-1
+```
+
+Adapter status:
+
+```text
+adapter_prepared=true
+edge_yolov9_backend_registered=true
+base_edge_yolov9_command_supported=true
+carla312_edge_yolov9_command_supported=true
+base_edge_yolov9_command_passed=true
+carla312_edge_yolov9_command_passed=true
+base_edge_yolov9_fallback_used=true
+carla312_edge_yolov9_fallback_used=true
+dependency_ready=false
+dependency_missing=true
+runtime_confirmation_executed=false
+```
+
+Phase 12C-YOLOv9-B 只證明 EdgePerception 已有 `backend=yolov9` / `--test yolov9` adapter path；缺少 YOLOv9 dependency 時仍保留 graceful fallback。它沒有啟動 CARLA，也沒有執行 YOLOv9 runtime confirmation。
 
 ## Next Implementation Slice
 

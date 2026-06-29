@@ -1,20 +1,21 @@
-# Current Task - Phase 12C-YOLOv9-U
+# Current Task - Phase 12C-YOLOv9-B
 
 ## Status
 
 ```text
-Phase 12C-YOLOv9-U Prepared — YOLOv9 optional dependency unlock commands and evidence were written.
+Phase 12C-YOLOv9-B Prepared - EdgePerception YOLOv9 backend adapter path is registered.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-YOLOv9-U is YOLOv9 optional dependency preparation only. It does not validate YOLOv9 runtime, does not install dependencies automatically, does not modify baseline requirements, does not start CARLA, does not replace Phase 12C-DUMMY runtime confirmation, does not claim CARLA Leaderboard, formal route benchmark, or infraction benchmark, and does not commit raw experiment evidence.
+Phase 12C-YOLOv9-B is EdgePerception adapter preparation only. It does not validate YOLOv9 runtime, does not install dependencies automatically, does not modify baseline requirements, does not start CARLA, does not replace Phase 12C-DUMMY runtime confirmation, does not claim CARLA Leaderboard, formal route benchmark, or infraction benchmark, and does not commit raw experiment evidence.
 ```
 
 ## Target Runtime
 
 ```text
+base_python=python
 target_python=D:\CARLA\envs\ma-vlna-carla312\python.exe
 carla_root=D:\CARLA\packages\CARLA_0.9.16
 perception_backend=yolov9
@@ -23,38 +24,44 @@ perception_backend_mode=yolov9_optional
 
 ## Generated Local Evidence
 
-- YOLOv9-U output dir: `experiments\phase12\20260629T034842Z`.
-- Updated Phase 12C matrix output dir: `experiments\phase12\20260629T034842Z-1`.
+- YOLOv9-B adapter output dir: `experiments\phase12\20260629T063232Z-1-1`.
+- YOLOv9-U dependency unlock output dir: `experiments\phase12\20260629T063232Z`.
+- Updated Phase 12C matrix output dir: `experiments\phase12\20260629T063233Z`.
 - Generated output remains local and is not committed.
 
-YOLOv9-U files:
+YOLOv9-B files:
 
 - `manifest.json`
 - `summary.json`
 - `commands.txt`
 - `environment.json`
 - `README.md`
+- `raw_outputs\base_import_yolov9_dependency.stdout.txt`
+- `raw_outputs\base_import_yolov9_dependency.stderr.txt`
 - `raw_outputs\carla312_import_yolov9_dependency.stdout.txt`
 - `raw_outputs\carla312_import_yolov9_dependency.stderr.txt`
-- `raw_outputs\carla312_pip_show_yolov9_dependency.stdout.txt`
-- `raw_outputs\carla312_pip_show_yolov9_dependency.stderr.txt`
-- `raw_outputs\carla312_edge_yolov9_support_probe.stdout.txt`
-- `raw_outputs\carla312_edge_yolov9_support_probe.stderr.txt`
+- `raw_outputs\base_edge_yolov9_adapter_smoke.stdout.txt`
+- `raw_outputs\base_edge_yolov9_adapter_smoke.stderr.txt`
+- `raw_outputs\carla312_edge_yolov9_adapter_smoke.stdout.txt`
+- `raw_outputs\carla312_edge_yolov9_adapter_smoke.stderr.txt`
 
 ## Result
 
 ```text
+adapter_prepared=true
+edge_yolov9_backend_registered=true
+base_edge_yolov9_command_supported=true
+carla312_edge_yolov9_command_supported=true
+base_edge_yolov9_command_passed=true
+carla312_edge_yolov9_command_passed=true
+base_edge_yolov9_fallback_used=true
+carla312_edge_yolov9_fallback_used=true
 dependency_ready=false
 dependency_missing=true
-manual_unlock_required=true
-yolov9_import_ready=false
-yolov9_pip_metadata_ready=false
-edge_yolov9_command_supported=false
-edge_yolov9_command_passed=null
-edge_yolov9_fallback_used=null
+runtime_confirmation_executed=false
 auto_install_performed=false
 baseline_requirements_modified=false
-runtime_confirmation_executed=false
+carla_server_started=false
 ```
 
 12C matrix:
@@ -78,7 +85,8 @@ D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install -r <YOLOV9_REQUIREMENTS
 
 ## Validation
 
-- `python -m py_compile scripts\run_phase12c_yolov9_optional_dependency_unlock.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py`: passed.
+- `python -m py_compile workers\core\edge_perception.py scripts\run_phase12c_yolov9_backend_adapter_checks.py scripts\run_phase12c_yolov9_optional_dependency_unlock.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py`: passed.
+- `python scripts\run_phase12c_yolov9_backend_adapter_checks.py --output-dir experiments\phase12`: passed.
 - `python scripts\run_phase12c_yolov9_optional_dependency_unlock.py --output-dir experiments\phase12`: passed.
 - `python scripts\run_phase12c_perception_backend_ablation.py --output-dir experiments\phase12`: passed.
 - Benchmark boundary fields remain false.

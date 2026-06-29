@@ -1,7 +1,7 @@
 """
 邊緣感知模組 — 執行物件偵測、目標追蹤、車道狀態與自由空間估計。
 
-支援 Dummy, YOLO, RT-DETR backends，並具有 graceful fallback 機制。
+支援 Dummy, YOLO, YOLOv9, RT-DETR backends，並具有 graceful fallback 機制。
 """
 
 from __future__ import annotations
@@ -18,13 +18,21 @@ from .config import AgentConfig
 
 logger = logging.getLogger(__name__)
 
-# ── 延遲匯入 ultralytics ──────────────────────────────────────
+# ── 延遲匯入 optional detection backends ───────────────────────
 try:
     from ultralytics import YOLO, RTDETR  # type: ignore[import-untyped]
     _HAS_ULTRALYTICS = True
 except ImportError:
     _HAS_ULTRALYTICS = False
     logger.info("ultralytics 未安裝 — YOLO/RT-DETR 將不可用")
+
+try:
+    import yolov9 as _YOLOV9_MODULE  # type: ignore[import-untyped]
+    _HAS_YOLOV9 = True
+except ImportError:
+    _YOLOV9_MODULE = None
+    _HAS_YOLOV9 = False
+    logger.info("YOLOv9 optional dependency 未安裝 — YOLOv9 backend 將不可用")
 
 
 # ════════════════════════════════════════════════════════════════
@@ -75,7 +83,7 @@ class PerceptionResult:
     free_space: dict[str, Any] = field(default_factory=dict)
     raw_confidence: float = 0.0                # 整體感知信心（0~1）
     inference_ms: int = 0                      # 推理耗時
-    backend: str = "dummy"                     # dummy | yolo | rtdetr
+    backend: str = "dummy"                     # dummy | yolo | yolov9 | rtdetr
     model_name: str = "dummy"
     fallback_used: bool = False                # 是否觸發了 fallback
 
@@ -155,6 +163,71 @@ class YOLOPerceptionBackend:
                         bbox=(float(xyxy[0]), float(xyxy[1]), float(xyxy[2]), float(xyxy[3])),
                         class_id=cls_id
                     ))
+        inf_ms = int((time.monotonic() - start) * 1000)
+        return detections, inf_ms
+
+
+def _detections_from_yolo_like_results(raw_results: Any, conf_threshold: float) -> list[Detection]:
+    detections: list[Detection] = []
+    if not isinstance(raw_results, (list, tuple)):
+        raw_results = [raw_results]
+    for result in raw_results:
+        boxes = getattr(result, "boxes", None)
+        if boxes is None:
+            continue
+        names = getattr(result, "names", {})
+        for i in range(len(boxes)):
+            xyxy = boxes.xyxy[i].cpu().numpy()
+            conf = float(boxes.conf[i].cpu().numpy())
+            cls_id = int(boxes.cls[i].cpu().numpy())
+            label = names.get(cls_id, f"class_{cls_id}") if isinstance(names, dict) else f"class_{cls_id}"
+            if conf >= conf_threshold:
+                detections.append(Detection(
+                    label=label,
+                    confidence=conf,
+                    bbox=(float(xyxy[0]), float(xyxy[1]), float(xyxy[2]), float(xyxy[3])),
+                    class_id=cls_id,
+                ))
+    return detections
+
+
+class YOLOv9PerceptionBackend:
+    """YOLOv9 optional backend adapter.
+
+    此 adapter 先建立明確的 EdgePerception backend 入口；實際 YOLOv9
+    package/repository 來源仍由 operator 在 Phase 12C-YOLOv9-U 解鎖。
+    目前若缺少 dependency 或缺少相容推理 API，會讓 EdgePerception
+    走既有 graceful fallback，不會讓主流程崩潰。
+    """
+
+    def __init__(self, model_name: str, conf_threshold: float):
+        if not _HAS_YOLOV9 or _YOLOV9_MODULE is None:
+            raise RuntimeError("YOLOv9 optional dependency is required for YOLOv9 backend")
+        self._model_name = model_name
+        self._conf_threshold = conf_threshold
+        self._model = self._build_model(_YOLOV9_MODULE, model_name)
+
+    @staticmethod
+    def _build_model(module: Any, model_name: str) -> Any:
+        for attr in ("YOLOv9", "YOLO"):
+            factory = getattr(module, attr, None)
+            if callable(factory):
+                return factory(model_name)
+        raise RuntimeError("YOLOv9 dependency is present but no supported YOLOv9/YOLO factory was found")
+
+    @property
+    def model_name(self) -> str:
+        return self._model_name
+
+    def detect(self, frame: np.ndarray) -> tuple[list[Detection], int]:
+        start = time.monotonic()
+        if callable(self._model):
+            raw_results = self._model(frame)
+        elif hasattr(self._model, "predict"):
+            raw_results = self._model.predict(frame)
+        else:
+            raise RuntimeError("YOLOv9 model object has no callable or predict interface")
+        detections = _detections_from_yolo_like_results(raw_results, self._conf_threshold)
         inf_ms = int((time.monotonic() - start) * 1000)
         return detections, inf_ms
 
@@ -333,6 +406,8 @@ class EdgePerception:
         try:
             if backend_type == "yolo":
                 self._backend = YOLOPerceptionBackend(model_name, conf)
+            elif backend_type == "yolov9":
+                self._backend = YOLOv9PerceptionBackend(model_name, conf)
             elif backend_type == "rtdetr":
                 self._backend = RTDETRPerceptionBackend(model_name, conf)
             else:
@@ -482,7 +557,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     
     parser = argparse.ArgumentParser(description="Edge Perception CLI Test")
-    parser.add_argument("--test", type=str, choices=["dummy", "yolo", "rtdetr"], required=True)
+    parser.add_argument("--test", type=str, choices=["dummy", "yolo", "yolov9", "rtdetr"], required=True)
     args = parser.parse_args()
     
     logger.info("開始測試 Perception Backend: %s", args.test)
@@ -496,6 +571,8 @@ if __name__ == "__main__":
     p_model = "dummy"
     if args.test == "yolo":
         p_model = "yolov8n.pt"
+    elif args.test == "yolov9":
+        p_model = "yolov9"
     elif args.test == "rtdetr":
         p_model = "rtdetr-l.pt"
     

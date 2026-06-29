@@ -35,8 +35,8 @@ carla:
 
 # ---- 邊緣感知 ----
 perception:
-  backend: "dummy"                    # dummy | yolo | rtdetr
-  model_name: "yolov8n.pt"            # 若使用 yolo，則為 yolov8n.pt 等
+  backend: "dummy"                    # dummy | yolo | yolov9 | rtdetr
+  model_name: "yolov8n.pt"            # yolo/yolov9/rtdetr 依 backend 指定模型或權重 hint
   confidence_threshold: 0.5           # 感知物件過濾門檻
 
 # ---- 觸發策略 ----

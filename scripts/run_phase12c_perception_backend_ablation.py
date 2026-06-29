@@ -110,8 +110,8 @@ BACKEND_MATRIX = (
         optional=True,
         dependency_name="yolov9",
         dependency_label="YOLOv9 optional dependency",
-        runtime_backend_supported=False,
-        notes="Optional YOLOv9 backend; mark backend_unavailable when dependency is missing or EdgePerception has no YOLOv9 backend yet.",
+        runtime_backend_supported=True,
+        notes="Optional YOLOv9 backend; mark backend_unavailable when dependency is missing.",
     ),
     BackendSpec(
         mode="rt_detr_optional",
@@ -297,7 +297,7 @@ def _summary_payload(args: argparse.Namespace, rows: list[dict[str, Any]]) -> di
                 if row["perception_backend_mode"] == "dummy"
             ),
             "optional_unavailable_rows_do_not_fail_scaffold": True,
-            "yolov9_rows_backend_unavailable_when_not_supported": all(
+            "yolov9_rows_backend_unavailable_when_dependency_missing": all(
                 row["result"] == "backend_unavailable"
                 for row in rows
                 if row["perception_backend_mode"] == "yolov9_optional"

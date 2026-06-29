@@ -76,6 +76,7 @@ def main() -> int:
                 "scripts/run_phase12c_dummy_runtime_confirmation.py",
                 "scripts/run_phase12c_yolo_optional_dependency_unlock.py",
                 "scripts/run_phase12c_yolov9_optional_dependency_unlock.py",
+                "scripts/run_phase12c_yolov9_backend_adapter_checks.py",
             ],
             "expected": [],
         },

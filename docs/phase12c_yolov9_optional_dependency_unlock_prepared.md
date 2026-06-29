@@ -13,7 +13,7 @@ This is YOLOv9 optional dependency preparation only. It does not validate YOLOv9
 ## Evidence
 
 ```text
-experiments\phase12\20260629T034842Z
+experiments\phase12\20260629T063232Z
 ```
 
 Generated files:
@@ -44,15 +44,15 @@ dependency_missing=true
 manual_unlock_required=true
 yolov9_import_ready=false
 yolov9_pip_metadata_ready=false
-edge_yolov9_command_supported=false
-edge_yolov9_command_passed=null
-edge_yolov9_fallback_used=null
+edge_yolov9_command_supported=true
+edge_yolov9_command_passed=true
+edge_yolov9_fallback_used=true
 auto_install_performed=false
 baseline_requirements_modified=false
 runtime_confirmation_executed=false
 ```
 
-Interpretation: the current codebase does not yet expose an `EdgePerception --test yolov9` path, so the unlock evidence records `edge_yolov9_command_supported=false`. No YOLOv9 runtime claim is made.
+Interpretation: Phase 12C-YOLOv9-B now exposes an `EdgePerception --test yolov9` path. The optional dependency is still missing, so the command passes through graceful fallback and records `edge_yolov9_fallback_used=true`. No YOLOv9 runtime claim is made.
 
 ## Manual Unlock Commands
 

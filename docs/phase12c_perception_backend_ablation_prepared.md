@@ -31,7 +31,7 @@ Perception backend matrix：
 ## Generated Local Evidence
 
 ```text
-experiments\phase12\20260629T034842Z-1
+experiments\phase12\20260629T063233Z
 ```
 
 本次 scaffold output：
@@ -137,12 +137,12 @@ Phase 12C-YOLOv9-U Prepared — YOLOv9 optional dependency unlock commands and e
 Evidence：
 
 ```text
-experiments\phase12\20260629T034842Z
+experiments\phase12\20260629T063232Z
 dependency_ready=false
 dependency_missing=true
-edge_yolov9_command_supported=false
-edge_yolov9_command_passed=null
-edge_yolov9_fallback_used=null
+edge_yolov9_command_supported=true
+edge_yolov9_command_passed=true
+edge_yolov9_fallback_used=true
 auto_install_performed=false
 baseline_requirements_modified=false
 runtime_confirmation_executed=false
@@ -156,3 +156,25 @@ D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install -r <YOLOV9_REQUIREMENTS
 ```
 
 詳細記錄請見 [phase12c_yolov9_optional_dependency_unlock_prepared.md](phase12c_yolov9_optional_dependency_unlock_prepared.md)。
+
+## YOLOv9 Backend Adapter
+
+Phase 12C-YOLOv9-B 已完成 EdgePerception YOLOv9 backend adapter preparation：
+
+```text
+Phase 12C-YOLOv9-B Prepared — EdgePerception YOLOv9 backend adapter path is registered.
+```
+
+Evidence：
+
+```text
+experiments\phase12\20260629T063232Z-1-1
+edge_yolov9_backend_registered=true
+base_edge_yolov9_command_supported=true
+carla312_edge_yolov9_command_supported=true
+base_edge_yolov9_fallback_used=true
+carla312_edge_yolov9_fallback_used=true
+runtime_confirmation_executed=false
+```
+
+詳細記錄請見 [phase12c_yolov9_backend_adapter_prepared.md](phase12c_yolov9_backend_adapter_prepared.md)。
