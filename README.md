@@ -74,7 +74,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-DUMMY dummy backend runtime confirmation: **Passed — 5/5 calibrated `grp_follower + dummy` rows reached goal in real CARLA; collision_count_total=0, lane_invasion_count_total=83**
   - Phase 12C-YOLOv9-U YOLOv9 optional dependency unlock: **Prepared — CARLA Python 3.12 preflight confirms YOLOv9 dependency missing; manual unlock and post-unlock verification commands generated**
   - Phase 12C-YOLOv9-B EdgePerception YOLOv9 backend adapter: **Prepared — `EdgePerception --test yolov9` is registered in base and CARLA Python; missing dependency still falls back safely**
-  - Phase 12C-YOLOv9-V YOLOv9 post-unlock verification: **Blocked — strict verifier is implemented; local CARLA Python 3.12 runtime still lacks YOLOv9 package, so no-fallback backend readiness is not verified**
+  - Phase 12C-YOLOv9-V YOLOv9 post-unlock verification: **Blocked — strict verifier executed; authoritative evidence `experiments\phase12\20260629T125701Z` shows local CARLA Python 3.12 runtime still lacks an installed/importable YOLOv9 package, so no-fallback backend readiness is not verified**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -369,6 +369,7 @@ python scripts\run_phase12c_yolov9_backend_adapter_checks.py --output-dir experi
 Phase 12C-YOLOv9-V post-unlock verification（operator 安裝 YOLOv9 後才可通過；目前本機會產生 blocked evidence）：
 
 ```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install <YOLOV9_PACKAGE_SPEC>
 python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified
 ```
 

@@ -57,7 +57,8 @@ Interpretation: Phase 12C-YOLOv9-B now exposes an `EdgePerception --test yolov9`
 Phase 12C-YOLOv9-V now provides the strict post-unlock verifier. Current local V evidence remains blocked because the CARLA Python 3.12 runtime still lacks the YOLOv9 dependency:
 
 ```text
-experiments\phase12\20260629T124925Z
+authoritative_evidence_dir=experiments\phase12\20260629T125701Z
+historical_strict_evidence_dir=experiments\phase12\20260629T124925Z
 post_unlock_verified=false
 strict_gate_exit_code=1
 yolov9_import_ready=false

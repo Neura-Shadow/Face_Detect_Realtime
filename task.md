@@ -3,7 +3,7 @@
 ## Status
 
 ```text
-Phase 12C-YOLOv9-V Blocked — post-unlock verification attempted, but the CARLA Python 3.12 runtime still lacks the YOLOv9 dependency.
+Phase 12C-YOLOv9-V Blocked — strict post-unlock verification was executed, but YOLOv9 no-fallback readiness could not be verified because the selected YOLOv9 package is not installed/importable in the CARLA Python 3.12 runtime.
 ```
 
 Maintained boundary:
@@ -24,7 +24,8 @@ perception_backend_mode=yolov9_optional
 
 ## Generated Local Evidence
 
-- YOLOv9-V strict post-unlock verification output dir: `experiments\phase12\20260629T124925Z`.
+- YOLOv9-V authoritative strict post-unlock verification output dir: `experiments\phase12\20260629T125701Z`.
+- YOLOv9-V historical strict post-unlock verification output dir: `experiments\phase12\20260629T124925Z`.
 - YOLOv9-only Phase 12C refresh output dir: `experiments\phase12\20260629T124940Z`.
 - Latest full Phase 12C matrix output dir: `experiments\phase12\20260629T070603Z`.
 - Generated output remains local and is not committed.
@@ -32,6 +33,7 @@ perception_backend_mode=yolov9_optional
 ## Result
 
 ```text
+authoritative_evidence_dir=experiments\phase12\20260629T125701Z
 post_unlock_verification_attempted=true
 post_unlock_verified=false
 require_verified_requested=true

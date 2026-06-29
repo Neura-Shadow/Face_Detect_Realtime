@@ -187,13 +187,14 @@ runtime_confirmation_executed=false
 Phase 12C-YOLOv9-V 已建立 strict post-unlock verification gate，並在目前本機環境產生 blocked evidence：
 
 ```text
-Phase 12C-YOLOv9-V Blocked — post-unlock verification attempted, but the CARLA Python 3.12 runtime still lacks the YOLOv9 dependency.
+Phase 12C-YOLOv9-V Blocked — strict post-unlock verification was executed, but YOLOv9 no-fallback readiness could not be verified because the selected YOLOv9 package is not installed/importable in the CARLA Python 3.12 runtime.
 ```
 
 Evidence：
 
 ```text
-experiments\phase12\20260629T124925Z
+authoritative_evidence_dir=experiments\phase12\20260629T125701Z
+historical_strict_evidence_dir=experiments\phase12\20260629T124925Z
 post_unlock_verified=false
 require_verified_requested=true
 strict_gate_exit_code=1

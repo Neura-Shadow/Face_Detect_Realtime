@@ -17,7 +17,8 @@
 Generated evidence:
 
 ```text
-yolov9_post_unlock_verification=experiments\phase12\20260629T124925Z
+authoritative_yolov9_post_unlock_verification=experiments\phase12\20260629T125701Z
+historical_yolov9_post_unlock_verification=experiments\phase12\20260629T124925Z
 yolov9_rows_refresh=experiments\phase12\20260629T124940Z
 phase12c_matrix=experiments\phase12\20260629T070603Z
 ```
@@ -25,6 +26,7 @@ phase12c_matrix=experiments\phase12\20260629T070603Z
 YOLOv9-V result:
 
 ```text
+authoritative_evidence_dir=experiments\phase12\20260629T125701Z
 post_unlock_verified=false
 require_verified_requested=true
 strict_gate_exit_code=1

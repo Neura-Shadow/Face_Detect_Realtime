@@ -673,18 +673,20 @@ Phase 12C-YOLOv9-B 只證明 EdgePerception 已有 `backend=yolov9` / `--test yo
 ## Phase 12C-YOLOv9-V Addendum - YOLOv9 Post-Unlock Verification
 
 ```text
-Phase 12C-YOLOv9-V Blocked — post-unlock verification attempted, but the CARLA Python 3.12 runtime still lacks the YOLOv9 dependency.
+Phase 12C-YOLOv9-V Blocked — strict post-unlock verification was executed, but YOLOv9 no-fallback readiness could not be verified because the selected YOLOv9 package is not installed/importable in the CARLA Python 3.12 runtime.
 ```
 
 Generated post-unlock verification evidence:
 
 ```text
-experiments\phase12\20260629T124925Z
+authoritative_evidence_dir=experiments\phase12\20260629T125701Z
+historical_strict_evidence_dir=experiments\phase12\20260629T124925Z
 ```
 
 Verification status:
 
 ```text
+authoritative_evidence_dir=experiments\phase12\20260629T125701Z
 post_unlock_verification_attempted=true
 post_unlock_verified=false
 require_verified_requested=true
@@ -712,4 +714,4 @@ Phase 12C-YOLOv9-V also verifies that the runner command path accepts `--percept
 
 ## Next Implementation Slice
 
-Phase 12 後續應先由 operator 顯式選定 YOLOv9 package 或 repository install source，再重跑 `scripts\run_phase12c_yolov9_post_unlock_verification.py --require-verified`。只有當 `post_unlock_verified=true` 且 `edge_yolov9_fallback_used=false` 後，才進入 YOLOv9 runtime confirmation。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。
+Phase 12 後續應先由 operator 顯式選定 YOLOv9 package 或 repository install source，執行 `D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install <YOLOV9_PACKAGE_SPEC>`，再重跑 `python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified`。只有當 `post_unlock_verified=true` 且 `edge_yolov9_fallback_used=false` 後，才進入 YOLOv9 runtime confirmation。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。

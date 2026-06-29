@@ -3,7 +3,7 @@
 ## Status
 
 ```text
-Phase 12C-YOLOv9-V Blocked — post-unlock verification attempted, but the CARLA Python 3.12 runtime still lacks the YOLOv9 dependency.
+Phase 12C-YOLOv9-V Blocked — strict post-unlock verification was executed, but YOLOv9 no-fallback readiness could not be verified because the selected YOLOv9 package is not installed/importable in the CARLA Python 3.12 runtime.
 ```
 
 Phase 12C-YOLOv9-V is a strict post-unlock verification gate. It assumes the operator has already installed the selected YOLOv9 implementation into the dedicated CARLA Python 3.12 runtime, then verifies that the MA-VLNA pipeline can use `perception_backend=yolov9` without falling back.
@@ -13,7 +13,8 @@ This phase does not install packages, does not modify baseline requirements, doe
 ## Evidence
 
 ```text
-experiments\phase12\20260629T124925Z
+authoritative_evidence_dir=experiments\phase12\20260629T125701Z
+historical_strict_evidence_dir=experiments\phase12\20260629T124925Z
 ```
 
 Generated files:
@@ -42,6 +43,7 @@ experiments\phase12\20260629T070603Z
 ```text
 phase=Phase 12C-YOLOv9-V
 status=yolov9_post_unlock_blocked
+authoritative_evidence_dir=experiments\phase12\20260629T125701Z
 post_unlock_verification_attempted=true
 post_unlock_verified=false
 require_verified_requested=true
@@ -65,7 +67,7 @@ carla_server_started=false
 runtime_confirmation_executed=false
 ```
 
-Interpretation: the code path is now wired for `yolov9`, including Phase 12B / 11M / 11K / baseline mapper CLI acceptance, but the selected YOLOv9 dependency is not installed in `D:\CARLA\envs\ma-vlna-carla312`. Therefore EdgePerception still falls back to `DummyPerceptionBackend`, and the post-unlock gate must remain blocked.
+Interpretation: the code path is now wired for `yolov9`, including Phase 12B / 11M / 11K / baseline mapper CLI acceptance, but the selected YOLOv9 dependency is not installed/importable in `D:\CARLA\envs\ma-vlna-carla312`. Therefore EdgePerception still falls back to `DummyPerceptionBackend`, and the post-unlock gate must remain blocked.
 
 ## Pass Conditions
 
@@ -87,12 +89,14 @@ python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir expe
 Strict gate after operator unlock:
 
 ```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install <YOLOV9_PACKAGE_SPEC>
 python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified
 ```
 
-Current local result with `--require-verified` exits nonzero until the YOLOv9 package is installed in the CARLA Python 3.12 runtime. Latest strict evidence records:
+Current local result with `--require-verified` exits nonzero until the selected YOLOv9 package is installed and importable in the CARLA Python 3.12 runtime. The authoritative strict evidence records:
 
 ```text
+authoritative_evidence_dir=experiments\phase12\20260629T125701Z
 require_verified_requested=true
 strict_gate_exit_code=1
 ```
