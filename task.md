@@ -1,66 +1,74 @@
-# Current Task - Phase 12C-DUMMY
+# Current Task - Phase 12C-YOLO-U
 
 ## Status
 
 ```text
-Phase 12C-DUMMY Runtime Confirmation Pass - dummy backend rows confirmed in real CARLA runtime.
+Phase 12C-YOLO-U Prepared - YOLO optional dependency unlock commands and evidence were written.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-DUMMY is a dummy perception backend runtime confirmation, not a YOLO runtime validation, RT-DETR runtime validation, CARLA Leaderboard result, formal route benchmark, infraction benchmark, merge, git tag, GitHub Release, CARLA package commit, Python venv commit, .env commit, runtime_logs commit, or raw experiment evidence commit.
+Phase 12C-YOLO-U is a YOLO optional dependency unlock preparation, not a YOLO runtime validation, RT-DETR runtime validation, CARLA Leaderboard result, formal route benchmark, infraction benchmark, merge, git tag, GitHub Release, CARLA package commit, Python venv commit, .env commit, runtime_logs commit, or raw experiment evidence commit.
 ```
 
-## Runtime Scope
+## Target Runtime
 
-- Routes: calibrated 5-route `Town03` spawn-pair matrix.
-- Controller: fixed `grp_follower`.
-- Perception backend: fixed `dummy`.
-- Runtime parent: `scripts\run_phase12c_dummy_runtime_confirmation.py`.
-- Delegated runtime path: `scripts\run_phase12b_controller_ablation_experiment.py --execute-runtime --controller-mode grp_follower --perception-backend dummy`.
+```text
+target_python=D:\CARLA\envs\ma-vlna-carla312\python.exe
+carla_root=D:\CARLA\packages\CARLA_0.9.16
+package_spec=ultralytics>=8,<9
+perception_backend=yolo
+```
 
 ## Generated Local Evidence
 
-- Output dir: `experiments\phase12\20260628T173019Z`.
-- Child Phase 12B runtime dir: `experiments\phase12\20260628T173019Z\runs\20260628T173021Z`.
+- Output dir: `experiments\phase12\20260629T030122Z`.
 - Generated files:
   - `manifest.json`
   - `summary.json`
-  - `summary.csv`
   - `commands.txt`
   - `environment.json`
   - `README.md`
-  - `raw_outputs\phase12b_parent.stdout.txt`
-  - `raw_outputs\phase12b_parent.stderr.txt`
+  - `raw_outputs\carla312_import_ultralytics.stdout.txt`
+  - `raw_outputs\carla312_import_ultralytics.stderr.txt`
+  - `raw_outputs\carla312_pip_show_ultralytics.stdout.txt`
+  - `raw_outputs\carla312_pip_show_ultralytics.stderr.txt`
+  - `raw_outputs\carla312_edge_yolo_smoke.stdout.txt`
+  - `raw_outputs\carla312_edge_yolo_smoke.stderr.txt`
 - Generated output remains local and is not committed.
 
 ## Result
 
 ```text
-row_count=5
-passed_count=5
-blocked_count=0
-failed_count=0
-collision_count_total=0
-lane_invasion_count_total=83
-all_dummy_routes_confirmed=true
+dependency_ready=false
+dependency_missing=true
+manual_unlock_required=true
+target_python_exists=true
+carla_root_exists=true
+ultralytics_import_ready=false
+ultralytics_pip_metadata_ready=false
+edge_yolo_command_passed=true
+edge_yolo_fallback_used=true
+auto_install_performed=false
+baseline_requirements_modified=false
+runtime_confirmation_executed=false
 ```
 
-All five calibrated dummy backend rows reached goal tolerance. Lane invasion counts are preserved as sensor metrics and do not make this an infraction benchmark.
+Manual unlock command:
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install "ultralytics>=8,<9"
+```
 
 ## Validation
 
-- `D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase11d_carla_provisioning_gate.py --carla-root D:\CARLA\packages\CARLA_0.9.16 --host 127.0.0.1 --port 2000 --steps 5 --require-ready`: passed.
-- `D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_dummy_runtime_confirmation.py --host 127.0.0.1 --port 2000 --output-dir experiments\phase12 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --child-timeout-sec 2400 --parent-timeout-sec 14400`: passed.
-- Runtime assertions:
-  - child summary loaded
-  - row count matches requested routes
-  - all rows `grp_follower`
-  - all rows goal reached
-  - all rows runtime passed
-  - benchmark boundary fields false
+- `python -m py_compile scripts\run_phase12c_yolo_optional_dependency_unlock.py`: passed.
+- `python scripts\run_phase12c_yolo_optional_dependency_unlock.py --output-dir experiments\phase12`: passed.
+- Evidence JSON is valid.
+- Commands are PowerShell-safe; the package spec is quoted.
+- Benchmark boundary fields remain false.
 
 ## Next Action
 
-Run source regressions, source commit boundary gate, then stage source-only files, commit, push to `codex/phase-11o-source-commit-boundary`, and update PR #1 while keeping it Draft/open/unmerged.
+Run full regression checks, source commit boundary gate, then stage source-only files, commit, push to `codex/phase-11o-source-commit-boundary`, and update PR #1 while keeping it Draft/open/unmerged.

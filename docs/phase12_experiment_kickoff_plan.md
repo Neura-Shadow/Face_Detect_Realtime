@@ -579,6 +579,62 @@ leaderboard_route_criteria_evaluated=false
 
 `lane_invasion_count_total=83` 是 sensor metric record，不是 infraction benchmark score。Phase 12C-DUMMY 只確認 dummy backend 在 calibrated smoke runtime 中可完成五條 route。
 
+## Phase 12C-YOLO-U Addendum - YOLO Optional Dependency Unlock Prepared
+
+```text
+Phase 12C-YOLO-U Prepared - YOLO optional dependency unlock commands and evidence were written.
+```
+
+Generated unlock-preparation evidence:
+
+```text
+experiments\phase12\20260629T030122Z
+```
+
+Preflight status:
+
+```text
+dependency_ready=false
+dependency_missing=true
+manual_unlock_required=true
+target_python_exists=true
+carla_root_exists=true
+ultralytics_import_ready=false
+ultralytics_pip_metadata_ready=false
+edge_yolo_command_passed=true
+edge_yolo_fallback_used=true
+auto_install_performed=false
+baseline_requirements_modified=false
+runtime_confirmation_executed=false
+```
+
+Manual unlock command:
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install "ultralytics>=8,<9"
+```
+
+Post-unlock condition:
+
+```text
+ultralytics_import_ready=true
+ultralytics_pip_metadata_ready=true
+edge_yolo_command_passed=true
+edge_yolo_fallback_used=false
+```
+
+Boundary:
+
+```text
+route_benchmark_verified=false
+infraction_benchmark_verified=false
+leaderboard_evaluated=false
+leaderboard_routes_exported=false
+leaderboard_route_criteria_evaluated=false
+```
+
+Phase 12C-YOLO-U 只準備 dependency unlock；它沒有自動安裝 `ultralytics`，也沒有執行 YOLO runtime confirmation。
+
 ## Next Implementation Slice
 
-Phase 12 後續可在 Phase 12C 的 command scaffold 之上，繼續以 dedicated Python 3.12 + CARLA 0.9.16 environment 顯式執行 selected YOLO / RT-DETR optional backend rows。Optional backend dependency unlock 應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。
+Phase 12 後續應先由 operator 顯式執行 YOLO-U manual unlock command，再重跑 post-unlock verification。只有當 `edge_yolo_fallback_used=false` 後，才進入 YOLO runtime confirmation。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。

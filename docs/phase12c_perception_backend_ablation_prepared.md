@@ -123,3 +123,31 @@ lane_invasion_count_total=83
 ```
 
 詳細記錄請見 [phase12c_dummy_backend_runtime_confirmation.md](phase12c_dummy_backend_runtime_confirmation.md)。
+
+## YOLO Optional Dependency Unlock
+
+Phase 12C-YOLO-U 已完成 YOLO optional dependency unlock preparation：
+
+```text
+Phase 12C-YOLO-U Prepared - YOLO optional dependency unlock commands and evidence were written.
+```
+
+Evidence：
+
+```text
+experiments\phase12\20260629T030122Z
+dependency_ready=false
+dependency_missing=true
+edge_yolo_fallback_used=true
+auto_install_performed=false
+baseline_requirements_modified=false
+runtime_confirmation_executed=false
+```
+
+Manual unlock command：
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install "ultralytics>=8,<9"
+```
+
+詳細記錄請見 [phase12c_yolo_optional_dependency_unlock_prepared.md](phase12c_yolo_optional_dependency_unlock_prepared.md)。

@@ -1,51 +1,59 @@
-# Walkthrough - Phase 12C-DUMMY Dummy Backend Runtime Confirmation
+# Walkthrough - Phase 12C-YOLO-U YOLO Optional Dependency Unlock Prepared
 
-1. Use Phase 12C scaffold as the perception backend matrix boundary.
-2. Select only `perception_backend=dummy`.
-3. Keep `controller_mode=grp_follower`, because Phase 12B-SUM identified it as the strongest fixed-route smoke controller.
-4. Preserve the calibrated 5-route `Town03` matrix.
-5. Start or verify the external CARLA 0.9.16 server.
-6. Run 11D `--require-ready` from the dedicated Python 3.12 CARLA environment.
-7. Run the 12C-DUMMY confirmation wrapper.
-8. Let the wrapper delegate to Phase 12B runtime execution with `grp_follower + dummy`.
-9. Read the child Phase 12B `summary.json`.
-10. Mark 12C-DUMMY passed only when all requested dummy rows reach goal and all boundary fields remain false.
-
-Runtime command:
-
-```powershell
-$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
-D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_dummy_runtime_confirmation.py --host 127.0.0.1 --port 2000 --output-dir experiments\phase12 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --child-timeout-sec 2400 --parent-timeout-sec 14400
-```
+1. Use Phase 12C perception backend scaffold as the matrix boundary.
+2. Keep YOLO optional as an optional dependency, not a baseline requirement.
+3. Target the dedicated CARLA Python 3.12 environment.
+4. Check whether `ultralytics` can be imported.
+5. Check whether `pip show ultralytics` returns metadata.
+6. Run `EdgePerception --test yolo` and record whether it falls back to Dummy.
+7. Generate manual install and post-unlock verification commands.
+8. Do not auto-install packages.
+9. Do not execute YOLO runtime confirmation.
+10. Preserve all benchmark boundary fields as false.
 
 Generated evidence:
 
 ```text
-experiments\phase12\20260628T173019Z
-child_experiment_dir=experiments\phase12\20260628T173019Z\runs\20260628T173021Z
+experiments\phase12\20260629T030122Z
 ```
 
-Aggregate result:
+Preflight result:
 
 ```text
-status=dummy_runtime_confirmed
-row_count=5
-passed_count=5
-blocked_count=0
-failed_count=0
-collision_count_total=0
-lane_invasion_count_total=83
-all_dummy_routes_confirmed=true
+dependency_ready=false
+dependency_missing=true
+manual_unlock_required=true
+ultralytics_import_ready=false
+ultralytics_pip_metadata_ready=false
+edge_yolo_command_passed=true
+edge_yolo_fallback_used=true
+auto_install_performed=false
+baseline_requirements_modified=false
+runtime_confirmation_executed=false
 ```
 
-Per-route result:
+Manual unlock command:
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install "ultralytics>=8,<9"
+```
+
+Post-unlock verification:
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe -c "import importlib.util; available = importlib.util.find_spec('ultralytics') is not None; print(f'ultralytics_available={available}'); raise SystemExit(0 if available else 1)"
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip show ultralytics
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m workers.core.edge_perception --test yolo
+python scripts\run_phase12c_perception_backend_ablation.py --perception-backend-mode yolo_optional --output-dir experiments\phase12
+```
+
+Ready condition:
 
 ```text
-route_01: passed, distance_to_goal_m=2.284790, collision_count=0, lane_invasion_count=27
-route_02: passed, distance_to_goal_m=2.316571, collision_count=0, lane_invasion_count=28
-route_03: passed, distance_to_goal_m=2.374137, collision_count=0, lane_invasion_count=10
-route_04: passed, distance_to_goal_m=2.443187, collision_count=0, lane_invasion_count=10
-route_05: passed, distance_to_goal_m=2.952668, collision_count=0, lane_invasion_count=8
+ultralytics_import_ready=true
+ultralytics_pip_metadata_ready=true
+edge_yolo_command_passed=true
+edge_yolo_fallback_used=false
 ```
 
 Boundary fields:
@@ -61,11 +69,11 @@ leaderboard_route_criteria_evaluated=false
 Validation checklist:
 
 ```text
-python -m py_compile scripts\run_phase12c_dummy_runtime_confirmation.py
-python scripts\run_phase12c_dummy_runtime_confirmation.py --dry-run --output-dir experiments\phase12
+python -m py_compile scripts\run_phase12c_yolo_optional_dependency_unlock.py
+python scripts\run_phase12c_yolo_optional_dependency_unlock.py --output-dir experiments\phase12
 python scripts\run_phase11_carla_checks.py
 python scripts\run_demo_checks.py
 python scripts\run_phase11o_source_commit_checks.py --require-staged
 ```
 
-Phase 12C-DUMMY confirms the dummy backend runtime path only. It does not validate YOLO / RT-DETR and does not upgrade MA-VLNA to a formal CARLA benchmark.
+Phase 12C-YOLO-U prepares the dependency unlock only. It does not validate YOLO runtime behavior and does not upgrade MA-VLNA to a formal CARLA benchmark.

@@ -60,6 +60,7 @@ MA-VLNA 採用模組化的軟體架構，主要包含以下核心元件：
   - 新增 Phase 12B-SUM Controller Ablation Comparative Summary，將 GRP、linear、baseline mapper 三條 evidence line 正規化為 controller-level 與 route-level comparative tables。結論是 GRP 為唯一 5/5 goal-reach smoke controller，linear 僅為 route-progress smoke 且 collision_count 高，baseline mapper 可執行 closed-loop control 但 5/5 route-progress blocked。
   - 新增 Phase 12C Perception Backend Ablation Prepared，固定 Phase 12B-SUM 選出的 `grp_follower` controller，建立 5 條 calibrated routes x `dummy` / YOLO optional / RT-DETR optional 的 perception backend scaffold。此階段只做 dependency preflight 與 runtime command wiring；缺少 `ultralytics` 時 YOLO / RT-DETR rows 標記為 `backend_unavailable`，不阻塞 dummy baseline，也不宣稱 YOLO / RT-DETR runtime pass。
   - 新增 Phase 12C-DUMMY Dummy Perception Backend Runtime Confirmation，使用 dedicated Python 3.12 + CARLA 0.9.16 runtime 執行 5 條 calibrated `grp_follower + dummy` rows，五條 route 均達成 goal tolerance，`collision_count_total=0`，並保留 `lane_invasion_count_total=83` 作為 sensor metric record。此階段只確認 dummy backend runtime path，不等同 infraction benchmark 或 CARLA Leaderboard。
+  - 新增 Phase 12C-YOLO-U YOLO Optional Dependency Unlock Prepared，針對 dedicated CARLA Python 3.12 runtime 檢查 `ultralytics` import、pip metadata 與 `EdgePerception --test yolo` 行為，確認目前仍會 fallback 到 Dummy，並產生 PowerShell-safe manual install command 與 post-unlock verification commands。此階段不自動安裝、不修改 baseline requirements，也不宣稱 YOLO runtime pass。
   - Phase 11 首版不追求 CARLA Leaderboard，而是先建立可觀測、可回放、可安全退場的仿真閉環。
 
 ### 4. 關鍵技術亮點 (Technical Highlights)

@@ -51,6 +51,7 @@
 - [x] **Phase 12B-SUM Controller Ablation Comparative Summary**: 已將 GRP、linear、baseline mapper evidence 正規化為 controller / route comparative tables；結論維持 differentiated outcome，不升格為 all-controller pass。
 - [x] **Phase 12C Perception Backend Ablation Prepared**: 已建立 5 calibrated routes x 3 perception backend modes 的 scaffold；固定 `grp_follower`，dummy rows 可用，YOLO/RT-DETR optional rows 在缺少 `ultralytics` 時標記為 `backend_unavailable`，不阻塞整體 scaffold。
 - [x] **Phase 12C-DUMMY Dummy Backend Runtime Confirmation**: 已在真實 CARLA runtime 執行 5 條 calibrated `grp_follower + dummy` rows；5/5 rows reached goal，`collision_count_total=0`，`lane_invasion_count_total=83`。此為 dummy backend smoke confirmation，不是 infraction benchmark。
+- [x] **Phase 12C-YOLO-U YOLO Optional Dependency Unlock Prepared**: 已針對 CARLA Python 3.12 runtime 產生 `ultralytics` preflight evidence、manual install command 與 post-unlock verification commands；目前 dependency_missing，未自動安裝，未執行 YOLO runtime confirmation。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -79,6 +80,7 @@
 - **Route Scaling Experiment**: Phase 12A 已產生 real CARLA 5-route aggregate evidence；`passed_count=4` 與 `route_05 goal_reach_blocked` 只代表 controlled fixed spawn-pair smoke 結果，不等同 CARLA Leaderboard、正式 route benchmark 或 infraction benchmark。
 - **Perception Backend Ablation Scaffold**: Phase 12C 只做 backend availability preflight 與 command scaffold；`backend_unavailable` 是 optional dependency missing 的結構化狀態，不代表整體 Phase 12C failure，也不代表 YOLO / RT-DETR runtime 已驗證。
 - **Dummy Backend Runtime Confirmation**: Phase 12C-DUMMY 已確認 `dummy` backend 可在 fixed calibrated routes 中完成 5/5 goal-reach smoke；lane invasion counts 保留為 sensor metrics，不升格為 infraction benchmark。
+- **YOLO Optional Dependency Unlock**: Phase 12C-YOLO-U 只準備 YOLO dependency unlock，不修改 baseline requirements，不自動安裝 `ultralytics`，也不宣稱 YOLO runtime pass。
 
 ---
 
@@ -129,6 +131,7 @@
 | **Controller Ablation Comparative Summary** | — | 100% | — | 🟡 Phase 12B-SUM Prepared |
 | **Perception Backend Ablation Scaffold** | — | 100% | — | 🟡 Phase 12C Prepared |
 | **Dummy Backend Runtime Confirmation** | — | 100% | — | 🟢 Phase 12C-DUMMY Pass |
+| **YOLO Optional Dependency Unlock** | — | 100% | — | 🟡 Phase 12C-YOLO-U Prepared |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 ## 🚧 Explicitly Not Verified
