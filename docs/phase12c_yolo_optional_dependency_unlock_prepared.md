@@ -1,5 +1,7 @@
 # Phase 12C-YOLO-U — YOLO Optional Dependency Unlock Prepared
 
+> Historical note: Phase 12C-YOLO-U was the earlier generic YOLO unlock preparation. Phase 12C-YOLOv9-U is now the revised YOLOv9-specific target. This document preserves the old generic evidence and should not be read as YOLOv9 evidence.
+
 ## Status
 
 ```text

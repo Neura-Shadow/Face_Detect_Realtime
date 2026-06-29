@@ -25,13 +25,13 @@ Perception backend matrix：
 | perception_backend_mode | runtime backend | model hint | dependency | behavior |
 | --- | --- | --- | --- | --- |
 | `dummy` | `dummy` | `dummy` | none | always available |
-| `yolo_optional` | `yolo` | `yolov8n.pt` | `ultralytics` | dependency missing 時標記 `backend_unavailable` |
+| `yolov9_optional` | `yolov9` | `yolov9` | YOLOv9 optional dependency | dependency missing 或 EdgePerception 尚未支援 YOLOv9 時標記 `backend_unavailable` |
 | `rt_detr_optional` | `rtdetr` | `rtdetr-l.pt` | `ultralytics` | dependency missing 時標記 `backend_unavailable` |
 
 ## Generated Local Evidence
 
 ```text
-experiments\phase12\20260628T170342Z
+experiments\phase12\20260629T034842Z-1
 ```
 
 本次 scaffold output：
@@ -45,7 +45,7 @@ available_row_count=5
 backend_unavailable_count=10
 ```
 
-本機目前未安裝 `ultralytics`，因此 YOLO / RT-DETR optional rows 被正確標記為 `backend_unavailable`。這不是失敗；Phase 12C 的設計要求 optional backend missing 不得阻塞 dummy baseline scaffold。
+本機目前未具備 YOLOv9 optional dependency / EdgePerception YOLOv9 backend，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 被正確標記為 `backend_unavailable`。這不是失敗；Phase 12C 的設計要求 optional backend missing 不得阻塞 dummy baseline scaffold。
 
 Generated files：
 
@@ -126,28 +126,33 @@ lane_invasion_count_total=83
 
 ## YOLO Optional Dependency Unlock
 
-Phase 12C-YOLO-U 已完成 YOLO optional dependency unlock preparation：
+Phase 12C-YOLO-U 是早期 generic YOLO unlock preparation 歷史紀錄；Phase 12C-YOLOv9-U 是修訂後的 YOLOv9-specific target。舊 evidence 不會被改寫成 YOLOv9 evidence。
+
+Phase 12C-YOLOv9-U 已完成 YOLOv9 optional dependency unlock preparation：
 
 ```text
-Phase 12C-YOLO-U Prepared - YOLO optional dependency unlock commands and evidence were written.
+Phase 12C-YOLOv9-U Prepared — YOLOv9 optional dependency unlock commands and evidence were written.
 ```
 
 Evidence：
 
 ```text
-experiments\phase12\20260629T030122Z
+experiments\phase12\20260629T034842Z
 dependency_ready=false
 dependency_missing=true
-edge_yolo_fallback_used=true
+edge_yolov9_command_supported=false
+edge_yolov9_command_passed=null
+edge_yolov9_fallback_used=null
 auto_install_performed=false
 baseline_requirements_modified=false
 runtime_confirmation_executed=false
 ```
 
-Manual unlock command：
+Manual unlock commands：
 
 ```powershell
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install "ultralytics>=8,<9"
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install <YOLOV9_PACKAGE_SPEC>
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install -r <YOLOV9_REQUIREMENTS_PATH>
 ```
 
-詳細記錄請見 [phase12c_yolo_optional_dependency_unlock_prepared.md](phase12c_yolo_optional_dependency_unlock_prepared.md)。
+詳細記錄請見 [phase12c_yolov9_optional_dependency_unlock_prepared.md](phase12c_yolov9_optional_dependency_unlock_prepared.md)。

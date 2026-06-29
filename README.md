@@ -70,9 +70,9 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12B-BASE-M baseline PlannerAction mapper route metrics: **Prepared — baseline mapper now emits structured route metrics; no-server blocked wiring smoke verified**
   - Phase 12B-BASE baseline PlannerAction mapper runtime: **Blocked — 5/5 real CARLA baseline rows executed but failed route-progress gate**
   - Phase 12B-SUM controller ablation comparative summary: **Prepared — GRP, linear, and baseline evidence normalized into comparative tables**
-  - Phase 12C perception backend ablation: **Prepared — 5 routes x 3 backend modes scaffolded; YOLO/RT-DETR optional rows mark `backend_unavailable` when `ultralytics` is missing**
+  - Phase 12C perception backend ablation: **Prepared — 5 routes x 3 backend modes scaffolded; YOLOv9/RT-DETR optional rows mark `backend_unavailable` when dependency/backend support is missing**
   - Phase 12C-DUMMY dummy backend runtime confirmation: **Passed — 5/5 calibrated `grp_follower + dummy` rows reached goal in real CARLA; collision_count_total=0, lane_invasion_count_total=83**
-  - Phase 12C-YOLO-U YOLO optional dependency unlock: **Prepared — CARLA Python 3.12 preflight confirms `ultralytics` missing; manual install and post-unlock verification commands generated**
+  - Phase 12C-YOLOv9-U YOLOv9 optional dependency unlock: **Prepared — CARLA Python 3.12 preflight confirms YOLOv9 dependency/backend support missing; manual unlock and post-unlock verification commands generated**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -250,7 +250,9 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 >
 > Phase 12C-DUMMY dummy perception backend runtime confirmation 請見 [docs/phase12c_dummy_backend_runtime_confirmation.md](docs/phase12c_dummy_backend_runtime_confirmation.md)
 >
-> Phase 12C-YOLO-U YOLO optional dependency unlock preparation 請見 [docs/phase12c_yolo_optional_dependency_unlock_prepared.md](docs/phase12c_yolo_optional_dependency_unlock_prepared.md)
+> Phase 12C-YOLOv9-U YOLOv9 optional dependency unlock preparation 請見 [docs/phase12c_yolov9_optional_dependency_unlock_prepared.md](docs/phase12c_yolov9_optional_dependency_unlock_prepared.md)
+>
+> Phase 12C-YOLO-U generic YOLO unlock preparation 是早期歷史紀錄，請見 [docs/phase12c_yolo_optional_dependency_unlock_prepared.md](docs/phase12c_yolo_optional_dependency_unlock_prepared.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 
@@ -346,16 +348,17 @@ $env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
 D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_dummy_runtime_confirmation.py --host 127.0.0.1 --port 2000 --output-dir experiments\phase12 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --child-timeout-sec 2400 --parent-timeout-sec 14400
 ```
 
-Phase 12C-YOLO-U YOLO optional dependency unlock preparation（不自動安裝、不改 baseline requirements）：
+Phase 12C-YOLOv9-U YOLOv9 optional dependency unlock preparation（不自動安裝、不改 baseline requirements、不啟動 CARLA）：
 
 ```powershell
-python scripts\run_phase12c_yolo_optional_dependency_unlock.py --output-dir experiments\phase12
+python scripts\run_phase12c_yolov9_optional_dependency_unlock.py --output-dir experiments\phase12
 ```
 
-Manual YOLO unlock command（需 operator 顯式執行）：
+Manual YOLOv9 unlock commands（需 operator 顯式選擇/執行）：
 
 ```powershell
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install "ultralytics>=8,<9"
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install <YOLOV9_PACKAGE_SPEC>
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install -r <YOLOV9_REQUIREMENTS_PATH>
 ```
 
 ---

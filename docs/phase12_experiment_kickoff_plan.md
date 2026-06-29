@@ -139,11 +139,11 @@ baseline PlannerAction mapper
 
 ```text
 dummy
-YOLO optional
+YOLOv9 optional
 RT-DETR optional
 ```
 
-若 YOLO / RT-DETR 未安裝，不讓整體實驗失敗，該 backend 的 run 標記為：
+若 YOLOv9 / RT-DETR dependency 未安裝或 backend 尚未接上，不讓整體實驗失敗，該 backend 的 run 標記為：
 
 ```text
 backend_unavailable
@@ -496,7 +496,7 @@ Phase 12C Perception Backend Ablation Prepared - backend matrix, optional depend
 Generated scaffold:
 
 ```text
-experiments\phase12\20260628T170342Z
+experiments\phase12\20260629T034842Z-1
 manifest.json
 summary.csv
 summary.json
@@ -509,13 +509,13 @@ Matrix:
 ```text
 routes=5 calibrated Town03 spawn-pair routes
 controller_mode=grp_follower
-perception_backend_modes=dummy,yolo_optional,rt_detr_optional
+perception_backend_modes=dummy,yolov9_optional,rt_detr_optional
 row_count=15
 available_row_count=5
 backend_unavailable_count=10
 ```
 
-本機目前未安裝 `ultralytics`，因此 YOLO / RT-DETR optional rows 正確標記為 `backend_unavailable`。這是 Phase 12C 的預期語義，不是 scaffold failure；optional backend missing 不得阻塞 dummy baseline rows。
+本機目前未具備 YOLOv9 optional dependency / EdgePerception YOLOv9 backend，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 正確標記為 `backend_unavailable`。這是 Phase 12C 的預期語義，不是 scaffold failure；optional backend missing 不得阻塞 dummy baseline rows。
 
 Boundary:
 
@@ -579,16 +579,16 @@ leaderboard_route_criteria_evaluated=false
 
 `lane_invasion_count_total=83` 是 sensor metric record，不是 infraction benchmark score。Phase 12C-DUMMY 只確認 dummy backend 在 calibrated smoke runtime 中可完成五條 route。
 
-## Phase 12C-YOLO-U Addendum - YOLO Optional Dependency Unlock Prepared
+## Phase 12C-YOLOv9-U Addendum - YOLOv9 Optional Dependency Unlock Prepared
 
 ```text
-Phase 12C-YOLO-U Prepared - YOLO optional dependency unlock commands and evidence were written.
+Phase 12C-YOLOv9-U Prepared — YOLOv9 optional dependency unlock commands and evidence were written.
 ```
 
 Generated unlock-preparation evidence:
 
 ```text
-experiments\phase12\20260629T030122Z
+experiments\phase12\20260629T034842Z
 ```
 
 Preflight status:
@@ -599,28 +599,31 @@ dependency_missing=true
 manual_unlock_required=true
 target_python_exists=true
 carla_root_exists=true
-ultralytics_import_ready=false
-ultralytics_pip_metadata_ready=false
-edge_yolo_command_passed=true
-edge_yolo_fallback_used=true
+yolov9_import_ready=false
+yolov9_pip_metadata_ready=false
+edge_yolov9_command_supported=false
+edge_yolov9_command_passed=null
+edge_yolov9_fallback_used=null
 auto_install_performed=false
 baseline_requirements_modified=false
 runtime_confirmation_executed=false
 ```
 
-Manual unlock command:
+Manual unlock commands:
 
 ```powershell
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install "ultralytics>=8,<9"
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install <YOLOV9_PACKAGE_SPEC>
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install -r <YOLOV9_REQUIREMENTS_PATH>
 ```
 
 Post-unlock condition:
 
 ```text
-ultralytics_import_ready=true
-ultralytics_pip_metadata_ready=true
-edge_yolo_command_passed=true
-edge_yolo_fallback_used=false
+yolov9_import_ready=true
+yolov9_pip_metadata_ready=true
+edge_yolov9_command_supported=true
+edge_yolov9_command_passed=true
+edge_yolov9_fallback_used=false
 ```
 
 Boundary:
@@ -633,8 +636,10 @@ leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
 
-Phase 12C-YOLO-U 只準備 dependency unlock；它沒有自動安裝 `ultralytics`，也沒有執行 YOLO runtime confirmation。
+Phase 12C-YOLO-U 是早期 generic YOLO unlock preparation 歷史紀錄；Phase 12C-YOLOv9-U 是修訂後的 YOLOv9-specific target。舊 evidence 不會被改寫成 YOLOv9 evidence。
+
+Phase 12C-YOLOv9-U 只準備 dependency unlock；它沒有自動安裝 dependencies，也沒有執行 YOLOv9 runtime confirmation。
 
 ## Next Implementation Slice
 
-Phase 12 後續應先由 operator 顯式執行 YOLO-U manual unlock command，再重跑 post-unlock verification。只有當 `edge_yolo_fallback_used=false` 後，才進入 YOLO runtime confirmation。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。
+Phase 12 後續應先由 operator 顯式選定 YOLOv9 package 或 repository install source，再重跑 post-unlock verification。只有當 `edge_yolov9_command_supported=true` 且 `edge_yolov9_fallback_used=false` 後，才進入 YOLOv9 runtime confirmation。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。

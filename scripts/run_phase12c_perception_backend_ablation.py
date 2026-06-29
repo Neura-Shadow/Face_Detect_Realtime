@@ -4,7 +4,7 @@ Phase 12C perception backend ablation scaffold.
 This runner prepares a controlled 5-route x 3-perception-backend matrix for
 later CARLA runtime work. It intentionally does not import CARLA and does not
 start a CARLA server. Optional backends are preflighted at import level only;
-when YOLO or RT-DETR dependencies are missing, rows are marked
+when YOLOv9 or RT-DETR dependencies are missing, rows are marked
 ``backend_unavailable`` instead of failing the whole scaffold.
 """
 
@@ -48,6 +48,9 @@ SUMMARY_COLUMNS = (
     "perception_backend_mode",
     "perception_backend",
     "perception_model",
+    "runtime_backend",
+    "model_hint",
+    "dependency",
     "backend_optional",
     "backend_available",
     "backend_status",
@@ -76,6 +79,8 @@ class BackendSpec:
     model_name: str
     optional: bool
     dependency_name: str | None
+    dependency_label: str
+    runtime_backend_supported: bool
     notes: str
 
 
@@ -94,15 +99,19 @@ BACKEND_MATRIX = (
         model_name="dummy",
         optional=False,
         dependency_name=None,
+        dependency_label="none",
+        runtime_backend_supported=True,
         notes="Always available deterministic scaffold backend.",
     ),
     BackendSpec(
-        mode="yolo_optional",
-        backend="yolo",
-        model_name="yolov8n.pt",
+        mode="yolov9_optional",
+        backend="yolov9",
+        model_name="yolov9",
         optional=True,
-        dependency_name="ultralytics",
-        notes="Optional YOLO backend; mark backend_unavailable when ultralytics is not installed.",
+        dependency_name="yolov9",
+        dependency_label="YOLOv9 optional dependency",
+        runtime_backend_supported=False,
+        notes="Optional YOLOv9 backend; mark backend_unavailable when dependency is missing or EdgePerception has no YOLOv9 backend yet.",
     ),
     BackendSpec(
         mode="rt_detr_optional",
@@ -110,6 +119,8 @@ BACKEND_MATRIX = (
         model_name="rtdetr-l.pt",
         optional=True,
         dependency_name="ultralytics",
+        dependency_label="ultralytics",
+        runtime_backend_supported=True,
         notes="Optional RT-DETR backend; mark backend_unavailable when ultralytics is not installed.",
     ),
 )
@@ -153,10 +164,14 @@ def _command_text(command: list[str]) -> str:
     return subprocess.list2cmdline(command)
 
 
-def _dependency_available(spec: BackendSpec) -> bool:
+def _dependency_import_available(spec: BackendSpec) -> bool:
     if spec.dependency_name is None:
         return True
     return importlib.util.find_spec(spec.dependency_name) is not None
+
+
+def _backend_available(spec: BackendSpec) -> bool:
+    return _dependency_import_available(spec) and spec.runtime_backend_supported
 
 
 def _build_runtime_command(args: argparse.Namespace, route: RouteSpec, backend: BackendSpec) -> list[str]:
@@ -208,7 +223,10 @@ def _row_from_matrix(
     command = _build_runtime_command(args, route, backend) if backend_available else []
     notes = backend.notes
     if not backend_available:
-        notes = f"{notes} dependency_missing={backend.dependency_name}"
+        if not _dependency_import_available(backend):
+            notes = f"{notes} dependency_missing={backend.dependency_name}"
+        if not backend.runtime_backend_supported:
+            notes = f"{notes} runtime_backend_supported=false"
     return {
         "route_id": route.route_id,
         "town": args.town,
@@ -219,6 +237,9 @@ def _row_from_matrix(
         "perception_backend_mode": backend.mode,
         "perception_backend": backend.backend,
         "perception_model": backend.model_name,
+        "runtime_backend": backend.backend,
+        "model_hint": backend.model_name,
+        "dependency": backend.dependency_label,
         "backend_optional": backend.optional,
         "backend_available": backend_available,
         "backend_status": backend_status,
@@ -231,7 +252,7 @@ def _row_from_matrix(
 
 def _build_rows(args: argparse.Namespace) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    availability = {backend.mode: _dependency_available(backend) for backend in BACKEND_MATRIX}
+    availability = {backend.mode: _backend_available(backend) for backend in BACKEND_MATRIX}
     for route in ROUTE_MATRIX:
         if args.route_id and route.route_id not in args.route_id:
             continue
@@ -276,6 +297,11 @@ def _summary_payload(args: argparse.Namespace, rows: list[dict[str, Any]]) -> di
                 if row["perception_backend_mode"] == "dummy"
             ),
             "optional_unavailable_rows_do_not_fail_scaffold": True,
+            "yolov9_rows_backend_unavailable_when_not_supported": all(
+                row["result"] == "backend_unavailable"
+                for row in rows
+                if row["perception_backend_mode"] == "yolov9_optional"
+            ),
             "all_boundary_fields_false": all(value is False for value in BOUNDARY_FIELDS.values()),
             "carla_import_required": False,
             "carla_server_required": False,

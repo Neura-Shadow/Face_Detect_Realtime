@@ -1,15 +1,10 @@
 """
-Phase 12C-YOLO-U optional YOLO dependency unlock preparation.
+Phase 12C-YOLOv9-U optional dependency unlock preparation.
 
-Historical note: Phase 12C-YOLO-U was the earlier generic YOLO unlock
-preparation. Phase 12C-YOLOv9-U is the revised YOLOv9-specific target in
-``scripts/run_phase12c_yolov9_optional_dependency_unlock.py``. This script is
-kept for source history and does not represent YOLOv9 evidence.
-
-This script prepares a reproducible dependency unlock evidence pack for the
-YOLO optional perception backend. It does not install packages by default and
-does not add ultralytics to baseline requirements. The target runtime remains
-the dedicated CARLA Python 3.12 environment.
+This script prepares a reproducible evidence pack for a future YOLOv9 optional
+perception backend. It does not install packages, does not modify baseline
+requirements, does not start CARLA, and does not run YOLOv9 runtime
+confirmation.
 """
 
 from __future__ import annotations
@@ -30,13 +25,15 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "experiments" / "phase12"
 DEFAULT_CARLA_PYTHON = r"D:\CARLA\envs\ma-vlna-carla312\python.exe"
 DEFAULT_CARLA_ROOT = Path(r"D:\CARLA\packages\CARLA_0.9.16")
-DEFAULT_PACKAGE_SPEC = "ultralytics>=8,<9"
+DEFAULT_PACKAGE_SPEC = "<YOLOV9_PACKAGE_SPEC>"
+DEFAULT_REQUIREMENTS_PATH = "<YOLOV9_REQUIREMENTS_PATH>"
+DEFAULT_DEPENDENCY_MODULE = "yolov9"
+DEFAULT_PIP_PACKAGE = "yolov9"
 
-PHASE = "Phase 12C-YOLO-U"
-STATUS_PREPARED = "yolo_optional_dependency_unlock_prepared"
-STATUS_READY = "yolo_optional_dependency_ready"
-STATUS_FAILED = "yolo_optional_dependency_unlock_preflight_failed"
-BENCHMARK_BOUNDARY_SCOPE = "yolo_optional_dependency_unlock_prepared_not_runtime_benchmark"
+PHASE = "Phase 12C-YOLOv9-U"
+STATUS_PREPARED = "yolov9_optional_dependency_unlock_prepared"
+STATUS_READY = "yolov9_optional_dependency_ready"
+BENCHMARK_BOUNDARY_SCOPE = "yolov9_optional_dependency_unlock_prepared_not_runtime_benchmark"
 
 BOUNDARY_FIELDS = {
     "route_benchmark_verified": False,
@@ -89,6 +86,8 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 def _quote_powershell_arg(arg: str) -> str:
     if arg == "":
         return '""'
+    if arg.startswith("<") and arg.endswith(">"):
+        return arg
     if any(ch.isspace() or ch in '<>&|()' for ch in arg):
         return '"' + arg.replace("`", "``").replace('"', '`"') + '"'
     return arg
@@ -185,68 +184,83 @@ def _result_payload(result: CommandResult) -> dict[str, Any]:
     }
 
 
-def _import_check_command(python_executable: str) -> list[str]:
+def _import_check_command(args: argparse.Namespace) -> list[str]:
     code = (
         "import importlib.util; "
-        "available = importlib.util.find_spec('ultralytics') is not None; "
-        "print(f'ultralytics_available={available}'); "
+        f"module={args.dependency_module!r}; "
+        "available = importlib.util.find_spec(module) is not None; "
+        "print(f'yolov9_import_ready={available}'); "
         "raise SystemExit(0 if available else 1)"
     )
-    return [python_executable, "-c", code]
+    return [args.python_executable, "-c", code]
 
 
-def _pip_show_command(python_executable: str) -> list[str]:
-    return [python_executable, "-m", "pip", "show", "ultralytics"]
+def _pip_show_command(args: argparse.Namespace) -> list[str]:
+    return [args.python_executable, "-m", "pip", "show", args.pip_package]
 
 
-def _edge_yolo_command(python_executable: str) -> list[str]:
-    return [python_executable, "-m", "workers.core.edge_perception", "--test", "yolo"]
+def _edge_yolov9_probe_command(args: argparse.Namespace) -> list[str]:
+    return [args.python_executable, "-m", "workers.core.edge_perception", "--test", "yolov9"]
 
 
-def _install_command(args: argparse.Namespace) -> list[str]:
+def _package_install_command(args: argparse.Namespace) -> list[str]:
     return [args.python_executable, "-m", "pip", "install", args.package_spec]
 
 
-def _verify_commands(args: argparse.Namespace) -> dict[str, list[str]]:
+def _requirements_install_command(args: argparse.Namespace) -> list[str]:
+    return [args.python_executable, "-m", "pip", "install", "-r", args.requirements_path]
+
+
+def _future_runtime_command(args: argparse.Namespace) -> list[str]:
+    return [
+        args.python_executable,
+        str(REPO_ROOT / "scripts" / "run_phase12b_controller_ablation_experiment.py"),
+        "--execute-runtime",
+        "--controller-mode",
+        "grp_follower",
+        "--perception-backend",
+        "yolov9",
+        "--host",
+        args.host,
+        "--port",
+        str(args.port),
+        "--town",
+        args.town,
+        "--python-executable",
+        args.python_executable,
+        "--base-python",
+        args.base_python,
+        "--child-timeout-sec",
+        str(args.child_timeout_sec),
+        "--output-dir",
+        str(args.output_dir),
+        "--carla-root",
+        str(args.carla_root),
+    ]
+
+
+def _verification_commands(args: argparse.Namespace) -> dict[str, list[str]]:
     return {
-        "install_ultralytics": _install_command(args),
-        "verify_import": _import_check_command(args.python_executable),
-        "verify_pip_show": _pip_show_command(args.python_executable),
-        "verify_edge_yolo": _edge_yolo_command(args.python_executable),
-        "refresh_phase12c_yolo_rows": [
+        "option_a_package_install_if_supported": _package_install_command(args),
+        "option_b_repository_requirements_install_if_required": _requirements_install_command(args),
+        "verify_import": _import_check_command(args),
+        "verify_pip_show": _pip_show_command(args),
+        "verify_edge_yolov9": _edge_yolov9_probe_command(args),
+        "refresh_phase12c_yolov9_rows": [
             args.base_python,
             str(REPO_ROOT / "scripts" / "run_phase12c_perception_backend_ablation.py"),
             "--perception-backend-mode",
-            "yolo_optional",
+            "yolov9_optional",
             "--output-dir",
             str(args.output_dir),
         ],
-        "future_yolo_runtime_confirmation": [
-            args.python_executable,
-            str(REPO_ROOT / "scripts" / "run_phase12b_controller_ablation_experiment.py"),
-            "--execute-runtime",
-            "--controller-mode",
-            "grp_follower",
-            "--perception-backend",
-            "yolo",
-            "--host",
-            args.host,
-            "--port",
-            str(args.port),
-            "--town",
-            args.town,
-            "--python-executable",
-            args.python_executable,
-            "--base-python",
-            args.base_python,
-            "--child-timeout-sec",
-            str(args.child_timeout_sec),
-            "--output-dir",
-            str(args.output_dir),
-            "--carla-root",
-            str(args.carla_root),
-        ],
+        "future_yolov9_runtime_confirmation_after_backend_support": _future_runtime_command(args),
     }
+
+
+def _edge_command_supported(edge_result: CommandResult) -> bool:
+    text = f"{edge_result.stdout_tail}\n{edge_result.stderr_tail}".lower()
+    return not (edge_result.exit_code == 2 and ("invalid choice" in text or "argument --test" in text))
 
 
 def _edge_fallback_used(edge_result: CommandResult) -> bool:
@@ -261,22 +275,32 @@ def _build_summary(
     command_results: list[CommandResult],
 ) -> dict[str, Any]:
     by_name = {result.name: result for result in command_results}
-    import_ready = by_name["carla312_import_ultralytics"].exit_code == 0
-    pip_ready = by_name["carla312_pip_show_ultralytics"].exit_code == 0
-    edge_result = by_name["carla312_edge_yolo_smoke"]
-    edge_yolo_fallback_used = _edge_fallback_used(edge_result)
-    edge_command_passed = edge_result.exit_code == 0
-    dependency_ready = import_ready and pip_ready and edge_command_passed and not edge_yolo_fallback_used
-    status = STATUS_READY if dependency_ready else STATUS_PREPARED
+    import_result = by_name["carla312_import_yolov9_dependency"]
+    pip_result = by_name["carla312_pip_show_yolov9_dependency"]
+    edge_result = by_name["carla312_edge_yolov9_support_probe"]
+    yolov9_import_ready = import_result.exit_code == 0
+    yolov9_pip_metadata_ready = pip_result.exit_code == 0
+    edge_yolov9_command_supported = _edge_command_supported(edge_result)
+    edge_yolov9_command_passed = edge_result.exit_code == 0 if edge_yolov9_command_supported else None
+    edge_yolov9_fallback_used = _edge_fallback_used(edge_result) if edge_yolov9_command_supported else None
+    dependency_ready = (
+        yolov9_import_ready
+        and yolov9_pip_metadata_ready
+        and edge_yolov9_command_supported
+        and edge_yolov9_command_passed is True
+        and edge_yolov9_fallback_used is False
+    )
     assertions = {
         "target_python_exists": Path(args.python_executable).exists(),
         "carla_root_exists": args.carla_root.exists(),
-        "ultralytics_import_ready": import_ready,
-        "ultralytics_pip_metadata_ready": pip_ready,
-        "edge_yolo_command_passed": edge_command_passed,
-        "edge_yolo_fallback_used": edge_yolo_fallback_used,
-        "manual_install_command_recorded": True,
-        "post_install_verify_commands_recorded": True,
+        "yolov9_import_ready": yolov9_import_ready,
+        "yolov9_pip_metadata_ready": yolov9_pip_metadata_ready,
+        "edge_yolov9_command_supported": edge_yolov9_command_supported,
+        "edge_yolov9_command_passed": edge_yolov9_command_passed,
+        "edge_yolov9_fallback_used": edge_yolov9_fallback_used,
+        "manual_unlock_required": not dependency_ready,
+        "manual_unlock_commands_recorded": True,
+        "post_unlock_verification_commands_recorded": True,
         "auto_install_performed": False,
         "baseline_requirements_modified": False,
         "runtime_confirmation_executed": False,
@@ -284,26 +308,34 @@ def _build_summary(
     }
     return {
         "phase": PHASE,
-        "status": status,
-        "dependency_ready": dependency_ready,
-        "dependency_missing": not dependency_ready,
-        "run_dir": str(run_dir),
+        "status": STATUS_READY if dependency_ready else STATUS_PREPARED,
         "target_python": args.python_executable,
         "target_python_exists": Path(args.python_executable).exists(),
         "carla_root": str(args.carla_root),
         "carla_root_exists": args.carla_root.exists(),
+        "perception_backend": "yolov9",
+        "perception_backend_mode": "yolov9_optional",
+        "model_hint": args.model_hint,
+        "dependency_module": args.dependency_module,
+        "pip_package": args.pip_package,
         "package_spec": args.package_spec,
-        "perception_backend_mode": "yolo_optional",
-        "perception_backend": "yolo",
-        "model_hint": args.model_name,
+        "requirements_path": args.requirements_path,
+        "dependency_ready": dependency_ready,
+        "dependency_missing": not dependency_ready,
         "manual_unlock_required": not dependency_ready,
+        "yolov9_import_ready": yolov9_import_ready,
+        "yolov9_pip_metadata_ready": yolov9_pip_metadata_ready,
+        "edge_yolov9_command_supported": edge_yolov9_command_supported,
+        "edge_yolov9_command_passed": edge_yolov9_command_passed,
+        "edge_yolov9_fallback_used": edge_yolov9_fallback_used,
         "auto_install_performed": False,
         "baseline_requirements_modified": False,
         "runtime_confirmation_executed": False,
-        "install_command": _command_text(_install_command(args)),
-        "commands": {name: _command_text(command) for name, command in _verify_commands(args).items()},
+        "run_dir": str(run_dir),
+        "commands": {name: _command_text(command) for name, command in _verification_commands(args).items()},
         "preflight_results": [_result_payload(result) for result in command_results],
         "assertions": assertions,
+        "historical_note": "Phase 12C-YOLO-U was the earlier generic YOLO unlock preparation; Phase 12C-YOLOv9-U is the revised YOLOv9-specific target. Old evidence is not rewritten as YOLOv9 evidence.",
         "benchmark_boundary_prepared": True,
         "benchmark_boundary_scope": BENCHMARK_BOUNDARY_SCOPE,
         **BOUNDARY_FIELDS,
@@ -313,17 +345,27 @@ def _build_summary(
 
 def _write_commands(path: Path, args: argparse.Namespace, summary: dict[str, Any]) -> None:
     lines = [
-        "# Phase 12C-YOLO-U parent command",
+        "# Phase 12C-YOLOv9-U parent command",
         _command_text([sys.executable, *sys.argv]),
         "",
-        "# Manual unlock command. This script does not run it automatically.",
-        summary["install_command"],
+        "# Manual/operator unlock actions. This script does not run these automatically.",
+        "# Option A - package-based if supported by the selected YOLOv9 implementation:",
+        summary["commands"]["option_a_package_install_if_supported"],
+        "",
+        "# Option B - repository/manual install if required; operator fills exact YOLOv9 install source:",
+        summary["commands"]["option_b_repository_requirements_install_if_required"],
         "",
         "# Post-unlock verification commands",
     ]
-    for name, command in summary["commands"].items():
+    for name in (
+        "verify_import",
+        "verify_pip_show",
+        "verify_edge_yolov9",
+        "refresh_phase12c_yolov9_rows",
+        "future_yolov9_runtime_confirmation_after_backend_support",
+    ):
         lines.append(f"# {name}")
-        lines.append(str(command))
+        lines.append(str(summary["commands"][name]))
         lines.append("")
     path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 
@@ -340,13 +382,16 @@ def _write_environment(path: Path, args: argparse.Namespace) -> None:
         "carla_root": str(args.carla_root),
         "carla_root_exists": args.carla_root.exists(),
         "base_python": args.base_python,
+        "dependency_module": args.dependency_module,
+        "pip_package": args.pip_package,
         "package_spec": args.package_spec,
+        "requirements_path": args.requirements_path,
     }
     _write_json(path, payload)
 
 
 def _write_readme(path: Path, summary: dict[str, Any]) -> None:
-    body = f"""# Phase 12C-YOLO-U YOLO Optional Dependency Unlock Prepared
+    body = f"""# Phase 12C-YOLOv9-U YOLOv9 Optional Dependency Unlock Prepared
 
 Status:
 
@@ -357,18 +402,19 @@ Status:
 ```text
 dependency_ready={str(summary["dependency_ready"]).lower()}
 dependency_missing={str(summary["dependency_missing"]).lower()}
-perception_backend=yolo
-package_spec={summary["package_spec"]}
+perception_backend=yolov9
+perception_backend_mode=yolov9_optional
+edge_yolov9_command_supported={str(summary["edge_yolov9_command_supported"]).lower()}
+edge_yolov9_command_passed={summary["edge_yolov9_command_passed"]}
+edge_yolov9_fallback_used={summary["edge_yolov9_fallback_used"]}
 auto_install_performed=false
 baseline_requirements_modified=false
 runtime_confirmation_executed=false
 ```
 
-Manual unlock:
-
-```powershell
-{summary["install_command"]}
-```
+This is YOLOv9 optional dependency preparation only. It does not validate
+YOLOv9 runtime, does not install dependencies automatically, does not modify
+baseline requirements, and does not start CARLA.
 
 Boundary:
 
@@ -384,7 +430,7 @@ leaderboard_route_criteria_evaluated=false
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Prepare Phase 12C YOLO optional dependency unlock evidence")
+    parser = argparse.ArgumentParser(description="Prepare Phase 12C-YOLOv9-U optional dependency unlock evidence")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=2000)
     parser.add_argument("--town", default="Town03")
@@ -393,11 +439,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--carla-root", type=Path, default=DEFAULT_CARLA_ROOT)
     parser.add_argument("--python-executable", default=DEFAULT_CARLA_PYTHON)
     parser.add_argument("--base-python", default="python")
+    parser.add_argument("--dependency-module", default=DEFAULT_DEPENDENCY_MODULE)
+    parser.add_argument("--pip-package", default=DEFAULT_PIP_PACKAGE)
     parser.add_argument("--package-spec", default=DEFAULT_PACKAGE_SPEC)
-    parser.add_argument("--model-name", default="yolov8n.pt")
+    parser.add_argument("--requirements-path", default=DEFAULT_REQUIREMENTS_PATH)
+    parser.add_argument("--model-hint", default="yolov9")
     parser.add_argument("--child-timeout-sec", type=float, default=2400.0)
     parser.add_argument("--preflight-timeout-sec", type=float, default=120.0)
-    parser.add_argument("--require-ready", action="store_true", help="Exit nonzero when ultralytics is not ready")
+    parser.add_argument("--require-ready", action="store_true", help="Exit nonzero when YOLOv9 dependency/backend support is not ready")
     return parser
 
 
@@ -412,9 +461,9 @@ def main(argv: list[str] | None = None) -> int:
     env["PYTHONIOENCODING"] = "utf-8"
 
     checks = [
-        ("carla312_import_ultralytics", _import_check_command(args.python_executable)),
-        ("carla312_pip_show_ultralytics", _pip_show_command(args.python_executable)),
-        ("carla312_edge_yolo_smoke", _edge_yolo_command(args.python_executable)),
+        ("carla312_import_yolov9_dependency", _import_check_command(args)),
+        ("carla312_pip_show_yolov9_dependency", _pip_show_command(args)),
+        ("carla312_edge_yolov9_support_probe", _edge_yolov9_probe_command(args)),
     ]
     command_results = [
         _run_command(name=name, command=command, raw_dir=raw_dir, timeout_sec=args.preflight_timeout_sec, env=env)
@@ -438,7 +487,8 @@ def main(argv: list[str] | None = None) -> int:
                 "raw_outputs/",
             ],
             "target_python": args.python_executable,
-            "package_spec": args.package_spec,
+            "perception_backend": "yolov9",
+            "perception_backend_mode": "yolov9_optional",
             "auto_install_performed": False,
             "baseline_requirements_modified": False,
             "runtime_confirmation_executed": False,
@@ -453,9 +503,9 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"experiment_dir={run_dir}")
     if summary["dependency_ready"]:
-        print("Phase 12C-YOLO-U Ready - ultralytics dependency is available in the target runtime.")
+        print("Phase 12C-YOLOv9-U Ready - YOLOv9 dependency and EdgePerception command support are available.")
         return 0
-    print("Phase 12C-YOLO-U Prepared - YOLO optional dependency unlock commands and evidence were written.")
+    print("Phase 12C-YOLOv9-U Prepared - YOLOv9 optional dependency unlock commands and evidence were written.")
     return 1 if args.require_ready else 0
 
 

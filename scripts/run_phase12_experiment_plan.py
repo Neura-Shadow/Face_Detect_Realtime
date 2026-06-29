@@ -129,13 +129,13 @@ def _experiment_lines() -> list[ExperimentLine]:
         ExperimentLine(
             key="C",
             name="Perception Backend Ablation",
-            objective="比較 dummy、YOLO optional、RT-DETR optional 感知後端在相同 route smoke 中的可用性與遙測差異。",
+            objective="比較 dummy、YOLOv9 optional、RT-DETR optional 感知後端在相同 route smoke 中的可用性與遙測差異。",
             initial_scope={
-                "perception_backends": ["dummy", "yolo_optional", "rt_detr_optional"],
+                "perception_backends": ["dummy", "yolov9_optional", "rt_detr_optional"],
                 "missing_backend_result": "backend_unavailable",
             },
             metrics=route_metrics,
-            boundary="YOLO / RT-DETR 未安裝時不得讓整體實驗失敗，只標記 backend_unavailable。",
+            boundary="YOLOv9 / RT-DETR 未安裝或尚未接上 backend 時不得讓整體實驗失敗，只標記 backend_unavailable。",
         ),
         ExperimentLine(
             key="D",
