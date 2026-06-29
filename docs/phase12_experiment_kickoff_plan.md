@@ -679,7 +679,7 @@ Phase 12C-YOLOv9-V Blocked — post-unlock verification attempted, but the CARLA
 Generated post-unlock verification evidence:
 
 ```text
-experiments\phase12\20260629T070450Z
+experiments\phase12\20260629T124925Z
 ```
 
 Verification status:
@@ -687,6 +687,8 @@ Verification status:
 ```text
 post_unlock_verification_attempted=true
 post_unlock_verified=false
+require_verified_requested=true
+strict_gate_exit_code=1
 target_python_exists=true
 carla_root_exists=true
 yolov9_import_ready=false

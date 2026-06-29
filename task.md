@@ -24,8 +24,8 @@ perception_backend_mode=yolov9_optional
 
 ## Generated Local Evidence
 
-- YOLOv9-V post-unlock verification output dir: `experiments\phase12\20260629T070450Z`.
-- YOLOv9-only Phase 12C refresh output dir: `experiments\phase12\20260629T070501Z`.
+- YOLOv9-V strict post-unlock verification output dir: `experiments\phase12\20260629T124925Z`.
+- YOLOv9-only Phase 12C refresh output dir: `experiments\phase12\20260629T124940Z`.
 - Latest full Phase 12C matrix output dir: `experiments\phase12\20260629T070603Z`.
 - Generated output remains local and is not committed.
 
@@ -34,6 +34,8 @@ perception_backend_mode=yolov9_optional
 ```text
 post_unlock_verification_attempted=true
 post_unlock_verified=false
+require_verified_requested=true
+strict_gate_exit_code=1
 target_python_exists=true
 carla_root_exists=true
 yolov9_import_ready=false
@@ -66,7 +68,7 @@ post_unlock_verified=true
 
 ## Validation
 
-- `python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12`: produced blocked evidence as expected.
+- `python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified`: produced blocked evidence with exit code 1 as expected.
 - `python scripts\run_phase12c_perception_backend_ablation.py --output-dir experiments\phase12`: produced latest 15-row scaffold with target-runtime dependency probing.
 - Benchmark boundary fields remain false.
 

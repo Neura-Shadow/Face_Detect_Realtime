@@ -17,8 +17,8 @@
 Generated evidence:
 
 ```text
-yolov9_post_unlock_verification=experiments\phase12\20260629T070450Z
-yolov9_rows_refresh=experiments\phase12\20260629T070501Z
+yolov9_post_unlock_verification=experiments\phase12\20260629T124925Z
+yolov9_rows_refresh=experiments\phase12\20260629T124940Z
 phase12c_matrix=experiments\phase12\20260629T070603Z
 ```
 
@@ -26,6 +26,8 @@ YOLOv9-V result:
 
 ```text
 post_unlock_verified=false
+require_verified_requested=true
+strict_gate_exit_code=1
 yolov9_import_ready=false
 yolov9_pip_metadata_ready=false
 edge_yolov9_command_passed=true
@@ -76,7 +78,7 @@ Validation checklist:
 
 ```text
 python -m py_compile scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase12b_controller_ablation_experiment.py scripts\run_phase11m_grp_route_following.py scripts\run_phase11k_fixed_route_smoke.py scripts\run_phase12b_baseline_mapper_route_metrics.py scripts\run_phase11_carla_checks.py
-python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12
+python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified
 python scripts\run_phase12c_perception_backend_ablation.py --output-dir experiments\phase12
 python scripts\run_phase11_carla_checks.py
 python scripts\run_demo_checks.py

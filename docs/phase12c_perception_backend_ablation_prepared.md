@@ -193,8 +193,10 @@ Phase 12C-YOLOv9-V Blocked — post-unlock verification attempted, but the CARLA
 Evidence：
 
 ```text
-experiments\phase12\20260629T070450Z
+experiments\phase12\20260629T124925Z
 post_unlock_verified=false
+require_verified_requested=true
+strict_gate_exit_code=1
 yolov9_import_ready=false
 yolov9_pip_metadata_ready=false
 edge_yolov9_command_passed=true

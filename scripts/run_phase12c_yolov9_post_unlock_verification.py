@@ -342,6 +342,8 @@ def _build_summary(
         "status": STATUS_VERIFIED if post_unlock_verified else STATUS_BLOCKED,
         "post_unlock_verification_attempted": True,
         "post_unlock_verified": post_unlock_verified,
+        "require_verified_requested": args.require_verified,
+        "strict_gate_exit_code": 0 if post_unlock_verified or not args.require_verified else 1,
         "target_python": args.python_executable,
         "target_python_exists": Path(args.python_executable).exists(),
         "carla_root": str(args.carla_root),
@@ -431,6 +433,8 @@ Status:
 
 ```text
 post_unlock_verified={str(summary["post_unlock_verified"]).lower()}
+require_verified_requested={str(summary["require_verified_requested"]).lower()}
+strict_gate_exit_code={summary["strict_gate_exit_code"]}
 yolov9_import_ready={str(summary["yolov9_import_ready"]).lower()}
 yolov9_pip_metadata_ready={str(summary["yolov9_pip_metadata_ready"]).lower()}
 edge_yolov9_command_passed={str(summary["edge_yolov9_command_passed"]).lower()}
@@ -508,6 +512,8 @@ def main(argv: list[str] | None = None) -> int:
             ],
             "post_unlock_verification_attempted": True,
             "post_unlock_verified": summary["post_unlock_verified"],
+            "require_verified_requested": args.require_verified,
+            "strict_gate_exit_code": summary["strict_gate_exit_code"],
             "auto_install_performed": False,
             "baseline_requirements_modified": False,
             "carla_server_started": False,

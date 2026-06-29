@@ -55,8 +55,9 @@ Interpretation: the YOLOv9 adapter path is registered, but the optional dependen
 Phase 12C-YOLOv9-V now checks the post-unlock condition. Current local evidence remains blocked because `yolov9` is not importable in the CARLA Python 3.12 runtime, so the adapter still falls back:
 
 ```text
-experiments\phase12\20260629T070450Z
+experiments\phase12\20260629T124925Z
 post_unlock_verified=false
+strict_gate_exit_code=1
 edge_yolov9_fallback_used=true
 ```
 

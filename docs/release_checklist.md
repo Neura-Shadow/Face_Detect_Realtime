@@ -53,7 +53,7 @@
 - [x] **Phase 12C-DUMMY Dummy Backend Runtime Confirmation**: 已在真實 CARLA runtime 執行 5 條 calibrated `grp_follower + dummy` rows；5/5 rows reached goal，`collision_count_total=0`，`lane_invasion_count_total=83`。此為 dummy backend smoke confirmation，不是 infraction benchmark。
 - [x] **Phase 12C-YOLOv9-U YOLOv9 Optional Dependency Unlock Prepared**: 已針對 CARLA Python 3.12 runtime 產生 YOLOv9 dependency / EdgePerception backend support preflight evidence、manual unlock commands 與 post-unlock verification commands；目前 dependency_missing，但 `edge_yolov9_command_supported=true` 且透過 graceful fallback 通過，未自動安裝，未執行 YOLOv9 runtime confirmation。
 - [x] **Phase 12C-YOLOv9-B EdgePerception YOLOv9 Backend Adapter Prepared**: 已新增 `YOLOv9PerceptionBackend` adapter path、`backend="yolov9"` factory branch、CLI `--test yolov9` 與 dedicated adapter evidence；base Python 與 CARLA Python 3.12 均可執行 `EdgePerception --test yolov9` 並在 dependency missing 時安全 fallback。此階段不是 YOLOv9 runtime pass。
-- [x] **Phase 12C-YOLOv9-V YOLOv9 Post-Unlock Verification Blocked**: 已新增 strict post-unlock verification runner，檢查 CARLA Python 3.12 import、pip metadata、EdgePerception no-fallback、Phase 12B/11M/11K/baseline mapper `yolov9` CLI wiring 與 Phase 12C rows refresh；目前本機仍缺 YOLOv9 dependency，因此 `post_unlock_verified=false` 且保留 blocked evidence，不自動安裝。
+- [x] **Phase 12C-YOLOv9-V YOLOv9 Post-Unlock Verification Blocked**: 已新增 strict post-unlock verification runner，檢查 CARLA Python 3.12 import、pip metadata、EdgePerception no-fallback、Phase 12B/11M/11K/baseline mapper `yolov9` CLI wiring 與 Phase 12C rows refresh；目前本機仍缺 YOLOv9 dependency，因此 `post_unlock_verified=false`，`--require-verified` strict gate 實測 exit code 1，並保留 blocked evidence，不自動安裝。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -84,7 +84,7 @@
 - **Dummy Backend Runtime Confirmation**: Phase 12C-DUMMY 已確認 `dummy` backend 可在 fixed calibrated routes 中完成 5/5 goal-reach smoke；lane invasion counts 保留為 sensor metrics，不升格為 infraction benchmark。
 - **YOLOv9 Optional Dependency Unlock**: Phase 12C-YOLOv9-U 只準備 YOLOv9 dependency/backend unlock，不修改 baseline requirements，不自動安裝 dependencies，不啟動 CARLA，也不宣稱 YOLOv9 runtime pass。Phase 12C-YOLO-U 是早期 generic YOLO unlock preparation 歷史紀錄。
 - **YOLOv9 Backend Adapter**: Phase 12C-YOLOv9-B 只證明 EdgePerception 已註冊 `backend="yolov9"` 與 `--test yolov9` adapter path；目前仍因 optional dependency missing 而 fallback，不代表 YOLOv9 real inference 或模型準確率驗證。
-- **YOLOv9 Post-Unlock Verification**: Phase 12C-YOLOv9-V 只驗證 operator unlock 之後的 dependency/no-fallback readiness；目前 `yolov9_import_ready=false`、`yolov9_pip_metadata_ready=false`、`edge_yolov9_fallback_used=true`，因此 blocked，不代表 runtime pass。
+- **YOLOv9 Post-Unlock Verification**: Phase 12C-YOLOv9-V 只驗證 operator unlock 之後的 dependency/no-fallback readiness；目前 `yolov9_import_ready=false`、`yolov9_pip_metadata_ready=false`、`edge_yolov9_fallback_used=true`，且 strict gate exit code 1，因此 blocked，不代表 runtime pass。
 
 ---
 

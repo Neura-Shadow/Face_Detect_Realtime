@@ -13,7 +13,7 @@ This phase does not install packages, does not modify baseline requirements, doe
 ## Evidence
 
 ```text
-experiments\phase12\20260629T070450Z
+experiments\phase12\20260629T124925Z
 ```
 
 Generated files:
@@ -28,7 +28,7 @@ Generated files:
 The verifier also refreshed YOLOv9-only Phase 12C scaffold rows:
 
 ```text
-experiments\phase12\20260629T070501Z
+experiments\phase12\20260629T124940Z
 ```
 
 The latest full 15-row Phase 12C matrix after target-Python dependency probing is:
@@ -44,6 +44,8 @@ phase=Phase 12C-YOLOv9-V
 status=yolov9_post_unlock_blocked
 post_unlock_verification_attempted=true
 post_unlock_verified=false
+require_verified_requested=true
+strict_gate_exit_code=1
 target_python_exists=true
 carla_root_exists=true
 yolov9_import_ready=false
@@ -88,7 +90,12 @@ Strict gate after operator unlock:
 python scripts\run_phase12c_yolov9_post_unlock_verification.py --output-dir experiments\phase12 --require-verified
 ```
 
-Current local result with `--require-verified` is expected to exit nonzero until the YOLOv9 package is installed in the CARLA Python 3.12 runtime.
+Current local result with `--require-verified` exits nonzero until the YOLOv9 package is installed in the CARLA Python 3.12 runtime. Latest strict evidence records:
+
+```text
+require_verified_requested=true
+strict_gate_exit_code=1
+```
 
 ## Boundary
 
