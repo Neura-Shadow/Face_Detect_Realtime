@@ -3,12 +3,18 @@
 ## Status
 
 ```text
-Phase 12C-YOLOv9-SRC Prepared — official YOLOv9 external source adapter, environment contract, and no-fallback verification gate are implemented.
+Phase 12C-YOLOv9-SRC-V Passed — official YOLOv9 source adapter verified with no fallback in the CARLA Python 3.12 runtime.
 ```
 
 This phase changes the YOLOv9 unlock contract from a fake `pip show yolov9` requirement to an operator-provided official source repository and weights path.
 
 It does not commit YOLOv9 source, does not commit YOLOv9 weights, does not vendor YOLOv9 into this repository, does not start CARLA, does not execute YOLOv9 route runtime confirmation, and does not claim YOLOv9 model accuracy.
+
+Phase distinction:
+
+- Phase 12C-YOLOv9-SRC prepared the official external source adapter and no-fallback gate.
+- Phase 12C-YOLOv9-SRC-V verified official source adapter no-fallback readiness in CARLA Python 3.12.
+- Phase 12C-YOLOv9-RUNTIME is a future phase only and has not been executed.
 
 ## Environment Contract
 
@@ -42,15 +48,14 @@ utils/
 Latest local source-adapter verification evidence:
 
 ```text
-prepared_evidence_dir=experiments\phase12\20260629T134856Z
-strict_no_fallback_evidence_dir=experiments\phase12\20260630T040313Z
+source_adapter_verified_evidence_dir=experiments\phase12\20260630T060621Z
 ```
 
 Latest YOLOv9-only Phase 12C matrix refresh using source-adapter availability:
 
 ```text
-prepared_yolov9_rows_refresh_dir=experiments\phase12\20260629T134856Z-1-2
-strict_yolov9_rows_refresh_dir=experiments\phase12\20260630T040317Z
+yolov9_rows_refresh_dir=experiments\phase12\20260630T060823Z
+post_unlock_external_source_verified_dir=experiments\phase12\20260630T061015Z
 ```
 
 Generated files:
@@ -66,24 +71,31 @@ Generated files:
 
 ```text
 phase=Phase 12C-YOLOv9-SRC
-status=yolov9_source_adapter_blocked
-source_adapter_verified=false
-strict_gate_exit_code=1
+status=yolov9_source_adapter_verified
+source_adapter_verified=true
+strict_gate_exit_code=0
 require_verified_requested=true
-yolov9_source_root_configured=false
-yolov9_weights_configured=false
-yolov9_source_root_ready=false
-yolov9_weights_ready=false
+YOLOV9_ROOT_configured=true
+YOLOV9_WEIGHTS_configured=true
+yolov9_source_root_configured=true
+yolov9_weights_configured=true
+yolov9_source_root_ready=true
+yolov9_weights_ready=true
 edge_yolov9_command_passed=true
-edge_yolov9_fallback_used=true
-edge_yolov9_no_fallback_verified=false
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+post_unlock_verified=true
+unlock_mode=external_source
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
 runtime_confirmation_executed=false
+carla_route_runtime_executed=false
 auto_install_performed=false
 baseline_requirements_modified=false
 carla_server_started=false
 ```
 
-Interpretation: the source adapter and strict gate are implemented, and the strict no-fallback gate has been executed. This local environment has not provided `YOLOV9_ROOT` and `YOLOV9_WEIGHTS`, so no-fallback readiness remains blocked.
+Interpretation: the source adapter and strict gate are implemented, and the strict no-fallback gate now passes in the dedicated CARLA Python 3.12 runtime. YOLOv9 optional rows are now available / command-ready in the Phase 12C scaffold after no-fallback source adapter verification. This is not a full Phase 12C perception ablation runtime pass.
 
 ## Strict Pass Conditions
 
@@ -97,6 +109,8 @@ edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
 source_adapter_verified=true
 ```
+
+The current verified evidence satisfies these conditions. This is not a CARLA route runtime confirmation.
 
 Strict command:
 
@@ -121,3 +135,5 @@ leaderboard_route_criteria_evaluated=false
 ```
 
 Phase 12C-YOLOv9-SRC is not YOLOv9 route runtime validation, not YOLOv9 accuracy evidence, not RT-DETR validation, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
+
+YOLOv9 source repo remains external and is not committed. YOLOv9 weights remain external and are not committed. No YOLOv9 source is vendored into MA-VLNA. No baseline requirements were modified. No CARLA route runtime confirmation was executed. No YOLOv9 model accuracy claim is made.

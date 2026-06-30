@@ -511,11 +511,14 @@ routes=5 calibrated Town03 spawn-pair routes
 controller_mode=grp_follower
 perception_backend_modes=dummy,yolov9_optional,rt_detr_optional
 row_count=15
-available_row_count=5
-backend_unavailable_count=10
+historical_available_row_count=5
+historical_backend_unavailable_count=10
+latest_yolov9_rows_refresh_dir=experiments\phase12\20260630T060823Z
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
 ```
 
-本機目前在 target CARLA Python 3.12 runtime 中尚未完成 YOLOv9 source adapter no-fallback verification，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 正確標記為 `backend_unavailable`。這是 Phase 12C 的預期語義，不是 scaffold failure；optional backend missing 或 source adapter 未驗證不得阻塞 dummy baseline rows。YOLOv9 preflight 已改為使用 `--python-executable` 指向的 target runtime。
+本機目前在 target CARLA Python 3.12 runtime 中已完成 YOLOv9 source adapter no-fallback verification，因此 YOLOv9 optional rows 現在是 available / command-ready。這不是 full Phase 12C perception ablation runtime pass；它只代表 scaffold command readiness。RT-DETR optional rows 仍取決於 `ultralytics` dependency，未在本次驗證中宣稱 runtime pass。YOLOv9 preflight 使用 `--python-executable` 指向的 target runtime。
 
 Boundary:
 
@@ -673,51 +676,58 @@ Phase 12C-YOLOv9-B 只證明 EdgePerception 已有 `backend=yolov9` / `--test yo
 ## Phase 12C-YOLOv9-V Addendum - YOLOv9 Post-Unlock Verification
 
 ```text
-Phase 12C-YOLOv9-V Blocked — strict post-unlock verification was executed, but YOLOv9 no-fallback readiness could not be verified because `YOLOV9_ROOT` and `YOLOV9_WEIGHTS` are not configured in the CARLA Python 3.12 runtime.
+Phase 12C-YOLOv9-SRC-V Passed — official YOLOv9 source adapter verified with no fallback in the CARLA Python 3.12 runtime.
 ```
 
 Generated post-unlock verification evidence:
 
 ```text
-authoritative_evidence_dir=experiments\phase12\20260629T125701Z
-historical_strict_evidence_dir=experiments\phase12\20260629T124925Z
+source_adapter_verified_evidence_dir=experiments\phase12\20260630T060621Z
+post_unlock_external_source_verified_dir=experiments\phase12\20260630T061015Z
 ```
 
 Verification status:
 
 ```text
-authoritative_evidence_dir=experiments\phase12\20260629T125701Z
+authoritative_evidence_dir=experiments\phase12\20260630T061015Z
 post_unlock_verification_attempted=true
-post_unlock_verified=false
+post_unlock_verified=true
 require_verified_requested=true
-strict_gate_exit_code=1
+strict_gate_exit_code=0
 target_python_exists=true
 carla_root_exists=true
 yolov9_import_ready=false
 yolov9_pip_metadata_ready=false
+source_adapter_verified=true
+YOLOV9_ROOT_configured=true
+YOLOV9_WEIGHTS_configured=true
+yolov9_source_root_ready=true
+yolov9_weights_ready=true
 edge_yolov9_command_passed=true
-edge_yolov9_fallback_used=true
-edge_yolov9_no_fallback_verified=false
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
 phase12b_yolov9_dry_run_command_ready=true
 phase11m_yolov9_cli_ready=true
 phase11k_yolov9_cli_ready=true
 phase12b_baseline_yolov9_cli_ready=true
-phase12c_yolov9_rows_available=false
-phase12c_yolov9_backend_unavailable_count=5
+phase12c_yolov9_rows_available=true
+phase12c_yolov9_backend_unavailable_count=0
+backend_unavailable_count=0
 auto_install_performed=false
 baseline_requirements_modified=false
 carla_server_started=false
 runtime_confirmation_executed=false
+carla_route_runtime_executed=false
 ```
 
-Phase 12C-YOLOv9-V also verifies that the runner command path accepts `--perception-backend yolov9` for Phase 12B / Phase 11M / Phase 11K / baseline mapper. This is command wiring readiness only; it is not YOLOv9 runtime route validation.
+Phase 12C-YOLOv9-V also verifies that the runner command path accepts `--perception-backend yolov9` for Phase 12B / Phase 11M / Phase 11K / baseline mapper. This is command wiring and source-adapter no-fallback readiness only; it is not YOLOv9 runtime route validation.
 
 ## Next Implementation Slice
 
 ## Phase 12C-YOLOv9-SRC Addendum - Official YOLOv9 Source Adapter Prepared
 
 ```text
-Phase 12C-YOLOv9-SRC Prepared — official YOLOv9 external source adapter, environment contract, and no-fallback verification gate are implemented.
+Phase 12C-YOLOv9-SRC-V Passed — official YOLOv9 source adapter verified with no fallback in the CARLA Python 3.12 runtime.
 ```
 
 Phase 12C-YOLOv9-SRC 將官方 YOLOv9 路徑從 package-only readiness 改為 external source-root readiness。operator 必須提供：
@@ -730,18 +740,22 @@ YOLOV9_WEIGHTS=<path to selected YOLOv9 weights>
 Local source-adapter evidence:
 
 ```text
-post_unlock_external_source_evidence_dir=experiments\phase12\20260629T134856Z-1
-source_adapter_evidence_dir=experiments\phase12\20260629T134856Z
-yolov9_rows_refresh_dir=experiments\phase12\20260629T134856Z-1-2
-strict_no_fallback_evidence_dir=experiments\phase12\20260630T040313Z
-strict_yolov9_rows_refresh_dir=experiments\phase12\20260630T040317Z
-source_adapter_verified=false
-yolov9_source_root_configured=false
-yolov9_weights_configured=false
+source_adapter_verified_evidence_dir=experiments\phase12\20260630T060621Z
+yolov9_rows_refresh_dir=experiments\phase12\20260630T060823Z
+post_unlock_external_source_verified_dir=experiments\phase12\20260630T061015Z
+source_adapter_verified=true
+YOLOV9_ROOT_configured=true
+YOLOV9_WEIGHTS_configured=true
+yolov9_source_root_ready=true
+yolov9_weights_ready=true
 edge_yolov9_command_passed=true
-edge_yolov9_fallback_used=true
-edge_yolov9_no_fallback_verified=false
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+post_unlock_verified=true
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
 runtime_confirmation_executed=false
+carla_route_runtime_executed=false
 auto_install_performed=false
 baseline_requirements_modified=false
 carla_server_started=false
@@ -757,8 +771,8 @@ python scripts\run_phase12c_yolov9_source_adapter_verification.py --output-dir e
 python scripts\run_phase12c_perception_backend_ablation.py --perception-backend-mode yolov9_optional --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --output-dir experiments\phase12
 ```
 
-YOLOv9 source repo and weights are not committed, not vendored, and not packaged into MA-VLNA. This remains preparation and no-fallback verification only; it does not start CARLA, does not execute YOLOv9 route runtime confirmation, and does not claim YOLOv9 accuracy, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+YOLOv9 source repo and weights are not committed, not vendored, and not packaged into MA-VLNA. This remains source adapter no-fallback verification only; it does not start CARLA, does not execute YOLOv9 route runtime confirmation, and does not claim YOLOv9 accuracy, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
 
 ## Next Implementation Slice
 
-Phase 12 後續應先由 operator 顯式提供官方 YOLOv9 source repo 與 weights，讓 `source_adapter_verified=true` 且 `edge_yolov9_fallback_used=false`。只有 source adapter gate 通過後，才進入 YOLOv9 runtime confirmation。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。
+Phase 12C-YOLOv9-RUNTIME 是 future phase only，尚未執行。只有 source adapter gate 通過後，才可進入 YOLOv9 runtime confirmation；本次沒有執行 CARLA route runtime。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。

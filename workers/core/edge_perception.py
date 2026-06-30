@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 import os
 import sys
@@ -320,6 +321,26 @@ class YOLOv9PerceptionBackend:
         if source_root not in sys.path:
             sys.path.insert(0, source_root)
 
+    @staticmethod
+    def _patch_torch_load_for_trusted_yolov9_checkpoint(torch_module: Any) -> Any:
+        """相容 PyTorch 2.6+ 的安全載入預設，僅用於 operator 指定的 YOLOv9 checkpoint。"""
+
+        original_load = torch_module.load
+        try:
+            accepts_weights_only = "weights_only" in inspect.signature(original_load).parameters
+        except (TypeError, ValueError):
+            accepts_weights_only = False
+
+        if not accepts_weights_only:
+            return original_load
+
+        def trusted_load(*args: Any, **kwargs: Any) -> Any:
+            kwargs.setdefault("weights_only", False)
+            return original_load(*args, **kwargs)
+
+        torch_module.load = trusted_load
+        return original_load
+
     def _build_model(self, source_status: YOLOv9SourceStatus) -> tuple[Any, Any]:
         source_root = source_status.source_root_path
         weights = source_status.weights_path
@@ -335,6 +356,7 @@ class YOLOv9PerceptionBackend:
 
         device_arg = "" if self._device_hint == "auto" else self._device_hint
         device_obj = select_device(device_arg)
+        original_torch_load = self._patch_torch_load_for_trusted_yolov9_checkpoint(torch)
         try:
             model = DetectMultiBackend(weights, device=device_obj, fp16=False)
             if hasattr(model, "eval"):
@@ -354,6 +376,8 @@ class YOLOv9PerceptionBackend:
                     raise RuntimeError("YOLOv9 DetectMultiBackend has no callable inference path")
         except Exception as exc:
             raise RuntimeError(f"YOLOv9 weights/model smoke failed: {exc}") from exc
+        finally:
+            torch.load = original_torch_load
         return model, device_obj
 
     @property
@@ -364,13 +388,15 @@ class YOLOv9PerceptionBackend:
         start = time.monotonic()
         try:
             import torch  # type: ignore[import-untyped]
-            from utils.general import non_max_suppression  # type: ignore[import-not-found]
+            from utils.augmentations import letterbox  # type: ignore[import-not-found]
+            from utils.general import non_max_suppression, scale_boxes  # type: ignore[import-not-found]
         except Exception as exc:
             raise RuntimeError(f"YOLOv9 inference dependencies unavailable: {exc}") from exc
 
-        # 第一版採用簡化前處理；正式 runtime calibration 可在後續 phase 接入
-        # official letterbox/scale_boxes，但這裡已足以驗證 no-fallback adapter path。
-        image = frame[:, :, ::-1].transpose(2, 0, 1)
+        # 使用 YOLOv9 官方 letterbox 流程，避免非方形影像在特徵圖 concat 時尺寸不一致。
+        stride = int(getattr(self._model, "stride", 32) or 32)
+        image = letterbox(frame, new_shape=self._img_size, stride=stride, auto=True)[0]
+        image = image[:, :, ::-1].transpose(2, 0, 1)
         image = np.ascontiguousarray(image)
         tensor = torch.from_numpy(image).to(self._device).float() / 255.0
         if tensor.ndimension() == 3:
@@ -387,8 +413,10 @@ class YOLOv9PerceptionBackend:
         )
         detections: list[Detection] = []
         names = getattr(self._model, "names", {})
-        if nms_results:
-            for det in nms_results[0]:
+        if nms_results and len(nms_results[0]):
+            det_batch = nms_results[0]
+            det_batch[:, :4] = scale_boxes(tensor.shape[2:], det_batch[:, :4], frame.shape).round()
+            for det in det_batch:
                 x1, y1, x2, y2, conf, cls_id = det.tolist()
                 class_id = int(cls_id)
                 label = names.get(class_id, f"class_{class_id}") if isinstance(names, dict) else f"class_{class_id}"

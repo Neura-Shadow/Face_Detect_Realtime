@@ -25,27 +25,28 @@ Perception backend matrix：
 | perception_backend_mode | runtime backend | model hint | dependency | behavior |
 | --- | --- | --- | --- | --- |
 | `dummy` | `dummy` | `dummy` | none | always available |
-| `yolov9_optional` | `yolov9` | `yolov9` | YOLOv9 external source adapter | `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` no-fallback gate 未通過時標記 `backend_unavailable` |
+| `yolov9_optional` | `yolov9` | `yolov9` | YOLOv9 external source adapter | no-fallback gate 通過後 rows available / command-ready |
 | `rt_detr_optional` | `rtdetr` | `rtdetr-l.pt` | `ultralytics` | dependency missing 時標記 `backend_unavailable` |
 
 ## Generated Local Evidence
 
 ```text
-experiments\phase12\20260629T070603Z
+experiments\phase12\20260630T060823Z
 ```
 
 本次 scaffold output：
 
 ```text
-row_count=15
+row_count=5
 route_count=5
-backend_count=3
+backend_count=1
 controller_mode=grp_follower
 available_row_count=5
-backend_unavailable_count=10
+backend_unavailable_count=0
+yolov9_source_adapter_verified=true
 ```
 
-本機目前在 target CARLA Python 3.12 runtime 中尚未配置 `YOLOV9_ROOT` / `YOLOV9_WEIGHTS`，且未安裝 `ultralytics` RT-DETR dependency，因此 YOLOv9 / RT-DETR optional rows 被正確標記為 `backend_unavailable`。這不是失敗；Phase 12C 的設計要求 optional backend missing 或 source adapter 未驗證時不得阻塞 dummy baseline scaffold。
+本機目前在 target CARLA Python 3.12 runtime 中已配置 `YOLOV9_ROOT` / `YOLOV9_WEIGHTS`，且 official YOLOv9 external source adapter no-fallback verification 已通過，因此 YOLOv9 optional rows 現在是 available / command-ready。這不是 full Phase 12C perception ablation runtime pass；它只代表 scaffold command readiness。RT-DETR optional rows 仍取決於 `ultralytics` dependency，未在本次驗證中宣稱 runtime pass。
 
 YOLOv9 preflight 使用 `--python-executable` 指向的 target runtime 執行 `workers.core.edge_perception --test yolov9`，並要求 `edge_yolov9_fallback_used=false` 才讓 rows available。這可避免只靠 base Python 或 package metadata 誤判 YOLOv9 readiness。
 
@@ -100,9 +101,11 @@ python scripts\run_demo_checks.py
 
 Acceptance assertions：
 
-- `summary.json.row_count == 15`
+- full scaffold can produce `summary.json.row_count == 15`
+- latest YOLOv9-only refresh has `summary.json.row_count == 5`
 - dummy rows are available
-- optional YOLO / RT-DETR rows may be `backend_unavailable`
+- YOLOv9 optional rows are available / command-ready after source adapter no-fallback verification
+- RT-DETR optional rows may still be `backend_unavailable`
 - `backend_unavailable` rows do not make the scaffold exit nonzero
 - optional backend dependency checks use the target Python runtime
 - all benchmark boundary fields remain false
@@ -184,53 +187,65 @@ runtime_confirmation_executed=false
 
 ## YOLOv9 Post-Unlock Verification
 
-Phase 12C-YOLOv9-V 已建立 strict post-unlock verification gate，並在目前本機環境產生 blocked evidence：
+Phase 12C-YOLOv9-V strict post-unlock verification gate 已通過 external_source mode：
 
 ```text
-Phase 12C-YOLOv9-V Blocked — strict post-unlock verification was executed, but YOLOv9 no-fallback readiness could not be verified because `YOLOV9_ROOT` and `YOLOV9_WEIGHTS` are not configured in the CARLA Python 3.12 runtime.
+Phase 12C-YOLOv9-SRC-V Passed — official YOLOv9 source adapter verified with no fallback in the CARLA Python 3.12 runtime.
 ```
 
 Evidence：
 
 ```text
-authoritative_evidence_dir=experiments\phase12\20260629T125701Z
-historical_strict_evidence_dir=experiments\phase12\20260629T124925Z
-post_unlock_verified=false
+post_unlock_external_source_verified_dir=experiments\phase12\20260630T061015Z
+post_unlock_verified=true
 require_verified_requested=true
-strict_gate_exit_code=1
-yolov9_import_ready=false
-yolov9_pip_metadata_ready=false
+strict_gate_exit_code=0
+unlock_mode=external_source
+source_adapter_verified=true
 edge_yolov9_command_passed=true
-edge_yolov9_fallback_used=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
 phase12b_yolov9_dry_run_command_ready=true
 phase11m_yolov9_cli_ready=true
-phase12c_yolov9_rows_available=false
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
 ```
 
 詳細記錄請見 [phase12c_yolov9_post_unlock_verification.md](phase12c_yolov9_post_unlock_verification.md)。
 
 ## YOLOv9 Official Source Adapter
 
-Phase 12C-YOLOv9-SRC 已實作官方 source-repo adapter 與 no-fallback verification gate：
+Phase 12C-YOLOv9-SRC 已實作官方 source-repo adapter 與 no-fallback verification gate；Phase 12C-YOLOv9-SRC-V 已完成 no-fallback verification：
 
 ```text
-Phase 12C-YOLOv9-SRC Prepared — official YOLOv9 external source adapter, environment contract, and no-fallback verification gate are implemented.
+Phase 12C-YOLOv9-SRC-V Passed — official YOLOv9 source adapter verified with no fallback in the CARLA Python 3.12 runtime.
 ```
 
 Local source-adapter evidence：
 
 ```text
-source_adapter_evidence_dir=experiments\phase12\20260629T134856Z
-yolov9_rows_refresh_dir=experiments\phase12\20260629T134856Z-1-2
-strict_no_fallback_evidence_dir=experiments\phase12\20260630T040313Z
-strict_yolov9_rows_refresh_dir=experiments\phase12\20260630T040317Z
-source_adapter_verified=false
-yolov9_source_root_configured=false
-yolov9_weights_configured=false
-edge_yolov9_fallback_used=true
+source_adapter_verified_evidence_dir=experiments\phase12\20260630T060621Z
+yolov9_rows_refresh_dir=experiments\phase12\20260630T060823Z
+post_unlock_external_source_verified_dir=experiments\phase12\20260630T061015Z
+source_adapter_verified=true
+YOLOV9_ROOT_configured=true
+YOLOV9_WEIGHTS_configured=true
+yolov9_source_root_ready=true
+yolov9_weights_ready=true
+edge_yolov9_command_passed=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+post_unlock_verified=true
+backend_unavailable_count=0
 runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+auto_install_performed=false
+baseline_requirements_modified=false
+carla_server_started=false
 ```
 
-YOLOv9 rows remain `backend_unavailable` until the operator provides external source and weights and the no-fallback gate passes. YOLOv9 source and weights are not committed to this repository.
+YOLOv9 optional rows are now available / command-ready in the Phase 12C scaffold after no-fallback source adapter verification. YOLOv9 source and weights remain external and are not committed to this repository. No YOLOv9 source is vendored into MA-VLNA, no baseline requirements were modified, no CARLA route runtime confirmation was executed, and no YOLOv9 model accuracy claim is made.
 
 詳細記錄請見 [phase12c_yolov9_source_adapter_verification.md](phase12c_yolov9_source_adapter_verification.md)。

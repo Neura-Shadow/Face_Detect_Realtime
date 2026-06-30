@@ -70,13 +70,13 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12B-BASE-M baseline PlannerAction mapper route metrics: **Prepared — baseline mapper now emits structured route metrics; no-server blocked wiring smoke verified**
   - Phase 12B-BASE baseline PlannerAction mapper runtime: **Blocked — 5/5 real CARLA baseline rows executed but failed route-progress gate**
   - Phase 12B-SUM controller ablation comparative summary: **Prepared — GRP, linear, and baseline evidence normalized into comparative tables**
-  - Phase 12C perception backend ablation: **Prepared — 5 routes x 3 backend modes scaffolded; YOLOv9/RT-DETR optional rows mark `backend_unavailable` when target-runtime dependency is missing**
+  - Phase 12C perception backend ablation: **Prepared — 5 routes x 3 backend modes scaffolded; YOLOv9 optional rows are now available / command-ready after no-fallback source adapter verification; RT-DETR remains optional**
   - Phase 12C-DUMMY dummy backend runtime confirmation: **Passed — 5/5 calibrated `grp_follower + dummy` rows reached goal in real CARLA; collision_count_total=0, lane_invasion_count_total=83**
   - Phase 12C-YOLOv9-U YOLOv9 optional dependency unlock: **Prepared — CARLA Python 3.12 preflight confirms YOLOv9 dependency missing; manual unlock and post-unlock verification commands generated**
   - Phase 12C-YOLOv9-B EdgePerception YOLOv9 backend adapter: **Prepared — `EdgePerception --test yolov9` is registered in base and CARLA Python; missing dependency still falls back safely**
-  - Phase 12C-YOLOv9-V YOLOv9 post-unlock verification: **Blocked — strict verifier executed; default unlock mode is now external source, and local CARLA Python 3.12 runtime still lacks `YOLOV9_ROOT` / `YOLOV9_WEIGHTS`, so no-fallback backend readiness is not verified**
-  - Phase 12C-YOLOv9-SRC official YOLOv9 source adapter: **Prepared — external `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` contract, source adapter, and no-fallback verification gate are implemented; local verification remains blocked until operator provides source and weights**
-  - Phase 12C-YOLOv9-SRC-V source adapter no-fallback verification: **Blocked locally — strict `--require-verified` gate executed at `experiments\phase12\20260630T040313Z`; `YOLOV9_ROOT` and `YOLOV9_WEIGHTS` are unset, so fallback remains active**
+  - Phase 12C-YOLOv9-V YOLOv9 post-unlock verification: **Passed — external_source strict verifier passed at `experiments\phase12\20260630T061015Z`; no-fallback backend readiness is verified in CARLA Python 3.12**
+  - Phase 12C-YOLOv9-SRC official YOLOv9 source adapter: **Prepared — external `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` contract, source adapter, and no-fallback verification gate are implemented**
+  - Phase 12C-YOLOv9-SRC-V source adapter no-fallback verification: **Passed — official YOLOv9 source adapter verified with no fallback in the CARLA Python 3.12 runtime at `experiments\phase12\20260630T060621Z`**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -372,7 +372,7 @@ Phase 12C-YOLOv9-B EdgePerception YOLOv9 backend adapter checks（只驗證 adap
 python scripts\run_phase12c_yolov9_backend_adapter_checks.py --output-dir experiments\phase12
 ```
 
-Phase 12C-YOLOv9-V post-unlock verification（operator 安裝 YOLOv9 後才可通過；目前本機會產生 blocked evidence）：
+Phase 12C-YOLOv9-V post-unlock verification（external_source strict gate 已通過；不代表 CARLA route runtime pass）：
 
 ```powershell
 python scripts\run_phase12c_yolov9_post_unlock_verification.py --unlock-mode external_source --output-dir experiments\phase12 --require-verified
@@ -388,10 +388,26 @@ python scripts\run_phase12c_yolov9_source_adapter_verification.py --output-dir e
 python scripts\run_phase12c_perception_backend_ablation.py --perception-backend-mode yolov9_optional --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --output-dir experiments\phase12
 ```
 
-Phase 12C-YOLOv9-SRC-V strict no-fallback verification（未配置 source/weights 時應產生 blocked evidence，不可宣稱 runtime pass）：
+Phase 12C-YOLOv9-SRC-V strict no-fallback verification（已驗證 source adapter no-fallback；不可宣稱 YOLOv9 CARLA route runtime pass）：
 
 ```powershell
 python scripts\run_phase12c_yolov9_source_adapter_verification.py --output-dir experiments\phase12 --require-verified
+```
+
+Verified Phase 12C-YOLOv9-SRC-V evidence:
+
+```text
+source_adapter_verified_evidence_dir=experiments\phase12\20260630T060621Z
+yolov9_rows_refresh_dir=experiments\phase12\20260630T060823Z
+post_unlock_external_source_verified_dir=experiments\phase12\20260630T061015Z
+source_adapter_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+post_unlock_verified=true
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
 ```
 
 ---
