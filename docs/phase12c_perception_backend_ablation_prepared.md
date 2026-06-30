@@ -246,6 +246,37 @@ baseline_requirements_modified=false
 carla_server_started=false
 ```
 
-YOLOv9 optional rows are now available / command-ready in the Phase 12C scaffold after no-fallback source adapter verification. YOLOv9 source and weights remain external and are not committed to this repository. No YOLOv9 source is vendored into MA-VLNA, no baseline requirements were modified, no CARLA route runtime confirmation was executed, and no YOLOv9 model accuracy claim is made.
+YOLOv9 optional rows are now available / command-ready in the Phase 12C scaffold after no-fallback source adapter verification. YOLOv9 source and weights remain external and are not committed to this repository. No YOLOv9 source is vendored into MA-VLNA, no baseline requirements were modified, and no YOLOv9 model accuracy claim is made. The source-adapter verification itself did not execute a CARLA route runtime; the follow-up R1 selected-row runtime attempt is recorded below as blocked.
 
 詳細記錄請見 [phase12c_yolov9_source_adapter_verification.md](phase12c_yolov9_source_adapter_verification.md)。
+
+## YOLOv9 Selected Runtime Confirmation
+
+Phase 12C-YOLOv9-R1 已嘗試單一路線 runtime confirmation：
+
+```text
+Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
+```
+
+Evidence:
+
+```text
+runtime_evidence_dir=experiments\phase12\20260630T094645Z
+blocked_reason=CARLA server is not reachable
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+source_adapter_verified=true
+post_unlock_verified=true
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+metrics_read_status=not_run
+```
+
+R1 只確認 selected single-route runtime gate 的 blocked evidence handling。它不是 full Phase 12C perception ablation runtime pass，也不是 YOLOv9 accuracy、RT-DETR runtime、CARLA Leaderboard、formal route benchmark 或 infraction benchmark。
+
+詳細記錄請見 [phase12c_yolov9_runtime_confirmation.md](phase12c_yolov9_runtime_confirmation.md)。

@@ -1,83 +1,85 @@
-# Walkthrough - Phase 12C-YOLOv9-SRC-V Source Adapter No-Fallback Verification
+# Walkthrough - Phase 12C-YOLOv9-R1 Selected Runtime Confirmation
 
-1. Preserve Phase 12C-DUMMY as the only runtime-confirmed perception backend slice.
-2. Preserve Phase 12C-YOLOv9-U and Phase 12C-YOLOv9-B as historical dependency/adapter preparation.
-3. Preserve Phase 12C-YOLOv9-SRC as the official external source adapter and no-fallback gate preparation.
-4. Record Phase 12C-YOLOv9-SRC-V as the verified no-fallback source adapter gate in CARLA Python 3.12.
-5. Keep Phase 12C-YOLOv9-RUNTIME as a future phase only.
-6. Do not commit YOLOv9 source.
-7. Do not commit YOLOv9 weights.
-8. Do not vendor YOLOv9 into this repository.
-9. Verify source entries: `detect.py`, `detect_dual.py`, `models/`, `utils/`.
-10. Verify `workers.core.edge_perception --test yolov9` in the target CARLA Python runtime.
-11. Require no fallback for strict source-adapter pass.
-12. Refresh Phase 12C YOLOv9 rows using source-adapter readiness.
-13. Do not auto-install packages from MA-VLNA scripts.
-14. Do not modify baseline requirements.
-15. Do not start CARLA.
-16. Do not execute YOLOv9 route runtime confirmation.
+1. Preserve Phase 12C-DUMMY as the only full five-route runtime-confirmed perception backend slice.
+2. Preserve Phase 12C-YOLOv9-SRC-V as the authoritative official source adapter no-fallback prerequisite.
+3. Run only one selected row for R1: `route_01`, `grp_follower`, `yolov9`.
+4. Do not run RT-DETR.
+5. Do not run the full Phase 12C perception backend matrix.
+6. Do not modify VLM, SafetyGate, SemanticPlanner, GRP controller logic, or baseline requirements.
+7. Do not commit YOLOv9 source.
+8. Do not commit YOLOv9 weights.
+9. Do not commit runtime evidence or raw outputs.
+10. Require `YOLOV9_ROOT` and `YOLOV9_WEIGHTS`.
+11. Require `workers.core.edge_perception --test yolov9` to report no fallback.
+12. Require existing SRC-V evidence unless explicitly bypassed.
+13. Check `127.0.0.1:2000` before launching the CARLA child runtime.
+14. If the server is unreachable, write blocked evidence and do not fake route metrics.
+15. Delegate route execution to the existing Phase 12B runtime path.
+16. Keep the parent wrapper free of direct `carla` imports.
 
 Generated evidence:
 
 ```text
+runtime_evidence_dir=experiments\phase12\20260630T094645Z
+dry_run_evidence_dir=experiments\phase12\20260630T095539Z
 source_adapter_verified_evidence_dir=experiments\phase12\20260630T060621Z
 yolov9_rows_refresh_dir=experiments\phase12\20260630T060823Z
 post_unlock_external_source_verified_dir=experiments\phase12\20260630T061015Z
 ```
 
-YOLOv9-SRC-V result:
+R1 result:
 
 ```text
+status=Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
+blocked_reason=CARLA server is not reachable
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+runtime_scope=selected_single_route
 source_adapter_verified=true
-require_verified_requested=true
-strict_gate_exit_code=0
-YOLOV9_ROOT_configured=true
-YOLOV9_WEIGHTS_configured=true
-yolov9_source_root_ready=true
-yolov9_weights_ready=true
+post_unlock_verified=true
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
 edge_yolov9_command_passed=true
 edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
-post_unlock_verified=true
-unlock_mode=external_source
-phase12c_yolov9_rows_available=true
-backend_unavailable_count=0
 runtime_confirmation_executed=false
 carla_route_runtime_executed=false
-auto_install_performed=false
-baseline_requirements_modified=false
-carla_server_started=false
+row_count=1
+executed_row_count=0
+passed_count=0
+blocked_count=1
+failed_count=0
+goal_reached=null
+distance_to_goal_m=null
+route_progress_pct=null
+collision_count=null
+lane_invasion_count=null
+metrics_read_status=not_run
+yolo_runtime_row_verified=false
 ```
 
-Manual operator setup, not committed:
+Dry-run command:
 
 ```powershell
+python scripts\run_phase12c_yolov9_runtime_confirmation.py --dry-run --output-dir experiments\phase12
+```
+
+Formal selected-row command:
+
+```powershell
+$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
 $env:YOLOV9_ROOT = "D:\AIModels\yolov9"
 $env:YOLOV9_WEIGHTS = "D:\AIModels\yolov9\yolov9-c-converted.pt"
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install -r "$env:YOLOV9_ROOT\requirements.txt"
-```
 
-Strict source-adapter command:
-
-```powershell
-python scripts\run_phase12c_yolov9_source_adapter_verification.py --output-dir experiments\phase12 --require-verified
-```
-
-Post-unlock strict command:
-
-```powershell
-python scripts\run_phase12c_yolov9_post_unlock_verification.py --unlock-mode external_source --output-dir experiments\phase12 --require-verified
-```
-
-Refresh Phase 12C YOLOv9 rows:
-
-```powershell
-python scripts\run_phase12c_perception_backend_ablation.py --perception-backend-mode yolov9_optional --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --output-dir experiments\phase12
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_yolov9_runtime_confirmation.py --route-id route_01 --host 127.0.0.1 --port 2000 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --carla-root D:\CARLA\packages\CARLA_0.9.16 --output-dir experiments\phase12 --child-timeout-sec 2400 --parent-timeout-sec 7200 --require-yolov9-ready
 ```
 
 Boundary fields:
 
 ```text
+full_phase12c_perception_ablation_runtime_pass=false
+rt_detr_runtime_verified=false
 route_benchmark_verified=false
 infraction_benchmark_verified=false
 leaderboard_evaluated=false
@@ -88,8 +90,9 @@ leaderboard_route_criteria_evaluated=false
 Validation checklist:
 
 ```text
-python -m py_compile workers\core\edge_perception.py scripts\run_phase12c_yolov9_source_adapter_verification.py scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m py_compile workers\core\edge_perception.py scripts\run_phase12c_yolov9_source_adapter_verification.py scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py
+python -m py_compile workers\core\edge_perception.py scripts\run_phase12c_yolov9_runtime_confirmation.py scripts\run_phase12c_yolov9_source_adapter_verification.py scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m py_compile workers\core\edge_perception.py scripts\run_phase12c_yolov9_runtime_confirmation.py scripts\run_phase12c_yolov9_source_adapter_verification.py scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py
+python scripts\run_phase12c_yolov9_runtime_confirmation.py --dry-run --output-dir experiments\phase12
 python scripts\run_phase11_carla_checks.py
 python scripts\run_demo_checks.py
 D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase11_carla_checks.py
@@ -97,4 +100,4 @@ git diff --check
 python scripts\run_phase11o_source_commit_checks.py --require-staged
 ```
 
-Phase 12C-YOLOv9-SRC-V is not a YOLOv9 CARLA route runtime pass. It means the official external source adapter verifies no-fallback readiness in the dedicated CARLA Python 3.12 runtime, and Phase 12C YOLOv9 rows are scaffold command-ready. It makes no YOLOv9 accuracy, RT-DETR runtime, CARLA Leaderboard, formal route benchmark, or infraction benchmark claim.
+Phase 12C-YOLOv9-R1 is not a full Phase 12C perception ablation runtime pass. It means the selected YOLOv9 runtime row was attempted under the strict wrapper, but the route child runtime was blocked before launch because the CARLA server was unreachable at `127.0.0.1:2000`.

@@ -771,8 +771,46 @@ python scripts\run_phase12c_yolov9_source_adapter_verification.py --output-dir e
 python scripts\run_phase12c_perception_backend_ablation.py --perception-backend-mode yolov9_optional --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --output-dir experiments\phase12
 ```
 
-YOLOv9 source repo and weights are not committed, not vendored, and not packaged into MA-VLNA. This remains source adapter no-fallback verification only; it does not start CARLA, does not execute YOLOv9 route runtime confirmation, and does not claim YOLOv9 accuracy, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+YOLOv9 source repo and weights are not committed, not vendored, and not packaged into MA-VLNA. This source-adapter slice remains no-fallback verification only; it does not start CARLA and does not claim YOLOv9 accuracy, CARLA Leaderboard, formal route benchmark, or infraction benchmark. The follow-up R1 selected-row runtime attempt is recorded below as blocked.
 
 ## Next Implementation Slice
 
-Phase 12C-YOLOv9-RUNTIME 是 future phase only，尚未執行。只有 source adapter gate 通過後，才可進入 YOLOv9 runtime confirmation；本次沒有執行 CARLA route runtime。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。
+## Phase 12C-YOLOv9-R1 Addendum - Selected YOLOv9 Runtime Confirmation
+
+```text
+Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
+```
+
+Phase 12C-YOLOv9-R1 是 source adapter no-fallback 通過後的單一路線 formal runtime attempt。它只選定：
+
+```text
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+runtime_scope=selected_single_route
+```
+
+Formal runtime evidence:
+
+```text
+runtime_evidence_dir=experiments\phase12\20260630T094645Z
+blocked_reason=CARLA server is not reachable
+source_adapter_verified=true
+post_unlock_verified=true
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+row_count=1
+executed_row_count=0
+blocked_count=1
+metrics_read_status=not_run
+```
+
+R1 wrapper 已驗證 YOLOv9 source/weights 與 EdgePerception no-fallback readiness，但 formal preflight 發現 `127.0.0.1:2000` 不可達，因此沒有啟動 Phase 12B / Phase 11M child runtime，也沒有假造 route metrics。
+
+詳細記錄請見 [phase12c_yolov9_runtime_confirmation.md](phase12c_yolov9_runtime_confirmation.md)。
+
+Phase 12C-YOLOv9-R1 不代表 full Phase 12C perception ablation runtime pass，不代表 YOLOv9 accuracy，不代表 RT-DETR runtime verification，也不代表 CARLA Leaderboard、formal route benchmark 或 infraction benchmark。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。

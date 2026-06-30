@@ -14,7 +14,7 @@ Phase distinction:
 
 - Phase 12C-YOLOv9-SRC prepared the official external source adapter and no-fallback gate.
 - Phase 12C-YOLOv9-SRC-V verified official source adapter no-fallback readiness in CARLA Python 3.12.
-- Phase 12C-YOLOv9-RUNTIME is a future phase only and has not been executed.
+- Phase 12C-YOLOv9-R1 has been attempted and is blocked by local CARLA server reachability; full YOLOv9 runtime pass remains unverified.
 
 ## Environment Contract
 
@@ -136,4 +136,24 @@ leaderboard_route_criteria_evaluated=false
 
 Phase 12C-YOLOv9-SRC is not YOLOv9 route runtime validation, not YOLOv9 accuracy evidence, not RT-DETR validation, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
 
-YOLOv9 source repo remains external and is not committed. YOLOv9 weights remain external and are not committed. No YOLOv9 source is vendored into MA-VLNA. No baseline requirements were modified. No CARLA route runtime confirmation was executed. No YOLOv9 model accuracy claim is made.
+YOLOv9 source repo remains external and is not committed. YOLOv9 weights remain external and are not committed. No YOLOv9 source is vendored into MA-VLNA. No baseline requirements were modified. No YOLOv9 model accuracy claim is made.
+
+## Follow-up Runtime Attempt
+
+Phase 12C-YOLOv9-R1 has now attempted one selected runtime row after this source-adapter verification:
+
+```text
+runtime_evidence_dir=experiments\phase12\20260630T094645Z
+status=Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
+blocked_reason=CARLA server is not reachable
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+source_adapter_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+```
+
+The R1 blocker is the local CARLA server reachability gate, not the YOLOv9 source adapter. R1 remains selected single-route evidence only and is not a full Phase 12C perception ablation runtime pass.

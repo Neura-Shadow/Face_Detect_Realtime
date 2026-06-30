@@ -12,7 +12,7 @@ Phase distinction:
 
 - Phase 12C-YOLOv9-SRC prepared the official external source adapter and no-fallback gate.
 - Phase 12C-YOLOv9-SRC-V verified official source adapter no-fallback readiness in CARLA Python 3.12.
-- Phase 12C-YOLOv9-RUNTIME is a future phase only and has not been executed.
+- Phase 12C-YOLOv9-R1 has been attempted and is blocked by local CARLA server reachability; full YOLOv9 runtime pass remains unverified.
 
 ## Evidence
 
@@ -102,6 +102,26 @@ leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
 
-YOLOv9 source repo remains external and is not committed. YOLOv9 weights remain external and are not committed. No YOLOv9 source is vendored into MA-VLNA. No baseline requirements were modified. No CARLA route runtime confirmation was executed. No YOLOv9 model accuracy claim is made.
+YOLOv9 source repo remains external and is not committed. YOLOv9 weights remain external and are not committed. No YOLOv9 source is vendored into MA-VLNA. No baseline requirements were modified. No YOLOv9 model accuracy claim is made.
 
 Phase 12C-YOLOv9-SRC-V is not YOLOv9 route runtime validation, not YOLOv9 accuracy evidence, not RT-DETR validation, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
+
+## Follow-up Runtime Attempt
+
+Phase 12C-YOLOv9-R1 attempted one selected route after this no-fallback gate:
+
+```text
+runtime_evidence_dir=experiments\phase12\20260630T094645Z
+status=Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
+blocked_reason=CARLA server is not reachable
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+source_adapter_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+```
+
+The blocker is CARLA server reachability at runtime preflight. The YOLOv9 source adapter no-fallback gate remains passed.

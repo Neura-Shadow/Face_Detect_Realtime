@@ -77,6 +77,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-YOLOv9-V YOLOv9 post-unlock verification: **Passed — external_source strict verifier passed at `experiments\phase12\20260630T061015Z`; no-fallback backend readiness is verified in CARLA Python 3.12**
   - Phase 12C-YOLOv9-SRC official YOLOv9 source adapter: **Prepared — external `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` contract, source adapter, and no-fallback verification gate are implemented**
   - Phase 12C-YOLOv9-SRC-V source adapter no-fallback verification: **Passed — official YOLOv9 source adapter verified with no fallback in the CARLA Python 3.12 runtime at `experiments\phase12\20260630T060621Z`**
+  - Phase 12C-YOLOv9-R1 selected YOLOv9 runtime row: **Blocked — no-fallback YOLOv9 readiness passed, but formal selected-row runtime stopped because CARLA server `127.0.0.1:2000` was unreachable at `experiments\phase12\20260630T094645Z`**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -264,6 +265,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 >
 > Phase 12C-YOLOv9-SRC-V no-fallback verification 請見 [docs/phase12c_yolov9_source_adapter_no_fallback_verification.md](docs/phase12c_yolov9_source_adapter_no_fallback_verification.md)
 >
+> Phase 12C-YOLOv9-R1 selected runtime confirmation 請見 [docs/phase12c_yolov9_runtime_confirmation.md](docs/phase12c_yolov9_runtime_confirmation.md)
+>
 > Phase 12C-YOLO-U generic YOLO unlock preparation 是早期歷史紀錄，請見 [docs/phase12c_yolo_optional_dependency_unlock_prepared.md](docs/phase12c_yolo_optional_dependency_unlock_prepared.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
@@ -406,6 +409,31 @@ edge_yolov9_no_fallback_verified=true
 post_unlock_verified=true
 phase12c_yolov9_rows_available=true
 backend_unavailable_count=0
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+```
+
+Phase 12C-YOLOv9-R1 selected runtime confirmation（單一路線 formal gate；本次因 CARLA server 不可達而產生 blocked evidence）：
+
+```powershell
+$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
+$env:YOLOV9_ROOT = "D:\AIModels\yolov9"
+$env:YOLOV9_WEIGHTS = "D:\AIModels\yolov9\yolov9-c-converted.pt"
+
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_yolov9_runtime_confirmation.py --route-id route_01 --host 127.0.0.1 --port 2000 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --carla-root D:\CARLA\packages\CARLA_0.9.16 --output-dir experiments\phase12 --child-timeout-sec 2400 --parent-timeout-sec 7200 --require-yolov9-ready
+```
+
+Latest Phase 12C-YOLOv9-R1 evidence:
+
+```text
+runtime_evidence_dir=experiments\phase12\20260630T094645Z
+blocked_reason=CARLA server is not reachable
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+source_adapter_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
 runtime_confirmation_executed=false
 carla_route_runtime_executed=false
 ```

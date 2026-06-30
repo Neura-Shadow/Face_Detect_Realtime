@@ -172,6 +172,7 @@ leaderboard_route_criteria_evaluated=false
 | **YOLOv9 Post-Unlock Verification** | — | 100% | — | 🟢 Phase 12C-YOLOv9-V Pass |
 | **YOLOv9 Source Adapter Verification** | — | 100% | — | 🟡 Phase 12C-YOLOv9-SRC Prepared |
 | **YOLOv9 Source Adapter No-Fallback Verification** | — | 100% | — | 🟢 Phase 12C-YOLOv9-SRC-V Pass |
+| **YOLOv9 Selected Runtime Row** | — | 100% | — | 🟠 Phase 12C-YOLOv9-R1 Blocked |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 ## 🚧 Explicitly Not Verified
