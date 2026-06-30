@@ -14,7 +14,7 @@ Phase distinction:
 
 - Phase 12C-YOLOv9-SRC prepared the official external source adapter and no-fallback gate.
 - Phase 12C-YOLOv9-SRC-V verified official source adapter no-fallback readiness in CARLA Python 3.12.
-- Phase 12C-YOLOv9-R1 has been attempted and is blocked by local CARLA server reachability; full YOLOv9 runtime pass remains unverified.
+- Phase 12C-YOLOv9-R1-RERUN reached CARLA and launched the selected route runtime, but the child timed out before route metrics or goal-reach evidence were produced; full YOLOv9 runtime pass remains unverified.
 
 ## Environment Contract
 
@@ -143,17 +143,21 @@ YOLOv9 source repo remains external and is not committed. YOLOv9 weights remain 
 Phase 12C-YOLOv9-R1 has now attempted one selected runtime row after this source-adapter verification:
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260630T094645Z
+runtime_evidence_dir=experiments\phase12\20260630T134322Z
+previous_blocked_evidence_dir=experiments\phase12\20260630T094645Z
 status=Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
-blocked_reason=CARLA server is not reachable
+carla_server_reachable=true
 route_id=route_01
 controller_mode=grp_follower
 perception_backend=yolov9
 source_adapter_verified=true
 edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
+child_row_result=timeout
+child_inner_exit_code=124
+metrics_read_status=loaded
 ```
 
-The R1 blocker is the local CARLA server reachability gate, not the YOLOv9 source adapter. R1 remains selected single-route evidence only and is not a full Phase 12C perception ablation runtime pass.
+The R1-RERUN blocker is the selected route child timeout, not the YOLOv9 source adapter. R1 remains selected single-route evidence only and is not a full Phase 12C perception ablation runtime pass.

@@ -261,8 +261,9 @@ Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row d
 Evidence:
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260630T094645Z
-blocked_reason=CARLA server is not reachable
+runtime_evidence_dir=experiments\phase12\20260630T134322Z
+previous_blocked_evidence_dir=experiments\phase12\20260630T094645Z
+carla_server_reachable=true
 route_id=route_01
 controller_mode=grp_follower
 perception_backend=yolov9
@@ -272,11 +273,19 @@ phase12c_yolov9_rows_available=true
 backend_unavailable_count=0
 edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
-metrics_read_status=not_run
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
+child_row_result=timeout
+child_inner_exit_code=124
+child_duration_sec=2400.311
+goal_reached=null
+distance_to_goal_m=null
+route_progress_pct=null
+collision_count=null
+lane_invasion_count=null
+metrics_read_status=loaded
 ```
 
-R1 只確認 selected single-route runtime gate 的 blocked evidence handling。它不是 full Phase 12C perception ablation runtime pass，也不是 YOLOv9 accuracy、RT-DETR runtime、CARLA Leaderboard、formal route benchmark 或 infraction benchmark。
+R1-RERUN 只確認 selected single-route runtime gate 的 blocked evidence handling：CARLA server 已可達，selected `grp_follower + yolov9` row 已啟動，但 child route runtime timeout，未產生 route metrics 或 goal-reach evidence。它不是 full Phase 12C perception ablation runtime pass，也不是 YOLOv9 accuracy、RT-DETR runtime、CARLA Leaderboard、formal route benchmark 或 infraction benchmark。
 
 詳細記錄請見 [phase12c_yolov9_runtime_confirmation.md](phase12c_yolov9_runtime_confirmation.md)。

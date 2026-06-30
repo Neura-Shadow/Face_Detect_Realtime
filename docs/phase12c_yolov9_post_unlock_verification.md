@@ -14,7 +14,7 @@ Phase distinction:
 
 - Phase 12C-YOLOv9-SRC prepared the official external source adapter and no-fallback gate.
 - Phase 12C-YOLOv9-SRC-V verified official source adapter no-fallback readiness in CARLA Python 3.12.
-- Phase 12C-YOLOv9-R1 has been attempted and is blocked by local CARLA server reachability; full YOLOv9 runtime pass remains unverified.
+- Phase 12C-YOLOv9-R1-RERUN reached CARLA and launched the selected route runtime, but the child timed out before route metrics or goal-reach evidence were produced; full YOLOv9 runtime pass remains unverified.
 
 ## Evidence
 
@@ -146,9 +146,10 @@ YOLOv9 source repo remains external and is not committed. YOLOv9 weights remain 
 Phase 12C-YOLOv9-R1 attempted a selected single-route runtime confirmation after this post-unlock verification:
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260630T094645Z
+runtime_evidence_dir=experiments\phase12\20260630T134322Z
+previous_blocked_evidence_dir=experiments\phase12\20260630T094645Z
 status=Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
-blocked_reason=CARLA server is not reachable
+carla_server_reachable=true
 route_id=route_01
 controller_mode=grp_follower
 perception_backend=yolov9
@@ -157,8 +158,11 @@ phase12c_yolov9_rows_available=true
 backend_unavailable_count=0
 edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
+child_row_result=timeout
+child_inner_exit_code=124
+metrics_read_status=loaded
 ```
 
-The R1 runtime child was not launched because the formal wrapper preflight could not reach `127.0.0.1:2000`. This preserves blocked evidence without changing the post-unlock no-fallback pass.
+The R1-RERUN runtime child launched after CARLA became reachable, but the selected route child timed out before producing route metrics. This preserves blocked evidence without changing the post-unlock no-fallback pass.

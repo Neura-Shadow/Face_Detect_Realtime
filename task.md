@@ -1,15 +1,15 @@
-# Current Task - Phase 12C-YOLOv9-R1
+# Current Task - Phase 12C-YOLOv9-R1-RERUN
 
 ## Status
 
 ```text
-Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
+Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row still did not complete or did not satisfy the selected runtime smoke gate.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-YOLOv9-R1 is a selected single-route runtime confirmation attempt only. It does not claim full Phase 12C perception ablation runtime pass, YOLOv9 accuracy, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+Phase 12C-YOLOv9-R1-RERUN is a selected single-route runtime retry only. It does not claim full Phase 12C perception ablation runtime pass, YOLOv9 accuracy, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
 ```
 
 ## Selected Runtime Row
@@ -30,7 +30,8 @@ lookahead_waypoints=8
 ## Generated Local Evidence
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260630T094645Z
+runtime_evidence_dir=experiments\phase12\20260630T134322Z
+previous_blocked_evidence_dir=experiments\phase12\20260630T094645Z
 dry_run_evidence_dir=experiments\phase12\20260630T095539Z
 source_adapter_verified_evidence_dir=experiments\phase12\20260630T060621Z
 yolov9_rows_refresh_dir=experiments\phase12\20260630T060823Z
@@ -42,7 +43,7 @@ Generated output remains local and is not committed.
 ## Result
 
 ```text
-blocked_reason=CARLA server is not reachable
+carla_server_reachable=true
 source_adapter_verified=true
 post_unlock_verified=true
 phase12c_yolov9_rows_available=true
@@ -54,28 +55,36 @@ yolov9_weights_ready=true
 edge_yolov9_command_passed=true
 edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
 row_count=1
-executed_row_count=0
+executed_row_count=1
 passed_count=0
 blocked_count=1
 failed_count=0
+child_summary_status=controller_ablation_runtime_blocked
+child_row_result=timeout
+child_exit_code=1
+child_inner_exit_code=124
+child_duration_sec=2400.311
 goal_reached=null
 distance_to_goal_m=null
 route_progress_pct=null
 collision_count=null
 lane_invasion_count=null
-metrics_read_status=not_run
+metrics_read_status=loaded
 yolo_runtime_row_verified=false
 ```
 
+The previous R1 evidence stopped at server reachability preflight. R1-RERUN reached a CARLA server and launched the selected Phase 11M route runner, but the child timed out before route metrics or goal-reach evidence were written.
+
 ## Commands
 
-Dry-run wrapper check:
+CARLA server used locally:
 
 ```powershell
-python scripts\run_phase12c_yolov9_runtime_confirmation.py --dry-run --output-dir experiments\phase12
+$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
+D:\CARLA\packages\CARLA_0.9.16\CarlaUE4.exe -carla-rpc-port=2000 -RenderOffScreen -nosound
 ```
 
 Formal selected-row runtime gate:
@@ -91,9 +100,6 @@ D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_yolov9_runtime_co
 ## Validation Plan
 
 ```text
-python -m py_compile workers\core\edge_perception.py scripts\run_phase12c_yolov9_runtime_confirmation.py scripts\run_phase12c_yolov9_source_adapter_verification.py scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m py_compile workers\core\edge_perception.py scripts\run_phase12c_yolov9_runtime_confirmation.py scripts\run_phase12c_yolov9_source_adapter_verification.py scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py
-python scripts\run_phase12c_yolov9_runtime_confirmation.py --dry-run --output-dir experiments\phase12
 python scripts\run_phase11_carla_checks.py
 python scripts\run_demo_checks.py
 D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase11_carla_checks.py
@@ -113,4 +119,4 @@ leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
 
-Next unlock action is to start a reachable CARLA server on `127.0.0.1:2000`, then rerun the same selected-row command. No YOLOv9 source, weights, runtime evidence, `.env`, or baseline dependency changes should be committed.
+No YOLOv9 source, weights, runtime evidence, `.env`, CARLA package, Python environment, raw outputs, or baseline dependency changes should be committed.

@@ -781,7 +781,7 @@ YOLOv9 source repo and weights are not committed, not vendored, and not packaged
 Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
 ```
 
-Phase 12C-YOLOv9-R1 是 source adapter no-fallback 通過後的單一路線 formal runtime attempt。它只選定：
+Phase 12C-YOLOv9-R1 是 source adapter no-fallback 通過後的單一路線 formal runtime attempt。R1-RERUN 已在 reachable CARLA server 下重跑同一條 selected row。它只選定：
 
 ```text
 route_id=route_01
@@ -790,26 +790,36 @@ perception_backend=yolov9
 runtime_scope=selected_single_route
 ```
 
-Formal runtime evidence:
+Latest formal runtime evidence:
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260630T094645Z
-blocked_reason=CARLA server is not reachable
+runtime_evidence_dir=experiments\phase12\20260630T134322Z
+previous_blocked_evidence_dir=experiments\phase12\20260630T094645Z
+carla_server_reachable=true
 source_adapter_verified=true
 post_unlock_verified=true
 phase12c_yolov9_rows_available=true
 backend_unavailable_count=0
 edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
 row_count=1
-executed_row_count=0
+executed_row_count=1
 blocked_count=1
-metrics_read_status=not_run
+child_summary_status=controller_ablation_runtime_blocked
+child_row_result=timeout
+child_inner_exit_code=124
+child_duration_sec=2400.311
+goal_reached=null
+distance_to_goal_m=null
+route_progress_pct=null
+collision_count=null
+lane_invasion_count=null
+metrics_read_status=loaded
 ```
 
-R1 wrapper 已驗證 YOLOv9 source/weights 與 EdgePerception no-fallback readiness，但 formal preflight 發現 `127.0.0.1:2000` 不可達，因此沒有啟動 Phase 12B / Phase 11M child runtime，也沒有假造 route metrics。
+R1 wrapper 已驗證 YOLOv9 source/weights 與 EdgePerception no-fallback readiness。R1-RERUN 已確認 `127.0.0.1:2000` 可達，並啟動 Phase 12B / Phase 11M child runtime；但 child 在 `2400.311s` 後 timeout，沒有產生 route metrics 或 goal-reach evidence。
 
 詳細記錄請見 [phase12c_yolov9_runtime_confirmation.md](phase12c_yolov9_runtime_confirmation.md)。
 

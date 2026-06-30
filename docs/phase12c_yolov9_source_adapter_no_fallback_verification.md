@@ -12,7 +12,7 @@ Phase distinction:
 
 - Phase 12C-YOLOv9-SRC prepared the official external source adapter and no-fallback gate.
 - Phase 12C-YOLOv9-SRC-V verified official source adapter no-fallback readiness in CARLA Python 3.12.
-- Phase 12C-YOLOv9-R1 has been attempted and is blocked by local CARLA server reachability; full YOLOv9 runtime pass remains unverified.
+- Phase 12C-YOLOv9-R1-RERUN reached CARLA and launched the selected route runtime, but the child timed out before route metrics or goal-reach evidence were produced; full YOLOv9 runtime pass remains unverified.
 
 ## Evidence
 
@@ -111,17 +111,21 @@ Phase 12C-YOLOv9-SRC-V is not YOLOv9 route runtime validation, not YOLOv9 accura
 Phase 12C-YOLOv9-R1 attempted one selected route after this no-fallback gate:
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260630T094645Z
+runtime_evidence_dir=experiments\phase12\20260630T134322Z
+previous_blocked_evidence_dir=experiments\phase12\20260630T094645Z
 status=Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
-blocked_reason=CARLA server is not reachable
+carla_server_reachable=true
 route_id=route_01
 controller_mode=grp_follower
 perception_backend=yolov9
 source_adapter_verified=true
 edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
+child_row_result=timeout
+child_inner_exit_code=124
+metrics_read_status=loaded
 ```
 
-The blocker is CARLA server reachability at runtime preflight. The YOLOv9 source adapter no-fallback gate remains passed.
+The blocker is the selected route child timeout. The YOLOv9 source adapter no-fallback gate remains passed.

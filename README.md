@@ -77,7 +77,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-YOLOv9-V YOLOv9 post-unlock verification: **Passed — external_source strict verifier passed at `experiments\phase12\20260630T061015Z`; no-fallback backend readiness is verified in CARLA Python 3.12**
   - Phase 12C-YOLOv9-SRC official YOLOv9 source adapter: **Prepared — external `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` contract, source adapter, and no-fallback verification gate are implemented**
   - Phase 12C-YOLOv9-SRC-V source adapter no-fallback verification: **Passed — official YOLOv9 source adapter verified with no fallback in the CARLA Python 3.12 runtime at `experiments\phase12\20260630T060621Z`**
-  - Phase 12C-YOLOv9-R1 selected YOLOv9 runtime row: **Blocked — no-fallback YOLOv9 readiness passed, but formal selected-row runtime stopped because CARLA server `127.0.0.1:2000` was unreachable at `experiments\phase12\20260630T094645Z`**
+  - Phase 12C-YOLOv9-R1 selected YOLOv9 runtime row: **Blocked — RERUN reached CARLA and launched `grp_follower + yolov9`, but the selected row timed out before route metrics were produced at `experiments\phase12\20260630T134322Z`**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -426,16 +426,19 @@ D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_yolov9_runtime_co
 Latest Phase 12C-YOLOv9-R1 evidence:
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260630T094645Z
-blocked_reason=CARLA server is not reachable
+runtime_evidence_dir=experiments\phase12\20260630T134322Z
+previous_blocked_evidence_dir=experiments\phase12\20260630T094645Z
+carla_server_reachable=true
 route_id=route_01
 controller_mode=grp_follower
 perception_backend=yolov9
 source_adapter_verified=true
 edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
+child_row_result=timeout
+metrics_read_status=loaded
 ```
 
 ---
