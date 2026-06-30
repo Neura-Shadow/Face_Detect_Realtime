@@ -73,6 +73,7 @@ class CarlaClosedLoopAgent:
         route_tracker: CarlaRouteProgressTracker | None = None,
         enable_metric_sensors: bool = False,
         require_sensors: bool = False,
+        diagnostic_recorder: Any | None = None,
     ) -> None:
         self._config = config or AgentConfig.load()
         self._enable_vlm = enable_vlm
@@ -82,13 +83,34 @@ class CarlaClosedLoopAgent:
         self._route_tracker = route_tracker
         self._enable_metric_sensors = enable_metric_sensors
         self._require_sensors = require_sensors
+        self._diagnostic_recorder = diagnostic_recorder
 
         self._carla = carla_adapter or CarlaClientAdapter(self._config.carla)
         self._control_adapter = control_adapter or CarlaVehicleControlAdapter(
             self._carla,
             self._config.carla,
         )
-        self._perception = EdgePerception(self._config)
+        self._record_diagnostic_event(
+            "edge_perception_model_load_started",
+            step=0,
+            perception_backend=self._config.perception.backend,
+        )
+        try:
+            self._perception = EdgePerception(self._config)
+        except Exception as exc:
+            self._record_diagnostic_event(
+                "edge_perception_model_load_failed",
+                step=0,
+                perception_backend=self._config.perception.backend,
+                error=str(exc),
+            )
+            raise
+        self._record_diagnostic_event(
+            "edge_perception_model_load_finished",
+            step=0,
+            perception_backend=self._config.perception.backend,
+            runtime_backend=self._perception.__class__.__name__,
+        )
         self._trigger_policy = TriggerPolicy(self._config)
         self._safety_gate = SafetyGate(self._config)
         self._planner = SemanticPlanner(self._config)
@@ -104,15 +126,20 @@ class CarlaClosedLoopAgent:
             if self._runtime_metrics is not None:
                 self._runtime_metrics.steps_requested = int(max_steps or 0)
                 self._runtime_metrics.record_event("setup_started", None)
+                self._record_diagnostic_event("carla_setup_started", step=0)
                 self._carla.setup(
                     metrics=self._runtime_metrics,
                     enable_metric_sensors=self._enable_metric_sensors,
                     require_sensors=self._require_sensors,
                 )
             else:
+                self._record_diagnostic_event("carla_setup_started", step=0)
                 self._carla.setup()
+            self._record_diagnostic_event("carla_setup_finished", step=0)
             if self._route_tracker is not None:
+                self._record_diagnostic_event("route_load_started", step=0)
                 self._route_tracker.load_from_adapter(self._carla)
+                self._record_diagnostic_event("route_load_finished", step=0)
         except CarlaDependencyError as exc:
             logger.error("%s", exc)
             raise
@@ -155,16 +182,65 @@ class CarlaClosedLoopAgent:
         world.tick() 被反映，這是 CARLA synchronous mode 的正常節奏。
         """
         self._frame_count += 1
+        step = self._frame_count
+        heartbeat: dict[str, Any] = {
+            "step": step,
+            "world_tick_started": False,
+            "world_tick_finished": False,
+            "rgb_frame_received": False,
+            "edge_perception_started": False,
+            "edge_perception_finished": False,
+            "edge_perception_backend": None,
+            "edge_yolov9_fallback_used": None,
+            "yolov9_inference_ms": None,
+            "planner_step_started": False,
+            "planner_step_finished": False,
+            "control_applied": False,
+            "route_progress_pct": None,
+            "distance_to_goal_m": None,
+            "collision_count": None,
+            "lane_invasion_count": None,
+        }
 
+        heartbeat["world_tick_started"] = True
+        self._record_diagnostic_event("world_tick_started", step=step)
         carla_frame = self._carla.tick()
+        heartbeat["world_tick_finished"] = True
+        self._record_diagnostic_event("world_tick_finished", step=step, frame_id=carla_frame.frame_id)
         if self._runtime_metrics is not None:
             self._runtime_metrics.record_rgb_frame(self._frame_count, frame_id=carla_frame.frame_id)
             self._runtime_metrics.record_world_tick(self._frame_count, frame_id=carla_frame.frame_id)
+        heartbeat["rgb_frame_received"] = True
+        self._record_diagnostic_event("rgb_frame_received", step=step, frame_id=carla_frame.frame_id)
+
+        heartbeat["edge_perception_started"] = True
+        self._record_diagnostic_event(
+            "edge_perception_started",
+            step=step,
+            perception_backend=self._config.perception.backend,
+        )
         perception = self._perception.process(
             carla_frame.image_bgr,
             frame_id=carla_frame.frame_id,
         )
+        heartbeat["edge_perception_finished"] = True
+        heartbeat["edge_perception_backend"] = perception.backend
+        heartbeat["edge_yolov9_fallback_used"] = perception.fallback_used
+        heartbeat["yolov9_inference_ms"] = perception.backend_metadata.get("yolov9_timing", {}).get(
+            "yolov9_total_inference_ms",
+            perception.inference_ms,
+        )
+        self._record_diagnostic_event(
+            "edge_perception_finished",
+            step=step,
+            edge_perception_backend=perception.backend,
+            edge_yolov9_fallback_used=perception.fallback_used,
+            inference_ms=perception.inference_ms,
+            **perception.backend_metadata.get("yolov9_timing", {}),
+        )
 
+        heartbeat["planner_step_started"] = True
+        self._record_diagnostic_event("planner_step_started", step=step)
         trigger_result = self._evaluate_trigger(perception)
         if trigger_result.should_trigger:
             self._publish_trigger(trigger_result)
@@ -186,11 +262,26 @@ class CarlaClosedLoopAgent:
             ego_pos = self._ego_position(carla_frame)
             action = self._planner.plan_local(perception, ego_pos)
             action = self._validate_planner_action(action)
+        heartbeat["planner_step_finished"] = True
+        self._record_diagnostic_event(
+            "planner_step_finished",
+            step=step,
+            trigger_reason=trigger_result.reason if trigger_result.should_trigger else None,
+            planner_source=action.source,
+            plan_id=action.plan_id,
+        )
 
         success = await self._control_adapter.execute(action)
         if not success:
             action = self._safety_gate.emergency_stop()
             await self._control_adapter.execute(action)
+        heartbeat["control_applied"] = bool(success)
+        self._record_diagnostic_event(
+            "control_applied",
+            step=step,
+            control_success=success,
+            plan_id=action.plan_id,
+        )
 
         if self._runtime_metrics is not None:
             first_step = action.action_sequence[0] if action.action_sequence else None
@@ -205,6 +296,12 @@ class CarlaClosedLoopAgent:
             self._runtime_metrics.record_vehicle_state(vehicle, self._frame_count)
             if self._route_tracker is not None:
                 self._route_tracker.record_vehicle_state(vehicle, self._frame_count)
+                heartbeat["route_progress_pct"] = self._route_tracker.to_metrics_dict().get("route_progress_pct")
+                heartbeat["distance_to_goal_m"] = self._route_tracker.to_metrics_dict().get("distance_to_goal_m")
+            heartbeat["collision_count"] = self._runtime_metrics.collision_count
+            heartbeat["lane_invasion_count"] = self._runtime_metrics.lane_invasion_count
+
+        self._record_diagnostic_heartbeat(heartbeat)
 
         self._publish_cycle_logs(
             carla_frame=carla_frame,
@@ -214,6 +311,30 @@ class CarlaClosedLoopAgent:
             vlm_output=vlm_output,
             gate_result=gate_result,
         )
+
+    def _record_diagnostic_event(self, phase: str, *, step: int | None = None, **payload: Any) -> None:
+        recorder = self._diagnostic_recorder
+        if recorder is None:
+            return
+        try:
+            recorder.record_event(phase=phase, step=step, **payload)
+        except Exception:
+            logger.debug("diagnostic event recorder failed", exc_info=True)
+
+    def _record_diagnostic_heartbeat(self, heartbeat: dict[str, Any]) -> None:
+        recorder = self._diagnostic_recorder
+        if recorder is None:
+            return
+        try:
+            recorder.record_heartbeat(heartbeat)
+            if self._runtime_metrics is not None or self._route_tracker is not None:
+                recorder.record_partial_metrics(
+                    step=int(heartbeat.get("step") or 0),
+                    metrics=self._runtime_metrics,
+                    route_tracker=self._route_tracker,
+                )
+        except Exception:
+            logger.debug("diagnostic heartbeat recorder failed", exc_info=True)
 
     def _evaluate_trigger(self, perception: PerceptionResult) -> TriggerResult:
         perception_dict = {

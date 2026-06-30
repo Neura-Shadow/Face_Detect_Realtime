@@ -161,3 +161,27 @@ metrics_read_status=loaded
 ```
 
 The R1-RERUN blocker is the selected route child timeout, not the YOLOv9 source adapter. R1 remains selected single-route evidence only and is not a full Phase 12C perception ablation runtime pass.
+
+## Follow-up Timeout Diagnosis
+
+Phase 12C-YOLOv9-R1-DIAG preserved the source-adapter no-fallback pass and classified the selected-row runtime blocker:
+
+```text
+diagnostic_evidence_dir=experiments\phase12\20260630T150500Z
+previous_runtime_evidence_dir=experiments\phase12\20260630T134322Z
+source_adapter_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+carla_server_reachable=true
+timeout_classification=map_load_or_spawn_stall
+diagnosis_confidence=high
+diagnostic_steps_completed=0
+heartbeat_count=0
+world_tick_count=0
+rgb_frame_received_count=0
+edge_perception_call_count=0
+yolov9_inference_call_count=0
+yolo_runtime_row_verified=false
+```
+
+The source adapter remains verified. The diagnosis is not YOLOv9 route runtime pass evidence.

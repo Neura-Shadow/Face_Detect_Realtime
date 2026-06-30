@@ -54,6 +54,103 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "runtime_logs" / "carla_runs"
 BENCHMARK_BOUNDARY_SCOPE = "structured_evidence_only_not_carla_leaderboard"
 
 
+class DiagnosticRecorder:
+    """Phase 12C-YOLOv9-R1-DIAG 專用的低侵入 runtime breadcrumb writer。"""
+
+    def __init__(
+        self,
+        *,
+        output_dir: Path,
+        route_id: str,
+        controller_mode: str,
+        perception_backend: str,
+        emit_heartbeat_every: int,
+        emit_partial_metrics_every: int,
+    ) -> None:
+        self.output_dir = output_dir
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.events_path = self.output_dir / "events.jsonl"
+        self.heartbeat_path = self.output_dir / "heartbeat.jsonl"
+        self.partial_metrics_path = self.output_dir / "partial_metrics.json"
+        self.route_id = route_id
+        self.controller_mode = controller_mode
+        self.perception_backend = perception_backend
+        self.emit_heartbeat_every = max(1, int(emit_heartbeat_every))
+        self.emit_partial_metrics_every = max(1, int(emit_partial_metrics_every))
+        self.heartbeat_count = 0
+        self.partial_metrics_count = 0
+
+    def record_event(self, *, phase: str, step: int | None = None, **payload: Any) -> None:
+        item = self._base_payload(phase=phase, step=step)
+        item.update(payload)
+        self._append_jsonl(self.events_path, item)
+
+    def record_heartbeat(self, heartbeat: dict[str, Any]) -> None:
+        step = int(heartbeat.get("step") or 0)
+        if step != 1 and step % self.emit_heartbeat_every != 0:
+            return
+        item = self._base_payload(phase="heartbeat", step=step)
+        item.update(heartbeat)
+        self.heartbeat_count += 1
+        item["heartbeat_index"] = self.heartbeat_count
+        self._append_jsonl(self.heartbeat_path, item)
+        self.record_event(phase="heartbeat_written", step=step, heartbeat_index=self.heartbeat_count)
+
+    def record_partial_metrics(
+        self,
+        *,
+        step: int,
+        metrics: CarlaRuntimeMetrics | None,
+        route_tracker: CarlaRouteProgressTracker | None,
+    ) -> None:
+        if step != 1 and step % self.emit_partial_metrics_every != 0:
+            return
+        route_metrics = route_tracker.to_metrics_dict() if route_tracker is not None else {}
+        payload = self._base_payload(phase="partial_metrics", step=step)
+        payload.update(
+            {
+                "diagnostic_partial_metrics_count": self.partial_metrics_count + 1,
+                "steps_completed": getattr(metrics, "steps_completed", None),
+                "rgb_frame_received": getattr(metrics, "rgb_frame_received", None),
+                "world_tick_advanced": getattr(metrics, "world_tick_advanced", None),
+                "control_applied": getattr(metrics, "control_applied", None),
+                "collision_count": getattr(metrics, "collision_count", None),
+                "lane_invasion_count": getattr(metrics, "lane_invasion_count", None),
+                "distance_traveled_m": getattr(metrics, "distance_traveled_m", None),
+                "route_progress_pct": route_metrics.get("route_progress_pct"),
+                "grp_route_progress_pct": route_metrics.get("grp_route_progress_pct"),
+                "distance_to_goal_m": route_metrics.get("distance_to_goal_m"),
+                "fixed_route_goal_reached": route_metrics.get("fixed_route_goal_reached"),
+            }
+        )
+        self.partial_metrics_count += 1
+        self.partial_metrics_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        self.record_event(
+            phase="partial_metrics_written",
+            step=step,
+            diagnostic_partial_metrics_count=self.partial_metrics_count,
+        )
+
+    def _base_payload(self, *, phase: str, step: int | None) -> dict[str, Any]:
+        return {
+            "timestamp": _utc_now(),
+            "phase": phase,
+            "route_id": self.route_id,
+            "controller_mode": self.controller_mode,
+            "perception_backend": self.perception_backend,
+            "step": step,
+        }
+
+    @staticmethod
+    def _append_jsonl(path: Path, item: dict[str, Any]) -> None:
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(item, ensure_ascii=False) + "\n")
+            handle.flush()
+
+
 def _build_config(args: argparse.Namespace) -> AgentConfig:
     config = AgentConfig.load()
     carla_cfg = dataclasses.replace(
@@ -332,6 +429,22 @@ async def _run_grp_route_following(
 ) -> None:
     config = _build_config(args)
     carla_adapter = CarlaClientAdapter(config.carla)
+    diagnostic_recorder = None
+    if args.diagnostic_mode:
+        diagnostic_dir = Path(args.diagnostic_output_dir) if args.diagnostic_output_dir else Path(args.output_dir)
+        diagnostic_recorder = DiagnosticRecorder(
+            output_dir=diagnostic_dir,
+            route_id=args.diagnostic_route_id,
+            controller_mode="grp_follower",
+            perception_backend=args.perception_backend,
+            emit_heartbeat_every=args.emit_heartbeat_every,
+            emit_partial_metrics_every=args.emit_partial_metrics_every,
+        )
+        diagnostic_recorder.record_event(
+            phase="child_runner_started",
+            step=0,
+            diagnostic_steps_requested=args.steps,
+        )
     control_adapter = GRPRouteFollowingControlAdapter(
         client_adapter=carla_adapter,
         route_tracker=route_tracker,
@@ -351,10 +464,17 @@ async def _run_grp_route_following(
         route_tracker=route_tracker,
         enable_metric_sensors=args.enable_metric_sensors,
         require_sensors=args.require_sensors,
+        diagnostic_recorder=diagnostic_recorder,
     )
     route_tracker.enable_goal_reach_gate(required=args.require_goal_reach)
     route_tracker.enable_grp_route_gate(required=args.require_grp)
     await agent.run(max_steps=args.steps)
+    if diagnostic_recorder is not None:
+        diagnostic_recorder.record_event(
+            phase="child_runner_finished",
+            step=metrics.steps_completed,
+            diagnostic_steps_completed=metrics.steps_completed,
+        )
 
 
 def _capture_grp_route_following(
@@ -530,6 +650,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--carla-root", type=Path, default=DEFAULT_CARLA_ROOT)
     parser.add_argument("--base-python", default="python")
     parser.add_argument("--run-regressions", action="store_true")
+    parser.add_argument("--diagnostic-mode", action="store_true")
+    parser.add_argument("--diagnostic-route-id", default="route_01")
+    parser.add_argument("--diagnostic-output-dir", type=Path, default=None)
+    parser.add_argument("--emit-heartbeat-every", type=int, default=10)
+    parser.add_argument("--emit-partial-metrics-every", type=int, default=25)
     return parser
 
 
@@ -537,6 +662,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     args.carla_root = args.carla_root.resolve()
     run_dir = _timestamped_run_dir(args.output_dir)
+    if args.diagnostic_mode and args.diagnostic_output_dir is None:
+        args.diagnostic_output_dir = run_dir
 
     env = os.environ.copy()
     env["CARLA_ROOT"] = str(args.carla_root)
@@ -742,7 +869,14 @@ def main(argv: list[str] | None = None) -> int:
     _write_raw_outputs(run_dir, all_results)
     _write_json(run_dir / "manifest.json", manifest)
     _write_json(run_dir / "metrics.json", metrics_dict)
-    _write_jsonl(run_dir / "events.jsonl", metrics.to_events("passed" if result == "passed" else "failed"))
+    events_path = run_dir / "events.jsonl"
+    metric_events = metrics.to_events("passed" if result == "passed" else "failed")
+    if args.diagnostic_mode and events_path.exists():
+        with events_path.open("a", encoding="utf-8") as handle:
+            for event in metric_events:
+                handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+    else:
+        _write_jsonl(events_path, metric_events)
     (run_dir / "commands.txt").write_text(
         _build_commands_text(args, command_results + regression_results),
         encoding="utf-8",

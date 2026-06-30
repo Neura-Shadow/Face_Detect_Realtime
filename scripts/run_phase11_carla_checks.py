@@ -79,6 +79,8 @@ def main() -> int:
                 "scripts/run_phase12c_yolov9_backend_adapter_checks.py",
                 "scripts/run_phase12c_yolov9_source_adapter_verification.py",
                 "scripts/run_phase12c_yolov9_post_unlock_verification.py",
+                "scripts/run_phase12c_yolov9_runtime_confirmation.py",
+                "scripts/run_phase12c_yolov9_runtime_timeout_diagnosis.py",
             ],
             "expected": [],
         },

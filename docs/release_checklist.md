@@ -85,6 +85,8 @@ leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
 
+- [x] **Phase 12C-YOLOv9-R1-DIAG Runtime Timeout Diagnosis Completed**: 已針對 selected `route_01 + grp_follower + yolov9` runtime blocker 增加 bounded diagnostic breadcrumbs；`experiments\phase12\20260630T150500Z` 記錄 `timeout_classification=map_load_or_spawn_stall`、`diagnosis_confidence=high`、`diagnostic_steps_completed=0`、`heartbeat_count=0`、`world_tick_count=0`、`rgb_frame_received_count=0`、`edge_perception_call_count=0`、`yolov9_inference_call_count=0`。此項只完成 timeout diagnosis，不宣稱 YOLOv9 route runtime pass。
+
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
 - [x] **OpenAI-Compatible VLM Provider**: 支援通用 OpenAI 格式的模型（如 GPT-4V, Gemma 4）。
@@ -174,6 +176,8 @@ leaderboard_route_criteria_evaluated=false
 | **YOLOv9 Source Adapter No-Fallback Verification** | — | 100% | — | 🟢 Phase 12C-YOLOv9-SRC-V Pass |
 | **YOLOv9 Selected Runtime Row** | — | 100% | — | 🟠 Phase 12C-YOLOv9-R1 Blocked |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
+
+Phase 12C-YOLOv9-R1-DIAG status note: timeout diagnosis is completed, with `timeout_classification=map_load_or_spawn_stall`; selected YOLOv9 runtime row remains blocked and `yolo_runtime_row_verified=false`.
 
 ## 🚧 Explicitly Not Verified
 

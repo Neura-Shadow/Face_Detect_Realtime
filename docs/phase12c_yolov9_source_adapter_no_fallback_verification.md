@@ -129,3 +129,23 @@ metrics_read_status=loaded
 ```
 
 The blocker is the selected route child timeout. The YOLOv9 source adapter no-fallback gate remains passed.
+
+## Follow-up Timeout Diagnosis
+
+Phase 12C-YOLOv9-R1-DIAG preserved the no-fallback source adapter result and classified the selected-row blocker as a CARLA setup / map-load / spawn-stage issue:
+
+```text
+diagnostic_evidence_dir=experiments\phase12\20260630T150500Z
+previous_runtime_evidence_dir=experiments\phase12\20260630T134322Z
+timeout_classification=map_load_or_spawn_stall
+diagnosis_confidence=high
+diagnostic_steps_completed=0
+heartbeat_count=0
+world_tick_count=0
+rgb_frame_received_count=0
+edge_perception_call_count=0
+yolov9_inference_call_count=0
+yolo_runtime_row_verified=false
+```
+
+This is diagnostic evidence only. It does not claim selected YOLOv9 route runtime pass or full Phase 12C perception ablation runtime pass.

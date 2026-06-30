@@ -79,6 +79,8 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-YOLOv9-SRC-V source adapter no-fallback verification: **Passed — official YOLOv9 source adapter verified with no fallback in the CARLA Python 3.12 runtime at `experiments\phase12\20260630T060621Z`**
   - Phase 12C-YOLOv9-R1 selected YOLOv9 runtime row: **Blocked — RERUN reached CARLA and launched `grp_follower + yolov9`, but the selected row timed out before route metrics were produced at `experiments\phase12\20260630T134322Z`**
 
+  - Phase 12C-YOLOv9-R1-DIAG timeout diagnosis: **Diagnostic Completed - bounded 300-step diagnostic classified the selected-row blocker as `map_load_or_spawn_stall` at `experiments\phase12\20260630T150500Z`; no runtime pass claimed**
+
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
 ---
@@ -271,6 +273,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 
+> Phase 12C-YOLOv9-R1-DIAG runtime timeout diagnosis 隢? [docs/phase12c_yolov9_runtime_timeout_diagnosis.md](docs/phase12c_yolov9_runtime_timeout_diagnosis.md)
+
 ```powershell
 python scripts\run_phase12_experiment_plan.py --output-dir experiments\phase12
 ```
@@ -439,6 +443,32 @@ runtime_confirmation_executed=true
 carla_route_runtime_executed=true
 child_row_result=timeout
 metrics_read_status=loaded
+```
+
+Phase 12C-YOLOv9-R1-DIAG timeout diagnosis（bounded instrumentation only；不宣稱 YOLOv9 runtime pass）：
+
+```powershell
+$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
+$env:YOLOV9_ROOT = "D:\AIModels\yolov9"
+$env:YOLOV9_WEIGHTS = "D:\AIModels\yolov9\yolov9-c-converted.pt"
+
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_yolov9_runtime_timeout_diagnosis.py --route-id route_01 --host 127.0.0.1 --port 2000 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --carla-root D:\CARLA\packages\CARLA_0.9.16 --output-dir experiments\phase12 --diagnostic-steps 300 --diagnostic-timeout-sec 900 --child-timeout-sec 900 --parent-timeout-sec 1800 --require-yolov9-ready --emit-heartbeat-every 10 --emit-partial-metrics-every 25
+```
+
+Latest Phase 12C-YOLOv9-R1-DIAG evidence:
+
+```text
+diagnostic_evidence_dir=experiments\phase12\20260630T150500Z
+dry_run_evidence_dir=experiments\phase12\20260630T150101Z
+timeout_classification=map_load_or_spawn_stall
+diagnosis_confidence=high
+diagnostic_steps_completed=0
+heartbeat_count=0
+world_tick_count=0
+rgb_frame_received_count=0
+edge_perception_call_count=0
+yolov9_inference_call_count=0
+yolo_runtime_row_verified=false
 ```
 
 ---

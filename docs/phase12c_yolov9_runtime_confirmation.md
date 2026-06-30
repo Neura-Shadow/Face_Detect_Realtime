@@ -82,6 +82,28 @@ metrics_read_status=not_available
 
 This is a stronger blocked result than the previous `20260630T094645Z` attempt: the previous run stopped at CARLA reachability preflight, while this rerun reached CARLA and launched the selected route runtime but timed out before producing route metrics or goal-reach evidence.
 
+## Follow-up Timeout Diagnosis
+
+Phase 12C-YOLOv9-R1-DIAG adds bounded diagnostic breadcrumbs to explain the selected-row timeout without changing the runtime pass boundary.
+
+```text
+diagnostic_evidence_dir=experiments\phase12\20260630T150500Z
+dry_run_evidence_dir=experiments\phase12\20260630T150101Z
+previous_runtime_evidence_dir=experiments\phase12\20260630T134322Z
+timeout_classification=map_load_or_spawn_stall
+diagnosis_confidence=high
+diagnostic_steps_requested=300
+diagnostic_steps_completed=0
+heartbeat_count=0
+world_tick_count=0
+rgb_frame_received_count=0
+edge_perception_call_count=0
+yolov9_inference_call_count=0
+yolo_runtime_row_verified=false
+```
+
+The diagnostic event stream observed YOLOv9 model load start/finish and CARLA setup start, then run failure. It did not observe CARLA setup finish, world ticks, RGB frames, route-loop EdgePerception calls, heartbeat, or partial route progress. Therefore the current blocker is classified as a CARLA setup / map-load / spawn-stage stall before route ticks began, not as verified per-frame YOLOv9 inference latency.
+
 ## Command
 
 ```powershell

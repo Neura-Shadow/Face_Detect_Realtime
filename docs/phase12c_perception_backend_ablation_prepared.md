@@ -90,6 +90,30 @@ leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
 
+## YOLOv9 Runtime Timeout Diagnosis
+
+Phase 12C-YOLOv9-R1-DIAG has now added selected-row timeout instrumentation after the R1-RERUN blocked evidence.
+
+```text
+diagnostic_evidence_dir=experiments\phase12\20260630T150500Z
+previous_runtime_evidence_dir=experiments\phase12\20260630T134322Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+timeout_classification=map_load_or_spawn_stall
+diagnosis_confidence=high
+diagnostic_steps_completed=0
+heartbeat_count=0
+world_tick_count=0
+rgb_frame_received_count=0
+edge_perception_call_count=0
+yolov9_inference_call_count=0
+yolo_runtime_row_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
+```
+
+This diagnosis keeps YOLOv9 optional rows available / command-ready after source-adapter verification, but it does not promote YOLOv9 to a runtime-confirmed backend. The blocker occurred before CARLA setup finished and before the route loop produced RGB frames, heartbeat, or route metrics.
+
 ## Validation
 
 ```powershell

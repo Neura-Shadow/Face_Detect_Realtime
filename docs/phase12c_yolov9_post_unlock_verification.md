@@ -166,3 +166,26 @@ metrics_read_status=loaded
 ```
 
 The R1-RERUN runtime child launched after CARLA became reachable, but the selected route child timed out before producing route metrics. This preserves blocked evidence without changing the post-unlock no-fallback pass.
+
+## Follow-up Timeout Diagnosis
+
+Phase 12C-YOLOv9-R1-DIAG keeps the post-unlock no-fallback pass intact and adds timeout classification:
+
+```text
+diagnostic_evidence_dir=experiments\phase12\20260630T150500Z
+previous_runtime_evidence_dir=experiments\phase12\20260630T134322Z
+post_unlock_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+timeout_classification=map_load_or_spawn_stall
+diagnosis_confidence=high
+diagnostic_steps_completed=0
+heartbeat_count=0
+world_tick_count=0
+rgb_frame_received_count=0
+edge_perception_call_count=0
+yolov9_inference_call_count=0
+yolo_runtime_row_verified=false
+```
+
+The diagnostic run did not reach per-frame YOLOv9 inference; it failed before CARLA setup completion and route-loop ticks.

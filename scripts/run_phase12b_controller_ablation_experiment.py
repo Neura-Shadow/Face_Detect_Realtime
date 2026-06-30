@@ -198,7 +198,8 @@ def _route_output_dir(run_dir: Path, route: RouteSpec, controller: ControllerSpe
 
 
 def _build_grp_command(args: argparse.Namespace, route: RouteSpec, output_dir: Path) -> list[str]:
-    return [
+    steps = args.diagnostic_steps if args.enable_diagnostics and args.diagnostic_steps else route.horizon_steps
+    command = [
         args.python_executable,
         str(REPO_ROOT / "scripts" / "run_phase11m_grp_route_following.py"),
         "--host",
@@ -212,7 +213,7 @@ def _build_grp_command(args: argparse.Namespace, route: RouteSpec, output_dir: P
         "--end-spawn-index",
         str(route.end_spawn_index),
         "--steps",
-        str(route.horizon_steps),
+        str(steps),
         "--target-speed-kmh",
         str(route.target_speed_kmh),
         "--goal-tolerance-m",
@@ -235,6 +236,19 @@ def _build_grp_command(args: argparse.Namespace, route: RouteSpec, output_dir: P
         "--base-python",
         args.base_python,
     ]
+    if args.enable_diagnostics:
+        command.extend(
+            [
+                "--diagnostic-mode",
+                "--diagnostic-route-id",
+                route.route_id,
+                "--emit-heartbeat-every",
+                str(args.emit_heartbeat_every),
+                "--emit-partial-metrics-every",
+                str(args.emit_partial_metrics_every),
+            ]
+        )
+    return command
 
 
 def _build_linear_command(args: argparse.Namespace, route: RouteSpec, output_dir: Path) -> list[str]:
@@ -336,13 +350,18 @@ def _matrix_entries(args: argparse.Namespace, run_dir: Path) -> list[MatrixEntry
 
 def _row_from_entry(args: argparse.Namespace, entry: MatrixEntry) -> dict[str, Any]:
     result = "dry_run" if args.dry_run else "not_executed"
+    horizon_steps = (
+        args.diagnostic_steps
+        if args.enable_diagnostics and args.diagnostic_steps
+        else entry.route.horizon_steps
+    )
     return {
         "route_id": entry.route.route_id,
         "town": args.town,
         "start_spawn_index": entry.route.start_spawn_index,
         "end_spawn_index": entry.route.end_spawn_index,
         "controller_mode": entry.controller.mode,
-        "horizon_steps": entry.route.horizon_steps,
+        "horizon_steps": horizon_steps,
         "target_speed_kmh": entry.route.target_speed_kmh,
         "route_sampling_resolution_m": entry.route.route_sampling_resolution_m,
         "lookahead_waypoints": entry.route.lookahead_waypoints,
@@ -721,6 +740,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--execute-runtime", action="store_true")
     parser.add_argument("--runtime-row-limit", type=int, default=0)
     parser.add_argument("--child-timeout-sec", type=float, default=900.0)
+    parser.add_argument("--enable-diagnostics", action="store_true")
+    parser.add_argument("--diagnostic-steps", type=int, default=None)
+    parser.add_argument("--emit-heartbeat-every", type=int, default=10)
+    parser.add_argument("--emit-partial-metrics-every", type=int, default=25)
     parser.add_argument("--route-id", action="append", choices=[route.route_id for route in ROUTE_MATRIX])
     parser.add_argument("--controller-mode", action="append", choices=[controller.mode for controller in CONTROLLER_MATRIX])
     return parser

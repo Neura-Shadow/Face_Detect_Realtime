@@ -314,7 +314,10 @@ class YOLOv9PerceptionBackend:
         self._img_size = img_size
         self._iou_threshold = iou_threshold
         self._device_hint = device
+        self._last_inference_timing: dict[str, Any] = {}
+        self._model_loaded_once = False
         self._model, self._device = self._build_model(source_status)
+        self._model_loaded_once = True
 
     @staticmethod
     def _add_source_root_to_path(source_root: str) -> None:
@@ -380,6 +383,16 @@ class YOLOv9PerceptionBackend:
             torch.load = original_torch_load
         return model, device_obj
 
+    @staticmethod
+    def _sync_device_if_needed(torch_module: Any, device: Any) -> None:
+        """在 CUDA 類裝置上同步以取得較準確的分段耗時；CPU 會直接略過。"""
+        try:
+            device_text = str(device)
+            if "cuda" in device_text and getattr(torch_module, "cuda", None) is not None:
+                torch_module.cuda.synchronize()
+        except Exception:
+            return
+
     @property
     def model_name(self) -> str:
         return self._model_name
@@ -395,15 +408,25 @@ class YOLOv9PerceptionBackend:
 
         # 使用 YOLOv9 官方 letterbox 流程，避免非方形影像在特徵圖 concat 時尺寸不一致。
         stride = int(getattr(self._model, "stride", 32) or 32)
+        preprocess_start = time.monotonic()
         image = letterbox(frame, new_shape=self._img_size, stride=stride, auto=True)[0]
+        letterbox_shape = tuple(int(value) for value in image.shape[:2])
         image = image[:, :, ::-1].transpose(2, 0, 1)
         image = np.ascontiguousarray(image)
         tensor = torch.from_numpy(image).to(self._device).float() / 255.0
         if tensor.ndimension() == 3:
             tensor = tensor.unsqueeze(0)
+        self._sync_device_if_needed(torch, self._device)
+        preprocess_ms = (time.monotonic() - preprocess_start) * 1000.0
+
+        forward_start = time.monotonic()
         with torch.no_grad():
             raw = self._model(tensor) if callable(self._model) else self._model.model(tensor)
+        self._sync_device_if_needed(torch, self._device)
+        model_forward_ms = (time.monotonic() - forward_start) * 1000.0
+
         prediction = raw[0] if isinstance(raw, (list, tuple)) else raw
+        nms_start = time.monotonic()
         nms_results = non_max_suppression(
             prediction,
             self._conf_threshold,
@@ -411,6 +434,10 @@ class YOLOv9PerceptionBackend:
             classes=None,
             agnostic=False,
         )
+        self._sync_device_if_needed(torch, self._device)
+        nms_ms = (time.monotonic() - nms_start) * 1000.0
+
+        postprocess_start = time.monotonic()
         detections: list[Detection] = []
         names = getattr(self._model, "names", {})
         if nms_results and len(nms_results[0]):
@@ -428,12 +455,29 @@ class YOLOv9PerceptionBackend:
                         class_id=class_id,
                     )
                 )
+        postprocess_ms = (time.monotonic() - postprocess_start) * 1000.0
         inf_ms = int((time.monotonic() - start) * 1000)
+        self._last_inference_timing = {
+            "yolov9_preprocess_ms": round(preprocess_ms, 3),
+            "yolov9_model_forward_ms": round(model_forward_ms, 3),
+            "yolov9_nms_ms": round(nms_ms, 3),
+            "yolov9_postprocess_ms": round(postprocess_ms, 3),
+            "yolov9_total_inference_ms": float(inf_ms),
+            "input_frame_shape": [int(value) for value in frame.shape],
+            "letterbox_shape": [int(value) for value in letterbox_shape],
+            "device": str(self._device),
+            "model_loaded_once": self._model_loaded_once,
+        }
         return detections, inf_ms
 
     @property
     def source_status(self) -> YOLOv9SourceStatus:
         return self._source_status
+
+    @property
+    def last_inference_timing(self) -> dict[str, Any]:
+        """回傳最近一次 YOLOv9 inference 分段耗時，供 runtime diagnosis 使用。"""
+        return dict(self._last_inference_timing)
 
 
 class RTDETRPerceptionBackend:
@@ -699,6 +743,12 @@ class EdgePerception:
         lane_state = self._estimate_lane_state(detections)
         free_space = self._estimate_free_space(detections, frame.shape)
         raw_confidence = self._compute_confidence(detections)
+        backend_metadata = dict(self._backend_metadata)
+        last_timing = getattr(self._backend, "last_inference_timing", None)
+        if callable(last_timing):
+            timing_payload = last_timing()
+            if timing_payload:
+                backend_metadata["yolov9_timing"] = timing_payload
 
         result = PerceptionResult(
             frame_id=frame_id,
@@ -712,7 +762,7 @@ class EdgePerception:
             backend=self._backend.__class__.__name__,
             model_name=self._backend.model_name,
             fallback_used=self._fallback_used,
-            backend_metadata=dict(self._backend_metadata),
+            backend_metadata=backend_metadata,
         )
         return result
 

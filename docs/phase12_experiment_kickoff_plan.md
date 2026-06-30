@@ -819,6 +819,35 @@ lane_invasion_count=null
 metrics_read_status=loaded
 ```
 
+## Phase 12C-YOLOv9-R1-DIAG Addendum - Runtime Timeout Diagnosis
+
+```text
+Phase 12C-YOLOv9-R1-DIAG Diagnostic Completed - bounded diagnostic evidence was produced without claiming runtime pass.
+```
+
+Phase 12C-YOLOv9-R1-DIAG adds selected-row timeout breadcrumbs on top of the R1-RERUN blocked evidence:
+
+```text
+diagnostic_evidence_dir=experiments\phase12\20260630T150500Z
+dry_run_evidence_dir=experiments\phase12\20260630T150101Z
+previous_runtime_evidence_dir=experiments\phase12\20260630T134322Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+timeout_classification=map_load_or_spawn_stall
+diagnosis_confidence=high
+diagnostic_steps_completed=0
+heartbeat_count=0
+world_tick_count=0
+rgb_frame_received_count=0
+edge_perception_call_count=0
+yolov9_inference_call_count=0
+yolo_runtime_row_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
+```
+
+The selected YOLOv9 row remains blocked, not passed. The diagnosis shows the run failed after YOLOv9 model-load completion and CARLA setup start, before CARLA setup finish, world ticks, RGB frames, heartbeat, or route metrics.
+
 R1 wrapper 已驗證 YOLOv9 source/weights 與 EdgePerception no-fallback readiness。R1-RERUN 已確認 `127.0.0.1:2000` 可達，並啟動 Phase 12B / Phase 11M child runtime；但 child 在 `2400.311s` 後 timeout，沒有產生 route metrics 或 goal-reach evidence。
 
 詳細記錄請見 [phase12c_yolov9_runtime_confirmation.md](phase12c_yolov9_runtime_confirmation.md)。
