@@ -42,13 +42,15 @@ utils/
 Latest local source-adapter verification evidence:
 
 ```text
-experiments\phase12\20260629T134856Z
+prepared_evidence_dir=experiments\phase12\20260629T134856Z
+strict_no_fallback_evidence_dir=experiments\phase12\20260630T040313Z
 ```
 
 Latest YOLOv9-only Phase 12C matrix refresh using source-adapter availability:
 
 ```text
-experiments\phase12\20260629T134856Z-1-2
+prepared_yolov9_rows_refresh_dir=experiments\phase12\20260629T134856Z-1-2
+strict_yolov9_rows_refresh_dir=experiments\phase12\20260630T040317Z
 ```
 
 Generated files:
@@ -66,7 +68,8 @@ Generated files:
 phase=Phase 12C-YOLOv9-SRC
 status=yolov9_source_adapter_blocked
 source_adapter_verified=false
-strict_gate_exit_code=0
+strict_gate_exit_code=1
+require_verified_requested=true
 yolov9_source_root_configured=false
 yolov9_weights_configured=false
 yolov9_source_root_ready=false
@@ -80,7 +83,7 @@ baseline_requirements_modified=false
 carla_server_started=false
 ```
 
-Interpretation: the source adapter and strict gate are implemented, but this local environment has not provided `YOLOV9_ROOT` and `YOLOV9_WEIGHTS`, so no-fallback readiness remains blocked.
+Interpretation: the source adapter and strict gate are implemented, and the strict no-fallback gate has been executed. This local environment has not provided `YOLOV9_ROOT` and `YOLOV9_WEIGHTS`, so no-fallback readiness remains blocked.
 
 ## Strict Pass Conditions
 

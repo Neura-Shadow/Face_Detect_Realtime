@@ -55,6 +55,7 @@
 - [x] **Phase 12C-YOLOv9-B EdgePerception YOLOv9 Backend Adapter Prepared**: 已新增 `YOLOv9PerceptionBackend` adapter path、`backend="yolov9"` factory branch、CLI `--test yolov9` 與 dedicated adapter evidence；base Python 與 CARLA Python 3.12 均可執行 `EdgePerception --test yolov9`，並在 source/weights 未配置時安全 fallback。此階段不是 YOLOv9 runtime pass。
 - [x] **Phase 12C-YOLOv9-V YOLOv9 Post-Unlock Verification Blocked**: 已新增 strict post-unlock verification runner，檢查 CARLA Python 3.12 import、pip metadata、EdgePerception no-fallback、Phase 12B/11M/11K/baseline mapper `yolov9` CLI wiring 與 Phase 12C rows refresh；目前權威 evidence `experiments\phase12\20260629T125701Z` 顯示本機仍缺可安裝/可匯入的 YOLOv9 dependency，因此 `post_unlock_verified=false`，`--require-verified` strict gate 實測 exit code 1，並保留 blocked evidence，不自動安裝。
 - [x] **Phase 12C-YOLOv9-SRC Official YOLOv9 Source Adapter Prepared**: 已將 YOLOv9 官方路徑改為 external source-root contract，新增 `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` 設定、source entries / weights / no-fallback verification gate 與 source-adapter evidence；目前本機未配置 source/weights，因此 `source_adapter_verified=false`，YOLOv9 rows 維持 `backend_unavailable`。不提交 source repo、不提交 weights、不啟動 CARLA、不宣稱 YOLOv9 runtime pass。
+- [x] **Phase 12C-YOLOv9-SRC-V Source Adapter No-Fallback Verification Blocked**: 已正式執行 `scripts/run_phase12c_yolov9_source_adapter_verification.py --require-verified`；`experiments\phase12\20260630T040313Z` 記錄 `strict_gate_exit_code=1`、`YOLOV9_ROOT` / `YOLOV9_WEIGHTS` 未設定、`edge_yolov9_fallback_used=true`，因此 blocked，不宣稱 YOLOv9 runtime pass。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -87,6 +88,7 @@
 - **YOLOv9 Backend Adapter**: Phase 12C-YOLOv9-B 只證明 EdgePerception 已註冊 `backend="yolov9"` 與 `--test yolov9` adapter path；目前仍因 source/weights 未配置而 fallback，不代表 YOLOv9 real inference 或模型準確率驗證。
 - **YOLOv9 Post-Unlock Verification**: Phase 12C-YOLOv9-V 只驗證 operator unlock 之後的 dependency/no-fallback readiness；權威 evidence `experiments\phase12\20260629T125701Z` 記錄 `yolov9_import_ready=false`、`yolov9_pip_metadata_ready=false`、`edge_yolov9_fallback_used=true`，且 strict gate exit code 1，因此 blocked，不代表 runtime pass。
 - **YOLOv9 Source Adapter**: Phase 12C-YOLOv9-SRC 只準備官方 YOLOv9 external source adapter 與 no-fallback gate；YOLOv9 source repo 與 weights 必須由 operator 在本機提供，且不得提交到 git。`experiments\phase12\20260629T134856Z` 記錄目前 `source_adapter_verified=false`。
+- **YOLOv9 Source Adapter No-Fallback Verification**: Phase 12C-YOLOv9-SRC-V 是 strict gate evidence；目前 `experiments\phase12\20260630T040313Z` blocked，等待 operator 提供 source/weights。
 
 ---
 
@@ -141,6 +143,7 @@
 | **YOLOv9 Backend Adapter** | — | 100% | — | 🟡 Phase 12C-YOLOv9-B Prepared |
 | **YOLOv9 Post-Unlock Verification** | — | 100% | — | 🟠 Phase 12C-YOLOv9-V Blocked |
 | **YOLOv9 Source Adapter Verification** | — | 100% | — | 🟡 Phase 12C-YOLOv9-SRC Prepared |
+| **YOLOv9 Source Adapter No-Fallback Verification** | — | 100% | — | 🟠 Phase 12C-YOLOv9-SRC-V Blocked |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 ## 🚧 Explicitly Not Verified

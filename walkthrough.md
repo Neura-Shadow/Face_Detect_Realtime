@@ -1,4 +1,4 @@
-# Walkthrough - Phase 12C-YOLOv9-SRC Source Adapter Verification
+# Walkthrough - Phase 12C-YOLOv9-SRC-V Source Adapter No-Fallback Verification
 
 1. Preserve Phase 12C-DUMMY as the only runtime-confirmed perception backend slice.
 2. Preserve Phase 12C-YOLOv9-U and Phase 12C-YOLOv9-B as historical dependency/adapter preparation.
@@ -22,12 +22,16 @@ Generated evidence:
 yolov9_source_adapter_verification=experiments\phase12\20260629T134856Z
 yolov9_post_unlock_external_source=experiments\phase12\20260629T134856Z-1
 yolov9_rows_refresh=experiments\phase12\20260629T134856Z-1-2
+yolov9_source_adapter_strict_no_fallback=experiments\phase12\20260630T040313Z
+yolov9_strict_rows_refresh=experiments\phase12\20260630T040317Z
 ```
 
 YOLOv9-SRC result:
 
 ```text
 source_adapter_verified=false
+require_verified_requested=true
+strict_gate_exit_code=1
 yolov9_source_root_configured=false
 yolov9_weights_configured=false
 yolov9_source_root_ready=false

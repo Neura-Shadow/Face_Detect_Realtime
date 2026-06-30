@@ -733,6 +733,8 @@ Local source-adapter evidence:
 post_unlock_external_source_evidence_dir=experiments\phase12\20260629T134856Z-1
 source_adapter_evidence_dir=experiments\phase12\20260629T134856Z
 yolov9_rows_refresh_dir=experiments\phase12\20260629T134856Z-1-2
+strict_no_fallback_evidence_dir=experiments\phase12\20260630T040313Z
+strict_yolov9_rows_refresh_dir=experiments\phase12\20260630T040317Z
 source_adapter_verified=false
 yolov9_source_root_configured=false
 yolov9_weights_configured=false

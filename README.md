@@ -76,6 +76,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-YOLOv9-B EdgePerception YOLOv9 backend adapter: **Prepared — `EdgePerception --test yolov9` is registered in base and CARLA Python; missing dependency still falls back safely**
   - Phase 12C-YOLOv9-V YOLOv9 post-unlock verification: **Blocked — strict verifier executed; default unlock mode is now external source, and local CARLA Python 3.12 runtime still lacks `YOLOV9_ROOT` / `YOLOV9_WEIGHTS`, so no-fallback backend readiness is not verified**
   - Phase 12C-YOLOv9-SRC official YOLOv9 source adapter: **Prepared — external `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` contract, source adapter, and no-fallback verification gate are implemented; local verification remains blocked until operator provides source and weights**
+  - Phase 12C-YOLOv9-SRC-V source adapter no-fallback verification: **Blocked locally — strict `--require-verified` gate executed at `experiments\phase12\20260630T040313Z`; `YOLOV9_ROOT` and `YOLOV9_WEIGHTS` are unset, so fallback remains active**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -261,6 +262,8 @@ python -m workers.CARLA_Closed_Loop_Agent --enable-vlm --vlm-provider local_stub
 >
 > Phase 12C-YOLOv9-SRC official YOLOv9 source adapter verification 請見 [docs/phase12c_yolov9_source_adapter_verification.md](docs/phase12c_yolov9_source_adapter_verification.md)
 >
+> Phase 12C-YOLOv9-SRC-V no-fallback verification 請見 [docs/phase12c_yolov9_source_adapter_no_fallback_verification.md](docs/phase12c_yolov9_source_adapter_no_fallback_verification.md)
+>
 > Phase 12C-YOLO-U generic YOLO unlock preparation 是早期歷史紀錄，請見 [docs/phase12c_yolo_optional_dependency_unlock_prepared.md](docs/phase12c_yolo_optional_dependency_unlock_prepared.md)
 
 Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
@@ -383,6 +386,12 @@ $env:YOLOV9_WEIGHTS = "D:\AIModels\yolov9\yolov9-c-converted.pt"
 D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install -r "$env:YOLOV9_ROOT\requirements.txt"
 python scripts\run_phase12c_yolov9_source_adapter_verification.py --output-dir experiments\phase12 --require-verified
 python scripts\run_phase12c_perception_backend_ablation.py --perception-backend-mode yolov9_optional --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --output-dir experiments\phase12
+```
+
+Phase 12C-YOLOv9-SRC-V strict no-fallback verification（未配置 source/weights 時應產生 blocked evidence，不可宣稱 runtime pass）：
+
+```powershell
+python scripts\run_phase12c_yolov9_source_adapter_verification.py --output-dir experiments\phase12 --require-verified
 ```
 
 ---
