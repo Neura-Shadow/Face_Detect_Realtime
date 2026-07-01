@@ -185,3 +185,22 @@ yolo_runtime_row_verified=false
 ```
 
 The source adapter remains verified. The diagnosis is not YOLOv9 route runtime pass evidence.
+
+## Follow-up Setup Recovery Probe
+
+Phase 12C-YOLOv9-R1-SETUP reuses the same source-adapter readiness gate and then probes only CARLA setup/spawn stages:
+
+```text
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+parent_wrapper=scripts\run_phase12c_yolov9_r1_setup_recovery.py
+child_probe=scripts\run_phase12c_carla_setup_spawn_probe.py
+source_adapter_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+setup_scope=map_load_spawn_rgb_grp_warmup_only
+setup_probe_passed=true
+setup_blocker_classification=setup_probe_passed
+yolo_runtime_row_verified=false
+```
+
+The source adapter can remain verified while the selected route runtime remains blocked.

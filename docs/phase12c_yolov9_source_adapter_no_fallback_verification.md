@@ -149,3 +149,22 @@ yolo_runtime_row_verified=false
 ```
 
 This is diagnostic evidence only. It does not claim selected YOLOv9 route runtime pass or full Phase 12C perception ablation runtime pass.
+
+## Follow-up Setup Recovery Probe
+
+Phase 12C-YOLOv9-R1-SETUP keeps this no-fallback gate as a prerequisite and isolates CARLA setup:
+
+```text
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+target_town=Town03
+map_load_mode=reuse_or_load
+setup_scope=map_load_spawn_rgb_grp_warmup_only
+setup_probe_passed=true
+setup_blocker_classification=setup_probe_passed
+yolo_runtime_row_verified=false
+```
+
+The setup probe is not model accuracy evidence and not a route runtime pass.

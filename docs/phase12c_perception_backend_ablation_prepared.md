@@ -114,6 +114,26 @@ full_phase12c_perception_ablation_runtime_pass=false
 
 This diagnosis keeps YOLOv9 optional rows available / command-ready after source-adapter verification, but it does not promote YOLOv9 to a runtime-confirmed backend. The blocker occurred before CARLA setup finished and before the route loop produced RGB frames, heartbeat, or route metrics.
 
+## YOLOv9 Setup Recovery Probe
+
+Phase 12C-YOLOv9-R1-SETUP is the follow-up setup-stage probe for that blocker.
+
+```text
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+parent_wrapper=scripts\run_phase12c_yolov9_r1_setup_recovery.py
+child_probe=scripts\run_phase12c_carla_setup_spawn_probe.py
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+setup_scope=map_load_spawn_rgb_grp_warmup_only
+setup_probe_passed=true
+setup_blocker_classification=setup_probe_passed
+yolo_runtime_row_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
+```
+
+Passing the setup probe would only prove setup readiness, not route completion or backend ablation runtime pass.
+
 ## Validation
 
 ```powershell

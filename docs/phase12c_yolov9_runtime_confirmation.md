@@ -104,6 +104,27 @@ yolo_runtime_row_verified=false
 
 The diagnostic event stream observed YOLOv9 model load start/finish and CARLA setup start, then run failure. It did not observe CARLA setup finish, world ticks, RGB frames, route-loop EdgePerception calls, heartbeat, or partial route progress. Therefore the current blocker is classified as a CARLA setup / map-load / spawn-stage stall before route ticks began, not as verified per-frame YOLOv9 inference latency.
 
+## Follow-up Setup Recovery Probe
+
+Phase 12C-YOLOv9-R1-SETUP adds a setup/spawn-stage probe for the same selected row:
+
+```text
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+parent_wrapper=scripts\run_phase12c_yolov9_r1_setup_recovery.py
+child_probe=scripts\run_phase12c_carla_setup_spawn_probe.py
+target_town=Town03
+start_spawn_index=3
+end_spawn_index=30
+map_load_mode=reuse_or_load
+setup_probe_passed=true
+setup_blocker_classification=setup_probe_passed
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+yolo_runtime_row_verified=false
+```
+
+It isolates map-load / spawn / RGB / GRP setup before closed-loop route ticks and does not claim YOLOv9 runtime pass.
+
 ## Command
 
 ```powershell

@@ -72,6 +72,31 @@ run_failed
 
 No `carla_setup_finished`, `world_tick_finished`, `rgb_frame_received`, `edge_perception_finished`, heartbeat, or partial route progress event was observed. This classifies the selected-row blocker as a CARLA setup / map-load / spawn-stage stall or failure before the closed-loop route tick began. YOLOv9 model load completed before CARLA setup started; no per-frame YOLOv9 inference timing was available because the route loop never reached an RGB frame or edge perception call.
 
+## Follow-up Setup Recovery Probe
+
+Phase 12C-YOLOv9-R1-SETUP isolates the setup path that R1-DIAG classified as `map_load_or_spawn_stall`.
+
+```text
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+parent_wrapper=scripts\run_phase12c_yolov9_r1_setup_recovery.py
+child_probe=scripts\run_phase12c_carla_setup_spawn_probe.py
+target_town=Town03
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+map_load_mode=reuse_or_load
+town_ready=true
+ego_spawned=true
+rgb_sensor_attached=true
+first_rgb_frame_received=true
+grp_route_generated=true
+warmup_ticks_completed=20
+setup_probe_passed=true
+setup_blocker_classification=setup_probe_passed
+```
+
+The setup probe tests CARLA client connect, world availability, Town03 load/reuse, settings, spawn points, ego spawn, RGB sensor attach, first RGB frame, GRP route generation, warm-up ticks, and cleanup before any route runtime retry. It is not YOLOv9 runtime pass evidence.
+
 ## Instrumentation Added
 
 - `workers.core.edge_perception.YOLOv9PerceptionBackend` now records model-forward, NMS, postprocess, total inference, device, and frame-shape timing metadata when inference is reached.

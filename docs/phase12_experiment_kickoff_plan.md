@@ -848,6 +848,42 @@ full_phase12c_perception_ablation_runtime_pass=false
 
 The selected YOLOv9 row remains blocked, not passed. The diagnosis shows the run failed after YOLOv9 model-load completion and CARLA setup start, before CARLA setup finish, world ticks, RGB frames, heartbeat, or route metrics.
 
+## Phase 12C-YOLOv9-R1-SETUP Addendum - Setup Recovery Probe
+
+```text
+Phase 12C-YOLOv9-R1-SETUP Probe Pass - selected route setup reached map ready, ego spawn, RGB sensor attach, first RGB frame, GRP route generation, and warm-up ticks.
+```
+
+Phase 12C-YOLOv9-R1-SETUP isolates the setup path that R1-DIAG classified as `map_load_or_spawn_stall`:
+
+```text
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+parent_wrapper=scripts\run_phase12c_yolov9_r1_setup_recovery.py
+child_probe=scripts\run_phase12c_carla_setup_spawn_probe.py
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+target_town=Town03
+start_spawn_index=3
+end_spawn_index=30
+map_load_mode=reuse_or_load
+setup_scope=map_load_spawn_rgb_grp_warmup_only
+town_ready=true
+ego_spawned=true
+rgb_sensor_attached=true
+first_rgb_frame_received=true
+grp_route_generated=true
+warmup_ticks_completed=20
+setup_probe_passed=true
+setup_blocker_classification=setup_probe_passed
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+yolo_runtime_row_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
+```
+
+This phase is setup recovery only. It is not YOLOv9 runtime pass, not model accuracy evidence, not full Phase 12C ablation, and not Leaderboard / formal route / infraction benchmark evidence.
+
 R1 wrapper 已驗證 YOLOv9 source/weights 與 EdgePerception no-fallback readiness。R1-RERUN 已確認 `127.0.0.1:2000` 可達，並啟動 Phase 12B / Phase 11M child runtime；但 child 在 `2400.311s` 後 timeout，沒有產生 route metrics 或 goal-reach evidence。
 
 詳細記錄請見 [phase12c_yolov9_runtime_confirmation.md](phase12c_yolov9_runtime_confirmation.md)。

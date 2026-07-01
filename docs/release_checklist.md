@@ -86,6 +86,7 @@ leaderboard_route_criteria_evaluated=false
 ```
 
 - [x] **Phase 12C-YOLOv9-R1-DIAG Runtime Timeout Diagnosis Completed**: 已針對 selected `route_01 + grp_follower + yolov9` runtime blocker 增加 bounded diagnostic breadcrumbs；`experiments\phase12\20260630T150500Z` 記錄 `timeout_classification=map_load_or_spawn_stall`、`diagnosis_confidence=high`、`diagnostic_steps_completed=0`、`heartbeat_count=0`、`world_tick_count=0`、`rgb_frame_received_count=0`、`edge_perception_call_count=0`、`yolov9_inference_call_count=0`。此項只完成 timeout diagnosis，不宣稱 YOLOv9 route runtime pass。
+- [x] **Phase 12C-YOLOv9-R1-SETUP Setup Recovery Probe Pass**: 已新增 parent wrapper 與 CARLA Python child probe，逐段隔離 `map_load_or_spawn_stall` 的 setup path；`experiments\phase12\20260701T045047Z` 記錄 `setup_probe_passed=true`、`setup_blocker_classification=setup_probe_passed`、`town_ready=true`、`ego_spawned=true`、`rgb_sensor_attached=true`、`first_rgb_frame_received=true`、`grp_route_generated=true`、`warmup_ticks_completed=20`。此項只代表 setup/spawn-stage pass，不宣稱 YOLOv9 runtime pass。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -178,6 +179,8 @@ leaderboard_route_criteria_evaluated=false
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 Phase 12C-YOLOv9-R1-DIAG status note: timeout diagnosis is completed, with `timeout_classification=map_load_or_spawn_stall`; selected YOLOv9 runtime row remains blocked and `yolo_runtime_row_verified=false`.
+
+Phase 12C-YOLOv9-R1-SETUP status note: setup recovery probe passed for the same selected row with `setup_probe_passed=true`; it remains setup-stage evidence only, with `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, and `yolo_runtime_row_verified=false`.
 
 ## 🚧 Explicitly Not Verified
 

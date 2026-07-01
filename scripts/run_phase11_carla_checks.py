@@ -81,6 +81,8 @@ def main() -> int:
                 "scripts/run_phase12c_yolov9_post_unlock_verification.py",
                 "scripts/run_phase12c_yolov9_runtime_confirmation.py",
                 "scripts/run_phase12c_yolov9_runtime_timeout_diagnosis.py",
+                "scripts/run_phase12c_carla_setup_spawn_probe.py",
+                "scripts/run_phase12c_yolov9_r1_setup_recovery.py",
             ],
             "expected": [],
         },

@@ -189,3 +189,22 @@ yolo_runtime_row_verified=false
 ```
 
 The diagnostic run did not reach per-frame YOLOv9 inference; it failed before CARLA setup completion and route-loop ticks.
+
+## Follow-up Setup Recovery Probe
+
+Phase 12C-YOLOv9-R1-SETUP preserves the post-unlock no-fallback result and probes CARLA setup before another route retry:
+
+```text
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+parent_wrapper=scripts\run_phase12c_yolov9_r1_setup_recovery.py
+child_probe=scripts\run_phase12c_carla_setup_spawn_probe.py
+post_unlock_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+setup_scope=map_load_spawn_rgb_grp_warmup_only
+setup_probe_passed=true
+setup_blocker_classification=setup_probe_passed
+yolo_runtime_row_verified=false
+```
+
+This setup probe does not change the post-unlock pass boundary into a CARLA route runtime pass.

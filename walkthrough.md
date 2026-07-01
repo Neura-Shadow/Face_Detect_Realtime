@@ -1,96 +1,90 @@
-# Walkthrough - Phase 12C-YOLOv9-R1-DIAG Timeout Diagnosis
+# Walkthrough - Phase 12C-YOLOv9-R1-SETUP Setup Recovery Probe
 
-1. Preserve Phase 12C-DUMMY as the only full five-route runtime-confirmed perception backend slice.
-2. Preserve Phase 12C-YOLOv9-SRC-V as the authoritative official source adapter no-fallback prerequisite.
-3. Diagnose only the selected R1 row: `route_01`, `grp_follower`, `yolov9`.
-4. Keep the previous R1-RERUN blocked evidence at `experiments\phase12\20260630T134322Z`.
-5. Do not rerun the full Phase 12C perception backend matrix.
-6. Do not run RT-DETR.
-7. Do not modify VLM, SafetyGate, SemanticPlanner, GRP controller decision logic, or baseline requirements.
-8. Do not commit YOLOv9 source.
-9. Do not commit YOLOv9 weights.
-10. Do not commit runtime evidence or raw outputs.
-11. Require `YOLOV9_ROOT` and `YOLOV9_WEIGHTS`.
-12. Require `workers.core.edge_perception --test yolov9` to report no fallback.
-13. Emit diagnostic events, heartbeat files, and partial metrics when the loop reaches runtime steps.
-14. If the child route runtime fails before route metrics, classify the timeout from structured breadcrumbs rather than fabricating route metrics.
-15. Keep the parent wrapper free of direct `carla` imports.
+1. Preserve R1-DIAG as the source of truth for the previous blocker: `timeout_classification=map_load_or_spawn_stall`.
+2. Keep the selected row fixed: `route_01`, `grp_follower`, `yolov9`, `Town03`, spawn `3 -> 30`.
+3. Do not claim YOLOv9 runtime route pass from setup evidence.
+4. Verify YOLOv9 source-adapter no-fallback readiness in the parent wrapper.
+5. Keep the parent wrapper free of direct `carla` imports.
+6. Run CARLA operations only in the child probe under the CARLA Python 3.12 runtime.
+7. Test map-load, settings, spawn points, ego spawn, RGB sensor, first RGB frame, GRP route generation, warm-up ticks, and cleanup as separate stages.
+8. Clean up only actors created by this probe unless `--cleanup-existing-actors` is explicitly passed.
+9. Write structured evidence and classify the setup blocker if any stage fails.
+10. Keep runtime evidence, raw outputs, YOLOv9 source/weights, CARLA packages, venvs, `.env`, and release artifacts out of git.
 
-Generated evidence:
+Implemented files:
+
+```text
+scripts\run_phase12c_yolov9_r1_setup_recovery.py
+scripts\run_phase12c_carla_setup_spawn_probe.py
+docs\phase12c_yolov9_r1_setup_recovery.md
+```
+
+Generated setup evidence:
+
+```text
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+dry_run_evidence_dir=experiments\phase12\20260701T045259Z
+setup_probe_passed=true
+setup_blocker_classification=setup_probe_passed
+```
+
+R1-DIAG background:
 
 ```text
 diagnostic_evidence_dir=experiments\phase12\20260630T150500Z
-dry_run_evidence_dir=experiments\phase12\20260630T150101Z
 previous_runtime_evidence_dir=experiments\phase12\20260630T134322Z
-previous_blocked_evidence_dir=experiments\phase12\20260630T094645Z
-source_adapter_verified_evidence_dir=experiments\phase12\20260630T060621Z
-yolov9_rows_refresh_dir=experiments\phase12\20260630T060823Z
-post_unlock_external_source_verified_dir=experiments\phase12\20260630T061015Z
-```
-
-R1-DIAG result:
-
-```text
-status=Phase 12C-YOLOv9-R1-DIAG Diagnostic Completed - bounded diagnostic evidence was produced without claiming runtime pass.
-carla_server_reachable=true
 route_id=route_01
 controller_mode=grp_follower
 perception_backend=yolov9
-diagnostic_scope=selected_single_route_timeout_diagnosis
-source_adapter_verified=true
-post_unlock_verified=true
-edge_yolov9_command_passed=true
-edge_yolov9_fallback_used=false
-edge_yolov9_no_fallback_verified=true
-runtime_confirmation_executed=true
-carla_route_runtime_executed=true
-diagnostic_steps_requested=300
-diagnostic_steps_completed=0
-heartbeat_count=0
-world_tick_count=0
-rgb_frame_received_count=0
-edge_perception_call_count=0
-yolov9_inference_call_count=0
-partial_route_progress_seen=false
 timeout_classification=map_load_or_spawn_stall
 diagnosis_confidence=high
-child_summary_status=controller_ablation_runtime_blocked
-child_row_result=grp_blocked
-child_exit_code=1
-child_row_duration_sec=207.801
-yolo_runtime_row_verified=false
 ```
 
-Observed breadcrumb sequence:
+Setup stages:
 
 ```text
-edge_perception_model_load_started
-edge_perception_model_load_finished
-carla_setup_started
-run_failed
+stage_01_client_connect
+stage_02_world_available
+stage_03_town03_loaded_or_reused
+stage_04_settings_applied
+stage_05_spawn_points_loaded
+stage_06_ego_spawned
+stage_07_rgb_sensor_attached
+stage_08_first_rgb_frame_received
+stage_09_grp_route_generated
+stage_10_warmup_ticks_completed
+stage_11_cleanup_completed
 ```
 
-No `carla_setup_finished`, `world_tick_finished`, `rgb_frame_received`, `edge_perception_finished`, heartbeat, or partial route progress event appeared. The diagnostic therefore classifies the blocker as `map_load_or_spawn_stall`, not a verified per-frame YOLOv9 inference slowdown.
-
-CARLA server command used locally:
-
-```powershell
-D:\CARLA\packages\CARLA_0.9.16\CarlaUE4.exe -carla-rpc-port=2000 -RenderOffScreen -nosound
-```
-
-Formal diagnostic command:
+Formal setup command:
 
 ```powershell
 $env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
 $env:YOLOV9_ROOT = "D:\AIModels\yolov9"
 $env:YOLOV9_WEIGHTS = "D:\AIModels\yolov9\yolov9-c-converted.pt"
 
-D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_yolov9_runtime_timeout_diagnosis.py --route-id route_01 --host 127.0.0.1 --port 2000 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --carla-root D:\CARLA\packages\CARLA_0.9.16 --output-dir experiments\phase12 --diagnostic-steps 300 --diagnostic-timeout-sec 900 --child-timeout-sec 900 --parent-timeout-sec 1800 --require-yolov9-ready --emit-heartbeat-every 10 --emit-partial-metrics-every 25
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_yolov9_r1_setup_recovery.py --route-id route_01 --host 127.0.0.1 --port 2000 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --carla-root D:\CARLA\packages\CARLA_0.9.16 --output-dir experiments\phase12 --map-load-mode reuse_or_load --setup-timeout-sec 300 --map-load-timeout-sec 180 --spawn-timeout-sec 120 --sensor-timeout-sec 120 --warmup-ticks 20 --warmup-timeout-sec 120 --require-yolov9-ready
+```
+
+Probe result:
+
+```text
+carla_server_reachable=true
+town_ready=true
+ego_spawned=true
+rgb_sensor_attached=true
+first_rgb_frame_received=true
+grp_route_generated=true
+warmup_ticks_completed=20
+setup_probe_passed=true
+setup_blocker_classification=setup_probe_passed
 ```
 
 Boundary fields:
 
 ```text
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
 yolo_runtime_row_verified=false
 full_phase12c_perception_ablation_runtime_pass=false
 rt_detr_runtime_verified=false
@@ -101,17 +95,4 @@ leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
 
-Validation checklist:
-
-```text
-python -m py_compile workers\core\edge_perception.py scripts\run_phase12c_yolov9_runtime_timeout_diagnosis.py scripts\run_phase12c_yolov9_runtime_confirmation.py scripts\run_phase12c_yolov9_source_adapter_verification.py scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m py_compile workers\core\edge_perception.py scripts\run_phase12c_yolov9_runtime_timeout_diagnosis.py scripts\run_phase12c_yolov9_runtime_confirmation.py scripts\run_phase12c_yolov9_source_adapter_verification.py scripts\run_phase12c_yolov9_post_unlock_verification.py scripts\run_phase12c_perception_backend_ablation.py scripts\run_phase11_carla_checks.py
-python scripts\run_phase12c_yolov9_runtime_timeout_diagnosis.py --dry-run --output-dir experiments\phase12
-python scripts\run_phase11_carla_checks.py
-python scripts\run_demo_checks.py
-D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase11_carla_checks.py
-git diff --check
-python scripts\run_phase11o_source_commit_checks.py --require-staged
-```
-
-Phase 12C-YOLOv9-R1-DIAG is not a selected route runtime pass. It only explains the previous selected-row timeout: YOLOv9 no-fallback readiness held, CARLA was reachable, model load completed, and the run failed during CARLA setup before world ticks, RGB frames, or route metrics.
+Phase 12C-YOLOv9-R1-SETUP prepares and runs setup-stage evidence only. If the setup probe passes, a later short route-begin diagnostic may be prepared, but it still is not route completion, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.
