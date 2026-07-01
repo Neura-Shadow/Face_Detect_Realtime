@@ -204,3 +204,29 @@ yolo_runtime_row_verified=false
 ```
 
 The source adapter can remain verified while the selected route runtime remains blocked.
+
+## Follow-Up Route-Begin Probe
+
+Phase 12C-YOLOv9-R1-SHORT uses this official YOLOv9 source adapter readiness in a bounded route-begin probe:
+
+```text
+short_route_begin_evidence_dir=experiments\phase12\20260701T064944Z
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+source_adapter_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+diagnostic_steps_completed=50
+world_tick_count=50
+rgb_frame_received_count=50
+edge_perception_call_count=50
+yolov9_inference_call_count=11
+edge_yolov9_fallback_used_during_route=false
+partial_route_progress_seen=true
+short_route_begin_verified=true
+yolo_runtime_row_verified=false
+```
+
+This confirms early route-loop YOLOv9 no-fallback inference for the selected row only. It is not route completion, model accuracy verification, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.

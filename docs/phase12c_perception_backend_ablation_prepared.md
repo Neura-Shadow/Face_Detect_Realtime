@@ -132,7 +132,26 @@ yolo_runtime_row_verified=false
 full_phase12c_perception_ablation_runtime_pass=false
 ```
 
-Passing the setup probe would only prove setup readiness, not route completion or backend ablation runtime pass.
+Passing the setup probe proves setup readiness only, not route completion or backend ablation runtime pass.
+
+Phase 12C-YOLOv9-R1-SHORT is the bounded route-begin probe after setup recovery:
+
+```text
+short_route_begin_evidence_dir=experiments\phase12\20260701T064944Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+diagnostic_steps_completed=50
+world_tick_count=50
+rgb_frame_received_count=50
+edge_perception_call_count=50
+yolov9_inference_call_count=11
+edge_yolov9_fallback_used_during_route=false
+partial_route_progress_seen=true
+short_route_begin_verified=true
+```
+
+R1-SHORT proves route-begin breadcrumbs for the selected YOLOv9 row only. It is not full Phase 12C perception ablation runtime pass, route completion, model accuracy evidence, Leaderboard, formal route benchmark, or infraction benchmark.
 
 ## Validation
 

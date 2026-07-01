@@ -174,4 +174,30 @@ leaderboard_route_criteria_evaluated=false
 
 Phase 12C-YOLOv9-R1 is one selected single-route runtime confirmation attempt only. It is not a full Phase 12C perception ablation runtime pass, not YOLOv9 accuracy evidence, not RT-DETR validation, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
 
+## Follow-Up: R1-SHORT Route-Begin Probe
+
+R1-SHORT is a bounded follow-up after R1-SETUP, not a replacement for full route runtime confirmation:
+
+```text
+short_route_begin_evidence_dir=experiments\phase12\20260701T064944Z
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
+diagnostic_steps_completed=50
+heartbeat_count=11
+world_tick_count=50
+rgb_frame_received_count=50
+edge_perception_call_count=50
+yolov9_inference_call_count=11
+edge_yolov9_fallback_used_during_route=false
+short_route_begin_verified=true
+yolo_runtime_row_verified=false
+selected_route_completion_verified=false
+```
+
+The selected row now enters the route loop and emits early YOLOv9 no-fallback inference breadcrumbs. It still does not meet the selected route runtime pass boundary, because R1-SHORT does not require or prove route completion.
+
 YOLOv9 source and weights remain external operator assets and are not committed or vendored into MA-VLNA. Baseline requirements remain unchanged.

@@ -153,3 +153,25 @@ leaderboard_route_criteria_evaluated=false
 ```
 
 Phase 12C-YOLOv9-R1-DIAG is timeout diagnosis only. It does not claim selected YOLOv9 route runtime pass, YOLOv9 accuracy, full Phase 12C perception backend ablation runtime pass, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Follow-Up: R1-SHORT Route-Begin Probe
+
+After R1-SETUP recovered the setup/spawn path, R1-SHORT ran a bounded route-begin probe for the same selected row:
+
+```text
+short_route_begin_evidence_dir=experiments\phase12\20260701T064944Z
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+diagnostic_steps_completed=50
+world_tick_count=50
+rgb_frame_received_count=50
+edge_perception_call_count=50
+yolov9_inference_call_count=11
+edge_yolov9_fallback_used_during_route=false
+partial_route_progress_seen=true
+short_route_begin_verified=true
+```
+
+This follow-up changes the setup diagnosis lineage: the selected row now reaches the route loop and produces early no-fallback YOLOv9 breadcrumbs. It still does not claim selected YOLOv9 route runtime pass, route completion, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

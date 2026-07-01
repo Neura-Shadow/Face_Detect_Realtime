@@ -884,6 +884,35 @@ full_phase12c_perception_ablation_runtime_pass=false
 
 This phase is setup recovery only. It is not YOLOv9 runtime pass, not model accuracy evidence, not full Phase 12C ablation, and not Leaderboard / formal route / infraction benchmark evidence.
 
+## Phase 12C-YOLOv9-R1-SHORT Addendum - Selected Route-Begin Probe
+
+```text
+Phase 12C-YOLOv9-R1-SHORT Route-Begin Probe Pass - selected YOLOv9 row entered the closed-loop route loop and produced bounded early runtime evidence with no fallback.
+```
+
+R1-SHORT uses the same selected row after R1-SETUP:
+
+```text
+short_route_begin_evidence_dir=experiments\phase12\20260701T064944Z
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+diagnostic_steps_requested=50
+diagnostic_steps_completed=50
+heartbeat_count=11
+world_tick_count=50
+rgb_frame_received_count=50
+edge_perception_call_count=50
+yolov9_inference_call_count=11
+edge_yolov9_fallback_used_during_route=false
+partial_route_progress_seen=true
+short_route_begin_verified=true
+short_route_begin_blocker_classification=short_route_begin_verified
+```
+
+R1-SHORT is route-begin evidence only. It verifies early closed-loop route-loop breadcrumbs and no-fallback YOLOv9 inference calls; it does not claim route completion, YOLOv9 selected route runtime pass, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.
+
 R1 wrapper 已驗證 YOLOv9 source/weights 與 EdgePerception no-fallback readiness。R1-RERUN 已確認 `127.0.0.1:2000` 可達，並啟動 Phase 12B / Phase 11M child runtime；但 child 在 `2400.311s` 後 timeout，沒有產生 route metrics 或 goal-reach evidence。
 
 詳細記錄請見 [phase12c_yolov9_runtime_confirmation.md](phase12c_yolov9_runtime_confirmation.md)。

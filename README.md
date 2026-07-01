@@ -81,6 +81,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
 
   - Phase 12C-YOLOv9-R1-DIAG timeout diagnosis: **Diagnostic Completed - bounded 300-step diagnostic classified the selected-row blocker as `map_load_or_spawn_stall` at `experiments\phase12\20260630T150500Z`; no runtime pass claimed**
   - Phase 12C-YOLOv9-R1-SETUP setup recovery probe: **Probe Pass - selected setup reached Town03, ego spawn, RGB first frame, GRP route generation, 20 warm-up ticks, and cleanup at `experiments\phase12\20260701T045047Z`; no YOLOv9 runtime pass claimed**
+  - Phase 12C-YOLOv9-R1-SHORT route-begin probe: **Probe Pass - selected YOLOv9 row entered the closed-loop route loop with 50 world ticks, 50 RGB frames, 50 EdgePerception calls, 11 YOLOv9 no-fallback inference samples, and partial route metrics at `experiments\phase12\20260701T064944Z`; no route completion or YOLOv9 runtime pass claimed**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -277,6 +278,8 @@ Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 > Phase 12C-YOLOv9-R1-DIAG runtime timeout diagnosis 請見 [docs/phase12c_yolov9_runtime_timeout_diagnosis.md](docs/phase12c_yolov9_runtime_timeout_diagnosis.md)
 >
 > Phase 12C-YOLOv9-R1-SETUP setup recovery probe 請見 [docs/phase12c_yolov9_r1_setup_recovery.md](docs/phase12c_yolov9_r1_setup_recovery.md)
+>
+> Phase 12C-YOLOv9-R1-SHORT route-begin probe 請見 [docs/phase12c_yolov9_r1_short_route_begin.md](docs/phase12c_yolov9_r1_short_route_begin.md)
 
 ```powershell
 python scripts\run_phase12_experiment_plan.py --output-dir experiments\phase12
@@ -500,6 +503,38 @@ warmup_ticks_completed=20
 setup_probe_passed=true
 setup_blocker_classification=setup_probe_passed
 yolo_runtime_row_verified=false
+```
+
+Phase 12C-YOLOv9-R1-SHORT selected route-begin probe（只驗證早期 route-loop breadcrumbs；不宣稱 route completion / YOLOv9 runtime pass）：
+
+```powershell
+$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
+$env:YOLOV9_ROOT = "D:\AIModels\yolov9"
+$env:YOLOV9_WEIGHTS = "D:\AIModels\yolov9\yolov9-c-converted.pt"
+
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_yolov9_r1_short_route_begin.py --route-id route_01 --host 127.0.0.1 --port 2000 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --carla-root D:\CARLA\packages\CARLA_0.9.16 --output-dir experiments\phase12 --setup-evidence-dir experiments\phase12\20260701T045047Z --diagnostic-steps 50 --diagnostic-timeout-sec 300 --child-timeout-sec 300 --parent-timeout-sec 900 --require-yolov9-ready --require-setup-passed --emit-heartbeat-every 5 --emit-partial-metrics-every 10
+```
+
+Latest Phase 12C-YOLOv9-R1-SHORT evidence:
+
+```text
+short_route_begin_evidence_dir=experiments\phase12\20260701T064944Z
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+diagnostic_steps_completed=50
+heartbeat_count=11
+world_tick_count=50
+rgb_frame_received_count=50
+edge_perception_call_count=50
+yolov9_inference_call_count=11
+edge_yolov9_fallback_used_during_route=false
+partial_route_progress_seen=true
+short_route_begin_verified=true
+short_route_begin_blocker_classification=short_route_begin_verified
+yolo_runtime_row_verified=false
+selected_route_completion_verified=false
 ```
 
 ---

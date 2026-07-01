@@ -172,3 +172,27 @@ leaderboard_route_criteria_evaluated=false
 ```
 
 R1-SETUP is setup / spawn-stage recovery only. It is not YOLOv9 selected route runtime pass, not YOLOv9 route completion pass, not YOLOv9 model accuracy evidence, not full Phase 12C perception ablation, not RT-DETR runtime evidence, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
+
+## Follow-Up: R1-SHORT Route-Begin Probe
+
+R1-SHORT is the bounded route-begin probe that follows this setup recovery pass:
+
+```text
+short_route_begin_evidence_dir=experiments\phase12\20260701T064944Z
+setup_evidence_dir=experiments\phase12\20260701T045047Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+diagnostic_steps_completed=50
+heartbeat_count=11
+world_tick_count=50
+rgb_frame_received_count=50
+edge_perception_call_count=50
+yolov9_inference_call_count=11
+edge_yolov9_fallback_used_during_route=false
+partial_route_progress_seen=true
+short_route_begin_verified=true
+short_route_begin_blocker_classification=short_route_begin_verified
+```
+
+R1-SHORT proves that the selected row entered the closed-loop route loop and produced bounded early YOLOv9 no-fallback runtime breadcrumbs. It still does not prove route completion, YOLOv9 selected route runtime pass, YOLOv9 accuracy, full Phase 12C ablation, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
