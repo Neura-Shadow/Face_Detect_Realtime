@@ -211,3 +211,9 @@ recommended_next_phase=R1-LATENCY-OPT
 ```
 
 This is latency/cadence evidence only and does not promote the setup or route-begin result into route completion or benchmark evidence.
+
+## Follow-Up: R1-LATENCY-OPT Probe
+
+R1-LATENCY-OPT completed at `experiments\phase12\20260701T115744Z` with `status=completed_no_improvement`, `latency_opt_completed=true`, and `useful_latency_improvement_verified=false`. The optimized variants did not verify a useful no-fallback latency improvement, so the recommended next phase is `R1-YOLOv9-LIGHTWEIGHT`.
+
+This remains diagnostic latency optimization evidence only. It does not claim route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

@@ -1,4 +1,33 @@
-# Walkthrough - Phase 12C-YOLOv9-R1-LATENCY Route-Loop Latency Probe
+# Walkthrough - Phase 12C-YOLOv9-R1-LATENCY-OPT Forward-Latency Optimization Probe
+
+## Latest Result
+
+```text
+Phase 12C-YOLOv9-R1-LATENCY-OPT No-Improvement - optimization probe completed, but YOLOv9 forward latency remains too high for route completion.
+```
+
+```text
+latency_opt_evidence_dir=experiments\phase12\20260701T115744Z
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+executed_variant_count=4
+completed_variant_count=2
+blocked_variant_count=2
+best_variant_id=variant_01_baseline_recheck
+best_variant_effective_fps=0.168392
+best_variant_yolov9_avg_ms=2194.8
+best_avg_ms_improvement_pct=12.976
+best_fps_improvement_pct=-29.635
+latency_opt_bottleneck_classification=latency_regressed
+useful_latency_improvement_verified=false
+recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT
+```
+
+R1-LATENCY identified YOLOv9 model-forward time as the dominant bottleneck. R1-LATENCY-OPT tested diagnostic-only image-size and cached-cadence variants, but did not verify a useful no-fallback latency improvement.
+
+## Previous Walkthrough - R1-LATENCY
 
 ## Objective
 

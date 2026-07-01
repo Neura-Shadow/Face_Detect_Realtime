@@ -190,3 +190,9 @@ recommended_next_phase=R1-LATENCY-OPT
 ```
 
 The original `map_load_or_spawn_stall` blocker was recovered by SETUP/SHORT, but R1-LATENCY shows that route-loop speed remains constrained by YOLOv9 forward latency.
+
+## Follow-Up: R1-LATENCY-OPT Probe
+
+R1-LATENCY-OPT used the recovered route-loop path to test bounded diagnostic optimization variants. Evidence `experiments\phase12\20260701T115744Z` records `status=completed_no_improvement`, `best_variant_id=variant_01_baseline_recheck`, `best_variant_yolov9_avg_ms=2194.8`, `best_avg_ms_improvement_pct=12.976`, `best_fps_improvement_pct=-29.635`, and `recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT`.
+
+The timeout blocker is no longer the primary selected-row issue; the remaining blocker is insufficient YOLOv9 forward-latency improvement. No route completion, model accuracy, full ablation, Leaderboard, formal route benchmark, or infraction benchmark claim is made.

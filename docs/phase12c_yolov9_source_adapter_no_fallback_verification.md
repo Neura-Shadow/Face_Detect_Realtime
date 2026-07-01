@@ -212,3 +212,19 @@ recommended_next_phase=R1-LATENCY-OPT
 ```
 
 This confirms that the source adapter can run without fallback while route-loop cadence remains too slow for route completion attempts.
+
+## Follow-Up: R1-LATENCY-OPT Probe
+
+R1-LATENCY-OPT completed bounded optimization profiling at `experiments\phase12\20260701T115744Z` with `latency_opt_completed=true` and `useful_latency_improvement_verified=false`.
+
+```text
+best_variant_id=variant_01_baseline_recheck
+best_variant_effective_fps=0.168392
+best_variant_yolov9_avg_ms=2194.8
+best_avg_ms_improvement_pct=12.976
+best_fps_improvement_pct=-29.635
+latency_opt_bottleneck_classification=latency_regressed
+recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT
+```
+
+The no-fallback source adapter gate remains valid; R1-LATENCY-OPT does not claim route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

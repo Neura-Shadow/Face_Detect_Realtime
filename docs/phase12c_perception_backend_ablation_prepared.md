@@ -168,6 +168,14 @@ recommended_next_phase=R1-LATENCY-OPT
 
 R1-LATENCY is not a full backend ablation result. It is selected-row latency/cadence evidence only.
 
+## Phase 12C-YOLOv9-R1-LATENCY-OPT Addendum
+
+R1-LATENCY-OPT completed at `experiments\phase12\20260701T115744Z` with `status=completed_no_improvement`. The probe executed 4 of 7 variants, completed 2, and verified no useful YOLOv9 latency improvement. Best observed average inference was `2194.8ms` with `best_avg_ms_improvement_pct=12.976` and `best_fps_improvement_pct=-29.635`.
+
+`recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT`.
+
+The perception backend ablation remains unpromoted: this is selected-row latency optimization evidence only, not full Phase 12C perception ablation runtime pass and not YOLOv9 model accuracy evidence.
+
 ## Validation
 
 ```powershell

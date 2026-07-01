@@ -184,6 +184,9 @@ class PerceptionConfig:
     yolov9_confidence_threshold: float = 0.25
     yolov9_iou_threshold: float = 0.45
     yolov9_device: str = "auto"
+    yolov9_half: bool = False
+    yolov9_warmup_runs: int = 0
+    yolov9_forward_only_profile: bool = False
 
 
 # ════════════════════════════════════════════════════════════════
@@ -308,6 +311,12 @@ class AgentConfig:
             yolov9_confidence_threshold=float(_env("YOLOV9_CONFIDENCE_THRESHOLD", _yaml_nested("perception.yolov9.confidence_threshold", 0.25))),
             yolov9_iou_threshold=float(_env("YOLOV9_IOU_THRESHOLD", _yaml_nested("perception.yolov9.iou_threshold", 0.45))),
             yolov9_device=_env("YOLOV9_DEVICE", _yaml_nested("perception.yolov9.device", "auto")),
+            yolov9_half=_env_bool("YOLOV9_HALF", bool(_yaml_nested("perception.yolov9.half", False))),
+            yolov9_warmup_runs=int(_env("YOLOV9_WARMUP_RUNS", _yaml_nested("perception.yolov9.warmup_runs", 0))),
+            yolov9_forward_only_profile=_env_bool(
+                "YOLOV9_FORWARD_ONLY_PROFILE",
+                bool(_yaml_nested("perception.yolov9.forward_only_profile", False)),
+            ),
         )
 
         embedding_cfg = EmbeddingConfig(

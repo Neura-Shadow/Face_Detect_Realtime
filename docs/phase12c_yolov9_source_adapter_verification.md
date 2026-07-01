@@ -246,3 +246,9 @@ recommended_next_phase=R1-LATENCY-OPT
 ```
 
 The official source adapter remains no-fallback verified; the measured bottleneck is runtime model-forward latency, not missing source readiness. This is still not route completion or model accuracy evidence.
+
+## Follow-Up: R1-LATENCY-OPT Probe
+
+R1-LATENCY-OPT completed bounded optimization profiling at `experiments\phase12\20260701T115744Z` with `status=completed_no_improvement`. The best variant was `variant_01_baseline_recheck` with `best_variant_yolov9_avg_ms=2194.8`, `best_avg_ms_improvement_pct=12.976`, and `best_fps_improvement_pct=-29.635`; `useful_latency_improvement_verified=false`.
+
+The source adapter remains verified. The remaining issue is insufficient YOLOv9 forward-latency improvement, so the recommended next phase is `R1-YOLOv9-LIGHTWEIGHT`, not route completion or full Phase 12C ablation.

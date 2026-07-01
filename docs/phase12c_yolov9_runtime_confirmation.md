@@ -221,3 +221,9 @@ selected_route_completion_verified=false
 The latency result recommends optimization before another route-completion attempt; it does not turn R1 into a selected route runtime pass.
 
 YOLOv9 source and weights remain external operator assets and are not committed or vendored into MA-VLNA. Baseline requirements remain unchanged.
+
+## Follow-Up: R1-LATENCY-OPT Probe
+
+R1-LATENCY-OPT completed bounded forward-latency optimization profiling at `experiments\phase12\20260701T115744Z`. The result is `completed_no_improvement`: `best_variant_id=variant_01_baseline_recheck`, `best_variant_yolov9_avg_ms=2194.8`, `best_avg_ms_improvement_pct=12.976`, `best_fps_improvement_pct=-29.635`, and `useful_latency_improvement_verified=false`.
+
+The recommended next phase is `R1-YOLOv9-LIGHTWEIGHT`. This does not claim selected YOLOv9 route runtime pass, route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

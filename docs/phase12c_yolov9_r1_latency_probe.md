@@ -152,3 +152,22 @@ leaderboard_evaluated=false
 leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
+
+## Follow-Up: R1-LATENCY-OPT Probe
+
+R1-LATENCY-OPT used this forward-bottleneck evidence to profile diagnostic-only optimization variants:
+
+```text
+latency_opt_evidence_dir=experiments\phase12\20260701T115744Z
+status=completed_no_improvement
+best_variant_id=variant_01_baseline_recheck
+best_variant_effective_fps=0.168392
+best_variant_yolov9_avg_ms=2194.8
+best_avg_ms_improvement_pct=12.976
+best_fps_improvement_pct=-29.635
+latency_opt_bottleneck_classification=latency_regressed
+useful_latency_improvement_verified=false
+recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT
+```
+
+Image-size, half precision, forward-only profiling, stride, and cached perception behavior remain diagnostic-only. R1-LATENCY-OPT does not claim route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

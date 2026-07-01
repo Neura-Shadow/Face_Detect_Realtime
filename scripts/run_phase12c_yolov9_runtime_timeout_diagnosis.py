@@ -202,6 +202,16 @@ def _build_child_command(args: argparse.Namespace, child_output_root: Path) -> l
         "--perception-inference-stride",
         str(args.perception_inference_stride),
     ]
+    if args.yolov9_img_size is not None:
+        command.extend(["--yolov9-img-size", str(args.yolov9_img_size)])
+    if args.yolov9_half:
+        command.append("--yolov9-half")
+    if args.yolov9_device:
+        command.extend(["--yolov9-device", args.yolov9_device])
+    if args.yolov9_warmup_runs:
+        command.extend(["--yolov9-warmup-runs", str(args.yolov9_warmup_runs)])
+    if args.yolov9_forward_only_profile:
+        command.append("--yolov9-forward-only-profile")
     if args.reuse_last_perception_between_inference:
         command.append("--reuse-last-perception-between-inference")
     if args.record_perception_cache_events:
@@ -463,6 +473,12 @@ def _build_summary(
         "perception_inference_stride": args.perception_inference_stride,
         "reuse_last_perception_between_inference": args.reuse_last_perception_between_inference,
         "record_perception_cache_events": args.record_perception_cache_events,
+        "edge_probe_timeout_sec": args.edge_probe_timeout_sec,
+        "yolov9_img_size": args.yolov9_img_size,
+        "yolov9_half": args.yolov9_half,
+        "yolov9_device": args.yolov9_device,
+        "yolov9_warmup_runs": args.yolov9_warmup_runs,
+        "yolov9_forward_only_profile": args.yolov9_forward_only_profile,
         "carla_server_host": args.host,
         "carla_server_port": args.port,
         "carla_server_reachable": preflight.get("carla_server_reachable"),
@@ -648,11 +664,17 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--child-timeout-sec", type=float, default=900.0)
     parser.add_argument("--parent-timeout-sec", type=float, default=1800.0)
     parser.add_argument("--require-yolov9-ready", action="store_true")
+    parser.add_argument("--edge-probe-timeout-sec", type=float, default=240.0)
     parser.add_argument("--emit-heartbeat-every", type=int, default=10)
     parser.add_argument("--emit-partial-metrics-every", type=int, default=25)
     parser.add_argument("--perception-inference-stride", type=int, default=1)
     parser.add_argument("--reuse-last-perception-between-inference", action="store_true")
     parser.add_argument("--record-perception-cache-events", action="store_true")
+    parser.add_argument("--yolov9-img-size", type=int, default=None)
+    parser.add_argument("--yolov9-half", action="store_true")
+    parser.add_argument("--yolov9-device", default=None)
+    parser.add_argument("--yolov9-warmup-runs", type=int, default=0)
+    parser.add_argument("--yolov9-forward-only-profile", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--skip-source-adapter-evidence-check", action="store_true")
     parser.add_argument("--source-adapter-verified-evidence-dir", type=Path, default=DEFAULT_SOURCE_ADAPTER_EVIDENCE_DIR)

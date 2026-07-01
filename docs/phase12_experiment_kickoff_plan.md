@@ -937,6 +937,30 @@ recommended_next_phase=R1-LATENCY-OPT
 
 The current cadence variant completed bounded profiling and shows YOLOv9 model-forward latency dominates route-loop speed. The stride-5 cached variant did not produce a valid route-loop profile in this run. Therefore the recommended next phase is latency optimization, not route completion or full ablation.
 
+## Phase 12C-YOLOv9-R1-LATENCY-OPT Addendum - Forward-Latency Optimization Probe
+
+```text
+Phase 12C-YOLOv9-R1-LATENCY-OPT No-Improvement - optimization probe completed, but YOLOv9 forward latency remains too high for route completion.
+```
+
+R1-LATENCY-OPT profiles diagnostic-only optimization variants after R1-LATENCY identified YOLOv9 model-forward as the bottleneck:
+
+```text
+latency_opt_evidence_dir=experiments\phase12\20260701T115744Z
+executed_variant_count=4
+completed_variant_count=2
+blocked_variant_count=2
+best_variant_id=variant_01_baseline_recheck
+best_variant_effective_fps=0.168392
+best_variant_yolov9_avg_ms=2194.8
+best_avg_ms_improvement_pct=12.976
+best_fps_improvement_pct=-29.635
+useful_latency_improvement_verified=false
+recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT
+```
+
+Image-size, half precision, forward-only profiling, stride, and cached perception behavior remain diagnostic-only unless a later phase promotes them. This phase does not claim route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.
+
 R1 wrapper 已驗證 YOLOv9 source/weights 與 EdgePerception no-fallback readiness。R1-RERUN 已確認 `127.0.0.1:2000` 可達，並啟動 Phase 12B / Phase 11M child runtime；但 child 在 `2400.311s` 後 timeout，沒有產生 route metrics 或 goal-reach evidence。
 
 詳細記錄請見 [phase12c_yolov9_runtime_confirmation.md](phase12c_yolov9_runtime_confirmation.md)。

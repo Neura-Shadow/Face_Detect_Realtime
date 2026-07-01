@@ -252,3 +252,9 @@ recommended_next_phase=R1-LATENCY-OPT
 ```
 
 The post-unlock gate remains readiness evidence. R1-LATENCY adds performance/cadence evidence and still does not claim route completion, model accuracy, full Phase 12C ablation, or benchmark pass.
+
+## Follow-Up: R1-LATENCY-OPT Probe
+
+R1-LATENCY-OPT used the post-unlock no-fallback readiness and R1-LATENCY baseline to test bounded optimization variants. Evidence `experiments\phase12\20260701T115744Z` records `status=completed_no_improvement`, `latency_opt_completed=true`, `useful_latency_improvement_verified=false`, `best_variant_id=variant_01_baseline_recheck`, `best_variant_yolov9_avg_ms=2194.8`, and `recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT`.
+
+This follow-up keeps image-size, half precision, forward-only profiling, stride, and cached perception behavior diagnostic-only. It does not claim route completion, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

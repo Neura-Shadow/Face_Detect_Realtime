@@ -1,4 +1,48 @@
-# Current Task - Phase 12C-YOLOv9-R1-LATENCY
+# Current Task - Phase 12C-YOLOv9-R1-LATENCY-OPT
+
+## Latest Status
+
+```text
+Phase 12C-YOLOv9-R1-LATENCY-OPT No-Improvement - optimization probe completed, but YOLOv9 forward latency remains too high for route completion.
+```
+
+Maintained boundary:
+
+```text
+Phase 12C-YOLOv9-R1-LATENCY-OPT is latency optimization evidence only. It does not claim selected YOLOv9 route runtime pass, route completion, YOLOv9 model accuracy, full Phase 12C perception ablation runtime pass, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+```
+
+## Latest Evidence
+
+```text
+latency_opt_evidence_dir=experiments\phase12\20260701T115744Z
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+source_adapter_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+setup_probe_passed=true
+short_route_begin_verified=true
+latency_probe_completed=true
+variant_count=7
+executed_variant_count=4
+completed_variant_count=2
+blocked_variant_count=2
+best_variant_id=variant_01_baseline_recheck
+best_variant_effective_fps=0.168392
+best_variant_yolov9_avg_ms=2194.8
+best_avg_ms_improvement_pct=12.976
+best_fps_improvement_pct=-29.635
+latency_opt_bottleneck_classification=latency_regressed
+useful_latency_improvement_verified=false
+recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT
+```
+
+Image-size, half precision, forward-only profiling, stride, and cached perception behavior remain diagnostic-only unless promoted by a later phase.
+
+## Previous Phase - R1-LATENCY
 
 ## Status
 

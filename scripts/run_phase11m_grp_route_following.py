@@ -164,11 +164,18 @@ def _build_config(args: argparse.Namespace) -> AgentConfig:
         camera_width=args.camera_width,
         camera_height=args.camera_height,
     )
-    perception_cfg = dataclasses.replace(
-        config.perception,
-        backend=args.perception_backend,
-        model_name=args.perception_model,
-    )
+    perception_updates: dict[str, Any] = {
+        "backend": args.perception_backend,
+        "model_name": args.perception_model,
+        "yolov9_half": args.yolov9_half,
+        "yolov9_warmup_runs": max(0, int(args.yolov9_warmup_runs)),
+        "yolov9_forward_only_profile": args.yolov9_forward_only_profile,
+    }
+    if args.yolov9_img_size is not None:
+        perception_updates["yolov9_default_img_size"] = int(args.yolov9_img_size)
+    if args.yolov9_device:
+        perception_updates["yolov9_device"] = args.yolov9_device
+    perception_cfg = dataclasses.replace(config.perception, **perception_updates)
     trigger_cfg = dataclasses.replace(
         config.trigger,
         cooldown_sec=0.0 if args.enable_vlm else config.trigger.cooldown_sec,
@@ -641,6 +648,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--async-world", action="store_true")
     parser.add_argument("--perception-backend", default="dummy", choices=["dummy", "yolo", "yolov9", "rtdetr"])
     parser.add_argument("--perception-model", default="dummy")
+    parser.add_argument("--yolov9-img-size", type=int, default=None)
+    parser.add_argument("--yolov9-half", action="store_true")
+    parser.add_argument("--yolov9-device", default=None)
+    parser.add_argument("--yolov9-warmup-runs", type=int, default=0)
+    parser.add_argument("--yolov9-forward-only-profile", action="store_true")
     parser.add_argument("--enable-vlm", action="store_true")
     parser.add_argument("--force-vlm-every", type=int, default=0)
     parser.add_argument("--publish-telemetry", action="store_true")

@@ -316,12 +316,13 @@ def _yolov9_env_status(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def _edge_probe(args: argparse.Namespace, raw_dir: Path, env: dict[str, str]) -> tuple[CommandResult, dict[str, str]]:
+    timeout_sec = float(getattr(args, "edge_probe_timeout_sec", 240.0))
     result = _run_command(
         name="edge_yolov9_no_fallback_probe",
         command=[args.python_executable, "-m", "workers.core.edge_perception", "--test", "yolov9"],
         raw_dir=raw_dir,
         env=env,
-        timeout_sec=240.0,
+        timeout_sec=timeout_sec,
     )
     stdout = Path(result.stdout_path).read_text(encoding="utf-8", errors="replace")
     stderr = Path(result.stderr_path).read_text(encoding="utf-8", errors="replace")

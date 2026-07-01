@@ -303,6 +303,9 @@ class YOLOv9PerceptionBackend:
         img_size: int = 640,
         iou_threshold: float = 0.45,
         device: str = "auto",
+        half: bool = False,
+        warmup_runs: int = 0,
+        forward_only_profile: bool = False,
     ):
         if not source_status.configured:
             raise RuntimeError("YOLOv9 external source is not configured: set YOLOV9_ROOT and YOLOV9_WEIGHTS")
@@ -314,6 +317,10 @@ class YOLOv9PerceptionBackend:
         self._img_size = img_size
         self._iou_threshold = iou_threshold
         self._device_hint = device
+        self._requested_half = bool(half)
+        self._half = False
+        self._warmup_runs = max(0, int(warmup_runs))
+        self._forward_only_profile = bool(forward_only_profile)
         self._last_inference_timing: dict[str, Any] = {}
         self._model_loaded_once = False
         self._model, self._device = self._build_model(source_status)
@@ -359,9 +366,10 @@ class YOLOv9PerceptionBackend:
 
         device_arg = "" if self._device_hint == "auto" else self._device_hint
         device_obj = select_device(device_arg)
+        self._half = self._requested_half and "cuda" in str(device_obj).lower()
         original_torch_load = self._patch_torch_load_for_trusted_yolov9_checkpoint(torch)
         try:
-            model = DetectMultiBackend(weights, device=device_obj, fp16=False)
+            model = DetectMultiBackend(weights, device=device_obj, fp16=self._half)
             if hasattr(model, "eval"):
                 model.eval()
             else:
@@ -370,6 +378,7 @@ class YOLOv9PerceptionBackend:
             stride = int(getattr(model, "stride", 32) or 32)
             smoke_size = max(stride, int(self._img_size))
             dummy = torch.zeros(1, 3, smoke_size, smoke_size, device=device_obj)
+            dummy = dummy.half() if self._half else dummy.float()
             with torch.no_grad():
                 if callable(model):
                     _ = model(dummy)
@@ -377,6 +386,12 @@ class YOLOv9PerceptionBackend:
                     _ = model.model(dummy)
                 else:
                     raise RuntimeError("YOLOv9 DetectMultiBackend has no callable inference path")
+                for _ in range(self._warmup_runs):
+                    if callable(model):
+                        _ = model(dummy)
+                    else:
+                        _ = model.model(dummy)
+                    self._sync_device_if_needed(torch, device_obj)
         except Exception as exc:
             raise RuntimeError(f"YOLOv9 weights/model smoke failed: {exc}") from exc
         finally:
@@ -413,7 +428,9 @@ class YOLOv9PerceptionBackend:
         letterbox_shape = tuple(int(value) for value in image.shape[:2])
         image = image[:, :, ::-1].transpose(2, 0, 1)
         image = np.ascontiguousarray(image)
-        tensor = torch.from_numpy(image).to(self._device).float() / 255.0
+        tensor = torch.from_numpy(image).to(self._device)
+        tensor = tensor.half() if self._half else tensor.float()
+        tensor = tensor / 255.0
         if tensor.ndimension() == 3:
             tensor = tensor.unsqueeze(0)
         self._sync_device_if_needed(torch, self._device)
@@ -424,6 +441,27 @@ class YOLOv9PerceptionBackend:
             raw = self._model(tensor) if callable(self._model) else self._model.model(tensor)
         self._sync_device_if_needed(torch, self._device)
         model_forward_ms = (time.monotonic() - forward_start) * 1000.0
+
+        if self._forward_only_profile:
+            inf_ms = int((time.monotonic() - start) * 1000)
+            self._last_inference_timing = {
+                "yolov9_preprocess_ms": round(preprocess_ms, 3),
+                "yolov9_model_forward_ms": round(model_forward_ms, 3),
+                "yolov9_nms_ms": 0.0,
+                "yolov9_postprocess_ms": 0.0,
+                "yolov9_total_inference_ms": float(inf_ms),
+                "input_frame_shape": [int(value) for value in frame.shape],
+                "letterbox_shape": [int(value) for value in letterbox_shape],
+                "device": str(self._device),
+                "device_hint": self._device_hint,
+                "img_size": int(self._img_size),
+                "half_requested": self._requested_half,
+                "half": self._half,
+                "warmup_runs": self._warmup_runs,
+                "forward_only_profile": self._forward_only_profile,
+                "model_loaded_once": self._model_loaded_once,
+            }
+            return [], inf_ms
 
         prediction = raw[0] if isinstance(raw, (list, tuple)) else raw
         nms_start = time.monotonic()
@@ -466,6 +504,12 @@ class YOLOv9PerceptionBackend:
             "input_frame_shape": [int(value) for value in frame.shape],
             "letterbox_shape": [int(value) for value in letterbox_shape],
             "device": str(self._device),
+            "device_hint": self._device_hint,
+            "img_size": int(self._img_size),
+            "half_requested": self._requested_half,
+            "half": self._half,
+            "warmup_runs": self._warmup_runs,
+            "forward_only_profile": self._forward_only_profile,
             "model_loaded_once": self._model_loaded_once,
         }
         return detections, inf_ms
@@ -674,6 +718,9 @@ class EdgePerception:
                     img_size=cfg.perception.yolov9_default_img_size,
                     iou_threshold=cfg.perception.yolov9_iou_threshold,
                     device=cfg.perception.yolov9_device,
+                    half=cfg.perception.yolov9_half,
+                    warmup_runs=cfg.perception.yolov9_warmup_runs,
+                    forward_only_profile=cfg.perception.yolov9_forward_only_profile,
                 )
             elif backend_type == "rtdetr":
                 self._backend = RTDETRPerceptionBackend(model_name, conf)

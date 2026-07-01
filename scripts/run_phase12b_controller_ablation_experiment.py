@@ -236,6 +236,16 @@ def _build_grp_command(args: argparse.Namespace, route: RouteSpec, output_dir: P
         "--base-python",
         args.base_python,
     ]
+    if args.yolov9_img_size is not None:
+        command.extend(["--yolov9-img-size", str(args.yolov9_img_size)])
+    if args.yolov9_half:
+        command.append("--yolov9-half")
+    if args.yolov9_device:
+        command.extend(["--yolov9-device", args.yolov9_device])
+    if args.yolov9_warmup_runs:
+        command.extend(["--yolov9-warmup-runs", str(args.yolov9_warmup_runs)])
+    if args.yolov9_forward_only_profile:
+        command.append("--yolov9-forward-only-profile")
     if args.enable_diagnostics:
         command.extend(
             [
@@ -737,6 +747,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--goal-tolerance-m", type=float, default=3.0)
     parser.add_argument("--min-route-progress-m", type=float, default=0.5)
     parser.add_argument("--perception-backend", default="dummy", choices=["dummy", "yolo", "yolov9", "rtdetr"])
+    parser.add_argument("--yolov9-img-size", type=int, default=None)
+    parser.add_argument("--yolov9-half", action="store_true")
+    parser.add_argument("--yolov9-device", default=None)
+    parser.add_argument("--yolov9-warmup-runs", type=int, default=0)
+    parser.add_argument("--yolov9-forward-only-profile", action="store_true")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--timestamp", default=None)
     parser.add_argument("--carla-root", type=Path, default=DEFAULT_CARLA_ROOT)
