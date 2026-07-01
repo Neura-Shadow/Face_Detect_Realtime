@@ -84,6 +84,7 @@ def main() -> int:
                 "scripts/run_phase12c_carla_setup_spawn_probe.py",
                 "scripts/run_phase12c_yolov9_r1_setup_recovery.py",
                 "scripts/run_phase12c_yolov9_r1_short_route_begin.py",
+                "scripts/run_phase12c_yolov9_r1_latency_probe.py",
             ],
             "expected": [],
         },

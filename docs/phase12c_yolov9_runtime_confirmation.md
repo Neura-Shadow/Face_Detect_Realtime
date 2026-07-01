@@ -200,4 +200,24 @@ selected_route_completion_verified=false
 
 The selected row now enters the route loop and emits early YOLOv9 no-fallback inference breadcrumbs. It still does not meet the selected route runtime pass boundary, because R1-SHORT does not require or prove route completion.
 
+## Follow-Up: R1-LATENCY Probe
+
+R1-LATENCY profiles the selected row before any route-completion retry:
+
+```text
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+executed_variant_count=2
+completed_variant_count=1
+blocked_variant_count=1
+best_variant_id=variant_01_current_cadence
+best_variant_effective_fps=0.239313
+baseline_current_cadence_yolov9_avg_ms=2522.06
+latency_bottleneck_classification=yolov9_forward_dominant
+recommended_next_phase=R1-LATENCY-OPT
+yolo_runtime_row_verified=false
+selected_route_completion_verified=false
+```
+
+The latency result recommends optimization before another route-completion attempt; it does not turn R1 into a selected route runtime pass.
+
 YOLOv9 source and weights remain external operator assets and are not committed or vendored into MA-VLNA. Baseline requirements remain unchanged.

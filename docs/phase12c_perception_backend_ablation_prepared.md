@@ -153,6 +153,21 @@ short_route_begin_verified=true
 
 R1-SHORT proves route-begin breadcrumbs for the selected YOLOv9 row only. It is not full Phase 12C perception ablation runtime pass, route completion, model accuracy evidence, Leaderboard, formal route benchmark, or infraction benchmark.
 
+Phase 12C-YOLOv9-R1-LATENCY profiles the selected row's route-loop latency after R1-SHORT:
+
+```text
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+executed_variant_count=2
+completed_variant_count=1
+best_variant_id=variant_01_current_cadence
+best_variant_effective_fps=0.239313
+baseline_current_cadence_yolov9_avg_ms=2522.06
+latency_bottleneck_classification=yolov9_forward_dominant
+recommended_next_phase=R1-LATENCY-OPT
+```
+
+R1-LATENCY is not a full backend ablation result. It is selected-row latency/cadence evidence only.
+
 ## Validation
 
 ```powershell

@@ -196,3 +196,18 @@ short_route_begin_blocker_classification=short_route_begin_verified
 ```
 
 R1-SHORT proves that the selected row entered the closed-loop route loop and produced bounded early YOLOv9 no-fallback runtime breadcrumbs. It still does not prove route completion, YOLOv9 selected route runtime pass, YOLOv9 accuracy, full Phase 12C ablation, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Follow-Up: R1-LATENCY Probe
+
+R1-LATENCY uses the R1-SHORT pass to profile route-loop latency:
+
+```text
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+best_variant_id=variant_01_current_cadence
+best_variant_effective_fps=0.239313
+baseline_current_cadence_yolov9_avg_ms=2522.06
+latency_bottleneck_classification=yolov9_forward_dominant
+recommended_next_phase=R1-LATENCY-OPT
+```
+
+This is latency/cadence evidence only and does not promote the setup or route-begin result into route completion or benchmark evidence.

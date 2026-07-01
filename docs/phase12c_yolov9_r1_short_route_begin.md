@@ -166,3 +166,23 @@ leaderboard_evaluated=false
 leaderboard_routes_exported=false
 leaderboard_route_criteria_evaluated=false
 ```
+
+## Follow-Up: R1-LATENCY Probe
+
+R1-LATENCY profiles the same selected row after this route-begin pass:
+
+```text
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+short_route_begin_evidence_dir=experiments\phase12\20260701T064944Z
+executed_variant_count=2
+completed_variant_count=1
+blocked_variant_count=1
+best_variant_id=variant_01_current_cadence
+best_variant_effective_fps=0.239313
+baseline_current_cadence_yolov9_avg_ms=2522.06
+latency_bottleneck_classification=yolov9_forward_dominant
+recommended_next_phase=R1-LATENCY-OPT
+latency_probe_completed=true
+```
+
+R1-LATENCY confirms that current-cadence route-loop speed is dominated by YOLOv9 model-forward latency. It does not claim route completion, selected YOLOv9 route runtime pass, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

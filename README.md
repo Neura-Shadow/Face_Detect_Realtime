@@ -82,6 +82,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-YOLOv9-R1-DIAG timeout diagnosis: **Diagnostic Completed - bounded 300-step diagnostic classified the selected-row blocker as `map_load_or_spawn_stall` at `experiments\phase12\20260630T150500Z`; no runtime pass claimed**
   - Phase 12C-YOLOv9-R1-SETUP setup recovery probe: **Probe Pass - selected setup reached Town03, ego spawn, RGB first frame, GRP route generation, 20 warm-up ticks, and cleanup at `experiments\phase12\20260701T045047Z`; no YOLOv9 runtime pass claimed**
   - Phase 12C-YOLOv9-R1-SHORT route-begin probe: **Probe Pass - selected YOLOv9 row entered the closed-loop route loop with 50 world ticks, 50 RGB frames, 50 EdgePerception calls, 11 YOLOv9 no-fallback inference samples, and partial route metrics at `experiments\phase12\20260701T064944Z`; no route completion or YOLOv9 runtime pass claimed**
+  - Phase 12C-YOLOv9-R1-LATENCY route-loop latency probe: **Completed - current-cadence YOLOv9 route loop profiled at `experiments\phase12\20260701T103721Z`; effective FPS `0.239313`, YOLOv9 avg `2522.06ms`, bottleneck `yolov9_forward_dominant`, recommended next phase `R1-LATENCY-OPT`; no route completion claimed**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -280,6 +281,8 @@ Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 > Phase 12C-YOLOv9-R1-SETUP setup recovery probe 請見 [docs/phase12c_yolov9_r1_setup_recovery.md](docs/phase12c_yolov9_r1_setup_recovery.md)
 >
 > Phase 12C-YOLOv9-R1-SHORT route-begin probe 請見 [docs/phase12c_yolov9_r1_short_route_begin.md](docs/phase12c_yolov9_r1_short_route_begin.md)
+>
+> Phase 12C-YOLOv9-R1-LATENCY route-loop latency probe 請見 [docs/phase12c_yolov9_r1_latency_probe.md](docs/phase12c_yolov9_r1_latency_probe.md)
 
 ```powershell
 python scripts\run_phase12_experiment_plan.py --output-dir experiments\phase12
@@ -533,6 +536,34 @@ edge_yolov9_fallback_used_during_route=false
 partial_route_progress_seen=true
 short_route_begin_verified=true
 short_route_begin_blocker_classification=short_route_begin_verified
+yolo_runtime_row_verified=false
+selected_route_completion_verified=false
+```
+
+Phase 12C-YOLOv9-R1-LATENCY route-loop latency and cadence probe（只量測 latency/cadence；不宣稱 route completion / YOLOv9 runtime pass）：
+
+```powershell
+$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
+$env:YOLOV9_ROOT = "D:\AIModels\yolov9"
+$env:YOLOV9_WEIGHTS = "D:\AIModels\yolov9\yolov9-c-converted.pt"
+
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_yolov9_r1_latency_probe.py --route-id route_01 --host 127.0.0.1 --port 2000 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --carla-root D:\CARLA\packages\CARLA_0.9.16 --output-dir experiments\phase12 --short-route-begin-evidence-dir experiments\phase12\20260701T064944Z --setup-evidence-dir experiments\phase12\20260701T045047Z --require-yolov9-ready --require-setup-passed --require-short-route-begin-passed --child-timeout-sec 600 --parent-timeout-sec 2400
+```
+
+Latest Phase 12C-YOLOv9-R1-LATENCY evidence:
+
+```text
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+executed_variant_count=2
+completed_variant_count=1
+blocked_variant_count=1
+best_variant_id=variant_01_current_cadence
+best_variant_effective_fps=0.239313
+best_variant_yolov9_avg_ms=2522.06
+baseline_current_cadence_yolov9_avg_ms=2522.06
+latency_bottleneck_classification=yolov9_forward_dominant
+recommended_next_phase=R1-LATENCY-OPT
+latency_probe_completed=true
 yolo_runtime_row_verified=false
 selected_route_completion_verified=false
 ```

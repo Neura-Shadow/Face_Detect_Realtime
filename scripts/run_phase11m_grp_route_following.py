@@ -465,6 +465,9 @@ async def _run_grp_route_following(
         enable_metric_sensors=args.enable_metric_sensors,
         require_sensors=args.require_sensors,
         diagnostic_recorder=diagnostic_recorder,
+        perception_inference_stride=args.perception_inference_stride,
+        reuse_last_perception_between_inference=args.reuse_last_perception_between_inference,
+        record_perception_cache_events=args.record_perception_cache_events,
     )
     route_tracker.enable_goal_reach_gate(required=args.require_goal_reach)
     route_tracker.enable_grp_route_gate(required=args.require_grp)
@@ -655,6 +658,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--diagnostic-output-dir", type=Path, default=None)
     parser.add_argument("--emit-heartbeat-every", type=int, default=10)
     parser.add_argument("--emit-partial-metrics-every", type=int, default=25)
+    parser.add_argument("--perception-inference-stride", type=int, default=1)
+    parser.add_argument("--reuse-last-perception-between-inference", action="store_true")
+    parser.add_argument("--record-perception-cache-events", action="store_true")
     return parser
 
 

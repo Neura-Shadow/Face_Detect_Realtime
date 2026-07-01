@@ -246,8 +246,14 @@ def _build_grp_command(args: argparse.Namespace, route: RouteSpec, output_dir: P
                 str(args.emit_heartbeat_every),
                 "--emit-partial-metrics-every",
                 str(args.emit_partial_metrics_every),
+                "--perception-inference-stride",
+                str(args.perception_inference_stride),
             ]
         )
+        if args.reuse_last_perception_between_inference:
+            command.append("--reuse-last-perception-between-inference")
+        if args.record_perception_cache_events:
+            command.append("--record-perception-cache-events")
     return command
 
 
@@ -744,6 +750,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--diagnostic-steps", type=int, default=None)
     parser.add_argument("--emit-heartbeat-every", type=int, default=10)
     parser.add_argument("--emit-partial-metrics-every", type=int, default=25)
+    parser.add_argument("--perception-inference-stride", type=int, default=1)
+    parser.add_argument("--reuse-last-perception-between-inference", action="store_true")
+    parser.add_argument("--record-perception-cache-events", action="store_true")
     parser.add_argument("--route-id", action="append", choices=[route.route_id for route in ROUTE_MATRIX])
     parser.add_argument("--controller-mode", action="append", choices=[controller.mode for controller in CONTROLLER_MATRIX])
     return parser

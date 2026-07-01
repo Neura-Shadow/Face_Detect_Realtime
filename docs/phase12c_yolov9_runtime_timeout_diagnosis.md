@@ -175,3 +175,18 @@ short_route_begin_verified=true
 ```
 
 This follow-up changes the setup diagnosis lineage: the selected row now reaches the route loop and produces early no-fallback YOLOv9 breadcrumbs. It still does not claim selected YOLOv9 route runtime pass, route completion, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Follow-Up: R1-LATENCY Probe
+
+R1-LATENCY adds route-loop latency/cadence evidence after the route-begin pass:
+
+```text
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+variant_01_effective_fps=0.239313
+variant_01_yolov9_total_inference_ms_avg=2522.06
+variant_01_yolov9_model_forward_ms_avg=2512.84
+latency_bottleneck_classification=yolov9_forward_dominant
+recommended_next_phase=R1-LATENCY-OPT
+```
+
+The original `map_load_or_spawn_stall` blocker was recovered by SETUP/SHORT, but R1-LATENCY shows that route-loop speed remains constrained by YOLOv9 forward latency.

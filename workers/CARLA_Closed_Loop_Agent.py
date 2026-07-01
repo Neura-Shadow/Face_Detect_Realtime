@@ -74,6 +74,9 @@ class CarlaClosedLoopAgent:
         enable_metric_sensors: bool = False,
         require_sensors: bool = False,
         diagnostic_recorder: Any | None = None,
+        perception_inference_stride: int = 1,
+        reuse_last_perception_between_inference: bool = False,
+        record_perception_cache_events: bool = False,
     ) -> None:
         self._config = config or AgentConfig.load()
         self._enable_vlm = enable_vlm
@@ -84,6 +87,10 @@ class CarlaClosedLoopAgent:
         self._enable_metric_sensors = enable_metric_sensors
         self._require_sensors = require_sensors
         self._diagnostic_recorder = diagnostic_recorder
+        self._perception_inference_stride = max(1, int(perception_inference_stride))
+        self._reuse_last_perception_between_inference = bool(reuse_last_perception_between_inference)
+        self._record_perception_cache_events = bool(record_perception_cache_events)
+        self._last_perception_result: PerceptionResult | None = None
 
         self._carla = carla_adapter or CarlaClientAdapter(self._config.carla)
         self._control_adapter = control_adapter or CarlaVehicleControlAdapter(
@@ -193,6 +200,9 @@ class CarlaClosedLoopAgent:
             "edge_perception_backend": None,
             "edge_yolov9_fallback_used": None,
             "yolov9_inference_ms": None,
+            "perception_inference_stride": self._perception_inference_stride,
+            "cached_result_used": False,
+            "real_inference_call": False,
             "planner_step_started": False,
             "planner_step_finished": False,
             "control_applied": False,
@@ -214,29 +224,65 @@ class CarlaClosedLoopAgent:
         self._record_diagnostic_event("rgb_frame_received", step=step, frame_id=carla_frame.frame_id)
 
         heartbeat["edge_perception_started"] = True
+        should_run_inference = self._should_run_perception_inference(step)
+        cached_result_used = False
         self._record_diagnostic_event(
             "edge_perception_started",
             step=step,
             perception_backend=self._config.perception.backend,
+            perception_inference_stride=self._perception_inference_stride,
+            real_inference_call=should_run_inference,
+            cached_result_available=self._last_perception_result is not None,
         )
-        perception = self._perception.process(
-            carla_frame.image_bgr,
-            frame_id=carla_frame.frame_id,
-        )
+        if should_run_inference:
+            perception = self._perception.process(
+                carla_frame.image_bgr,
+                frame_id=carla_frame.frame_id,
+            )
+            self._last_perception_result = perception
+        elif self._last_perception_result is not None:
+            perception = self._last_perception_result
+            cached_result_used = True
+            if self._record_perception_cache_events:
+                self._record_diagnostic_event(
+                    "edge_perception_cached_result_used",
+                    step=step,
+                    cached_source_frame_id=perception.frame_id,
+                    current_frame_id=carla_frame.frame_id,
+                    perception_inference_stride=self._perception_inference_stride,
+                )
+        else:
+            perception = self._perception.process(
+                carla_frame.image_bgr,
+                frame_id=carla_frame.frame_id,
+            )
+            self._last_perception_result = perception
+            should_run_inference = True
         heartbeat["edge_perception_finished"] = True
         heartbeat["edge_perception_backend"] = perception.backend
         heartbeat["edge_yolov9_fallback_used"] = perception.fallback_used
-        heartbeat["yolov9_inference_ms"] = perception.backend_metadata.get("yolov9_timing", {}).get(
-            "yolov9_total_inference_ms",
-            perception.inference_ms,
+        heartbeat["cached_result_used"] = cached_result_used
+        heartbeat["real_inference_call"] = should_run_inference
+        heartbeat["yolov9_inference_ms"] = (
+            perception.backend_metadata.get("yolov9_timing", {}).get(
+                "yolov9_total_inference_ms",
+                perception.inference_ms,
+            )
+            if should_run_inference
+            else None
         )
+        timing_payload = perception.backend_metadata.get("yolov9_timing", {}) if should_run_inference else {}
         self._record_diagnostic_event(
             "edge_perception_finished",
             step=step,
             edge_perception_backend=perception.backend,
             edge_yolov9_fallback_used=perception.fallback_used,
-            inference_ms=perception.inference_ms,
-            **perception.backend_metadata.get("yolov9_timing", {}),
+            inference_ms=perception.inference_ms if should_run_inference else None,
+            cached_result_used=cached_result_used,
+            real_inference_call=should_run_inference,
+            perception_inference_stride=self._perception_inference_stride,
+            cached_source_frame_id=perception.frame_id if cached_result_used else None,
+            **timing_payload,
         )
 
         heartbeat["planner_step_started"] = True
@@ -311,6 +357,15 @@ class CarlaClosedLoopAgent:
             vlm_output=vlm_output,
             gate_result=gate_result,
         )
+
+    def _should_run_perception_inference(self, step: int) -> bool:
+        if self._perception_inference_stride <= 1:
+            return True
+        if not self._reuse_last_perception_between_inference:
+            return True
+        if self._last_perception_result is None:
+            return True
+        return (step - 1) % self._perception_inference_stride == 0
 
     def _record_diagnostic_event(self, phase: str, *, step: int | None = None, **payload: Any) -> None:
         recorder = self._diagnostic_recorder

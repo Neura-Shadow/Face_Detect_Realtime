@@ -745,10 +745,13 @@ class EdgePerception:
         raw_confidence = self._compute_confidence(detections)
         backend_metadata = dict(self._backend_metadata)
         last_timing = getattr(self._backend, "last_inference_timing", None)
+        timing_payload: dict[str, Any] = {}
         if callable(last_timing):
             timing_payload = last_timing()
-            if timing_payload:
-                backend_metadata["yolov9_timing"] = timing_payload
+        elif isinstance(last_timing, dict):
+            timing_payload = dict(last_timing)
+        if timing_payload:
+            backend_metadata["yolov9_timing"] = timing_payload
 
         result = PerceptionResult(
             frame_id=frame_id,

@@ -235,3 +235,20 @@ selected_route_completion_verified=false
 ```
 
 This proves selected-row route-begin breadcrumbs only. It is not a route completion pass, YOLOv9 model accuracy result, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Follow-Up Latency Probe
+
+Phase 12C-YOLOv9-R1-LATENCY uses the post-unlock no-fallback readiness and R1-SHORT route-begin evidence to measure route-loop latency:
+
+```text
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+executed_variant_count=2
+completed_variant_count=1
+blocked_variant_count=1
+best_variant_effective_fps=0.239313
+baseline_current_cadence_yolov9_avg_ms=2522.06
+latency_bottleneck_classification=yolov9_forward_dominant
+recommended_next_phase=R1-LATENCY-OPT
+```
+
+The post-unlock gate remains readiness evidence. R1-LATENCY adds performance/cadence evidence and still does not claim route completion, model accuracy, full Phase 12C ablation, or benchmark pass.

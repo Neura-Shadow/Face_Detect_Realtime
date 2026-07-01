@@ -230,3 +230,19 @@ yolo_runtime_row_verified=false
 ```
 
 This confirms early route-loop YOLOv9 no-fallback inference for the selected row only. It is not route completion, model accuracy verification, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
+## Follow-Up Latency Probe
+
+Phase 12C-YOLOv9-R1-LATENCY profiles the same selected row after route-begin entry:
+
+```text
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+best_variant_id=variant_01_current_cadence
+best_variant_effective_fps=0.239313
+baseline_current_cadence_yolov9_avg_ms=2522.06
+yolov9_model_forward_ms_avg=2512.84
+latency_bottleneck_classification=yolov9_forward_dominant
+recommended_next_phase=R1-LATENCY-OPT
+```
+
+The official source adapter remains no-fallback verified; the measured bottleneck is runtime model-forward latency, not missing source readiness. This is still not route completion or model accuracy evidence.

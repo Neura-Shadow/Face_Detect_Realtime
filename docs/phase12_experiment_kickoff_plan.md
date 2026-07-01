@@ -913,6 +913,30 @@ short_route_begin_blocker_classification=short_route_begin_verified
 
 R1-SHORT is route-begin evidence only. It verifies early closed-loop route-loop breadcrumbs and no-fallback YOLOv9 inference calls; it does not claim route completion, YOLOv9 selected route runtime pass, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.
 
+## Phase 12C-YOLOv9-R1-LATENCY Addendum - Route-Loop Latency and Cadence Probe
+
+```text
+Phase 12C-YOLOv9-R1-LATENCY Completed - selected YOLOv9 route-loop latency and cadence evidence produced without claiming route completion.
+```
+
+R1-LATENCY profiles the same selected row after R1-SHORT:
+
+```text
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+short_route_begin_evidence_dir=experiments\phase12\20260701T064944Z
+variant_count=4
+executed_variant_count=2
+completed_variant_count=1
+blocked_variant_count=1
+best_variant_id=variant_01_current_cadence
+best_variant_effective_fps=0.239313
+baseline_current_cadence_yolov9_avg_ms=2522.06
+latency_bottleneck_classification=yolov9_forward_dominant
+recommended_next_phase=R1-LATENCY-OPT
+```
+
+The current cadence variant completed bounded profiling and shows YOLOv9 model-forward latency dominates route-loop speed. The stride-5 cached variant did not produce a valid route-loop profile in this run. Therefore the recommended next phase is latency optimization, not route completion or full ablation.
+
 R1 wrapper 已驗證 YOLOv9 source/weights 與 EdgePerception no-fallback readiness。R1-RERUN 已確認 `127.0.0.1:2000` 可達，並啟動 Phase 12B / Phase 11M child runtime；但 child 在 `2400.311s` 後 timeout，沒有產生 route metrics 或 goal-reach evidence。
 
 詳細記錄請見 [phase12c_yolov9_runtime_confirmation.md](phase12c_yolov9_runtime_confirmation.md)。

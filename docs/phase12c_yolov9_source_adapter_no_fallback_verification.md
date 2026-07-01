@@ -196,3 +196,19 @@ selected_route_completion_verified=false
 ```
 
 R1-SHORT is not model accuracy evidence, not selected route completion, not full Phase 12C ablation, and not Leaderboard / formal route / infraction benchmark evidence.
+
+## Follow-Up Latency Probe
+
+Phase 12C-YOLOv9-R1-LATENCY keeps this no-fallback gate as a prerequisite and measures route-loop timing:
+
+```text
+latency_evidence_dir=experiments\phase12\20260701T103721Z
+best_variant_id=variant_01_current_cadence
+best_variant_effective_fps=0.239313
+yolov9_total_inference_ms_avg=2522.06
+yolov9_model_forward_ms_avg=2512.84
+latency_bottleneck_classification=yolov9_forward_dominant
+recommended_next_phase=R1-LATENCY-OPT
+```
+
+This confirms that the source adapter can run without fallback while route-loop cadence remains too slow for route completion attempts.

@@ -181,7 +181,7 @@ def _build_child_command(args: argparse.Namespace, child_output_root: Path) -> l
         "--town",
         args.town,
         "--perception-backend",
-        "yolov9",
+        args.perception_backend,
         "--python-executable",
         args.python_executable,
         "--base-python",
@@ -199,7 +199,13 @@ def _build_child_command(args: argparse.Namespace, child_output_root: Path) -> l
         str(args.emit_heartbeat_every),
         "--emit-partial-metrics-every",
         str(args.emit_partial_metrics_every),
+        "--perception-inference-stride",
+        str(args.perception_inference_stride),
     ]
+    if args.reuse_last_perception_between_inference:
+        command.append("--reuse-last-perception-between-inference")
+    if args.record_perception_cache_events:
+        command.append("--record-perception-cache-events")
     return command
 
 
@@ -453,7 +459,10 @@ def _build_summary(
         "previous_blocked_evidence_dir": _display_path(args.previous_blocked_evidence_dir),
         "route_id": args.route_id,
         "controller_mode": "grp_follower",
-        "perception_backend": "yolov9",
+        "perception_backend": args.perception_backend,
+        "perception_inference_stride": args.perception_inference_stride,
+        "reuse_last_perception_between_inference": args.reuse_last_perception_between_inference,
+        "record_perception_cache_events": args.record_perception_cache_events,
         "carla_server_host": args.host,
         "carla_server_port": args.port,
         "carla_server_reachable": preflight.get("carla_server_reachable"),
@@ -628,6 +637,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=2000)
     parser.add_argument("--town", default="Town03")
+    parser.add_argument("--perception-backend", default="yolov9", choices=["dummy", "yolov9"])
     parser.add_argument("--python-executable", default=DEFAULT_CARLA_PYTHON)
     parser.add_argument("--base-python", default="python")
     parser.add_argument("--carla-root", type=Path, default=DEFAULT_CARLA_ROOT)
@@ -640,6 +650,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--require-yolov9-ready", action="store_true")
     parser.add_argument("--emit-heartbeat-every", type=int, default=10)
     parser.add_argument("--emit-partial-metrics-every", type=int, default=25)
+    parser.add_argument("--perception-inference-stride", type=int, default=1)
+    parser.add_argument("--reuse-last-perception-between-inference", action="store_true")
+    parser.add_argument("--record-perception-cache-events", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--skip-source-adapter-evidence-check", action="store_true")
     parser.add_argument("--source-adapter-verified-evidence-dir", type=Path, default=DEFAULT_SOURCE_ADAPTER_EVIDENCE_DIR)
