@@ -252,3 +252,9 @@ The official source adapter remains no-fallback verified; the measured bottlenec
 R1-LATENCY-OPT completed bounded optimization profiling at `experiments\phase12\20260701T115744Z` with `status=completed_no_improvement`. The best variant was `variant_01_baseline_recheck` with `best_variant_yolov9_avg_ms=2194.8`, `best_avg_ms_improvement_pct=12.976`, and `best_fps_improvement_pct=-29.635`; `useful_latency_improvement_verified=false`.
 
 The source adapter remains verified. The remaining issue is insufficient YOLOv9 forward-latency improvement, so the recommended next phase is `R1-YOLOv9-LIGHTWEIGHT`, not route completion or full Phase 12C ablation.
+
+## Follow-Up: R1-YOLOv9-LIGHTWEIGHT Probe
+
+R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701T165325Z`. Baseline no-fallback readiness remained true, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured, so no lightweight route-loop timing profile was executed.
+
+`lightweight_bottleneck_classification=lightweight_weights_missing`, `useful_lightweight_profile_verified=false`, and `recommended_next_phase=R1-RT-DETR-UNLOCK`. This does not claim route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

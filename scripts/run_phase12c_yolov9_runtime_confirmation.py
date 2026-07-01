@@ -299,17 +299,26 @@ def _rows_refresh_evidence_ok(path: Path) -> bool:
 
 
 def _yolov9_env_status(args: argparse.Namespace) -> dict[str, Any]:
+    profile = str(getattr(args, "yolov9_profile", "baseline") or "baseline")
     root_value = os.environ.get("YOLOV9_ROOT")
-    weights_value = os.environ.get("YOLOV9_WEIGHTS")
+    weights_override = getattr(args, "yolov9_weights", None)
+    weights_env = "YOLOV9_LIGHTWEIGHT_WEIGHTS" if profile == "lightweight" and not weights_override else "YOLOV9_WEIGHTS"
+    weights_value = weights_override or os.environ.get(weights_env)
     root = Path(root_value) if root_value else DEFAULT_YOLOV9_ROOT
     weights = Path(weights_value) if weights_value else DEFAULT_YOLOV9_WEIGHTS
+    lightweight_value = os.environ.get("YOLOV9_LIGHTWEIGHT_WEIGHTS")
     return {
+        "yolov9_profile": profile,
+        "yolov9_weights_source": "override" if weights_override else weights_env,
         "YOLOV9_ROOT_configured": bool(root_value),
         "YOLOV9_WEIGHTS_configured": bool(weights_value),
+        "YOLOV9_LIGHTWEIGHT_WEIGHTS_configured": bool(lightweight_value),
         "yolov9_source_root": str(root),
         "yolov9_weights": str(weights),
+        "yolov9_lightweight_weights": str(Path(lightweight_value)) if lightweight_value else None,
         "yolov9_source_root_ready": root.exists() and root.is_dir(),
         "yolov9_weights_ready": weights.exists() and weights.is_file(),
+        "yolov9_lightweight_weights_ready": bool(lightweight_value and Path(lightweight_value).exists() and Path(lightweight_value).is_file()),
         "effective_yolov9_source_root": str(root),
         "effective_yolov9_weights": str(weights),
     }
@@ -319,7 +328,20 @@ def _edge_probe(args: argparse.Namespace, raw_dir: Path, env: dict[str, str]) ->
     timeout_sec = float(getattr(args, "edge_probe_timeout_sec", 240.0))
     result = _run_command(
         name="edge_yolov9_no_fallback_probe",
-        command=[args.python_executable, "-m", "workers.core.edge_perception", "--test", "yolov9"],
+        command=[
+            args.python_executable,
+            "-m",
+            "workers.core.edge_perception",
+            "--test",
+            "yolov9",
+            "--yolov9-profile",
+            str(getattr(args, "yolov9_profile", "baseline") or "baseline"),
+            *(
+                ["--yolov9-weights", str(getattr(args, "yolov9_weights"))]
+                if getattr(args, "yolov9_weights", None)
+                else []
+            ),
+        ],
         raw_dir=raw_dir,
         env=env,
         timeout_sec=timeout_sec,
@@ -331,7 +353,7 @@ def _edge_probe(args: argparse.Namespace, raw_dir: Path, env: dict[str, str]) ->
 
 def _build_child_command(args: argparse.Namespace, child_output_root: Path) -> list[str]:
     route = ROUTES[args.route_id]
-    return [
+    command = [
         args.python_executable,
         str(REPO_ROOT / "scripts" / "run_phase12b_controller_ablation_experiment.py"),
         "--execute-runtime",
@@ -360,6 +382,11 @@ def _build_child_command(args: argparse.Namespace, child_output_root: Path) -> l
         "--carla-root",
         str(args.carla_root),
     ]
+    if getattr(args, "yolov9_profile", None):
+        command.extend(["--yolov9-profile", args.yolov9_profile])
+    if getattr(args, "yolov9_weights", None):
+        command.extend(["--yolov9-weights", args.yolov9_weights])
+    return command
 
 
 def _dry_run_child_command(args: argparse.Namespace, child_output_root: Path) -> list[str]:
@@ -680,11 +707,11 @@ def _preflight(args: argparse.Namespace, raw_dir: Path, env: dict[str, str]) -> 
     if not env_status["YOLOV9_ROOT_configured"]:
         blocked_reasons.append("YOLOV9_ROOT is not set")
     if not env_status["YOLOV9_WEIGHTS_configured"]:
-        blocked_reasons.append("YOLOV9_WEIGHTS is not set")
+        blocked_reasons.append(f"{env_status['yolov9_weights_source']} is not set")
     if not env_status["yolov9_source_root_ready"]:
         blocked_reasons.append("YOLOv9 source root missing")
     if not env_status["yolov9_weights_ready"]:
-        blocked_reasons.append("YOLOv9 weights missing")
+        blocked_reasons.append(f"YOLOv9 weights missing for {env_status['yolov9_weights_source']}")
     if not server_reachable:
         blocked_reasons.append("CARLA server is not reachable")
     return preflight, edge_values, "; ".join(blocked_reasons) if blocked_reasons else None
@@ -709,6 +736,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--source-adapter-verified-evidence-dir", type=Path, default=DEFAULT_SOURCE_ADAPTER_EVIDENCE_DIR)
     parser.add_argument("--post-unlock-external-source-verified-dir", type=Path, default=DEFAULT_POST_UNLOCK_EVIDENCE_DIR)
     parser.add_argument("--yolov9-rows-refresh-dir", type=Path, default=DEFAULT_ROWS_REFRESH_DIR)
+    parser.add_argument("--yolov9-profile", choices=["baseline", "lightweight"], default="baseline")
+    parser.add_argument("--yolov9-weights", default=None)
     return parser
 
 

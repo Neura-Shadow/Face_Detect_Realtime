@@ -246,6 +246,10 @@ def _build_grp_command(args: argparse.Namespace, route: RouteSpec, output_dir: P
         command.extend(["--yolov9-warmup-runs", str(args.yolov9_warmup_runs)])
     if args.yolov9_forward_only_profile:
         command.append("--yolov9-forward-only-profile")
+    if args.yolov9_profile:
+        command.extend(["--yolov9-profile", args.yolov9_profile])
+    if args.yolov9_weights:
+        command.extend(["--yolov9-weights", args.yolov9_weights])
     if args.enable_diagnostics:
         command.extend(
             [
@@ -752,6 +756,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--yolov9-device", default=None)
     parser.add_argument("--yolov9-warmup-runs", type=int, default=0)
     parser.add_argument("--yolov9-forward-only-profile", action="store_true")
+    parser.add_argument("--yolov9-profile", choices=["baseline", "lightweight"], default="baseline")
+    parser.add_argument("--yolov9-weights", default=None)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--timestamp", default=None)
     parser.add_argument("--carla-root", type=Path, default=DEFAULT_CARLA_ROOT)

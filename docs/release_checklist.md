@@ -90,6 +90,7 @@ leaderboard_route_criteria_evaluated=false
 - [x] **Phase 12C-YOLOv9-R1-SHORT Route-Begin Probe Pass**: 已新增 short route-begin parent wrapper，沿用 R1-SETUP evidence 與既有 R1-DIAG -> Phase 12B -> Phase 11M diagnostic path；`experiments\phase12\20260701T064944Z` 記錄 `short_route_begin_verified=true`、`diagnostic_steps_completed=50`、`heartbeat_count=11`、`world_tick_count=50`、`rgb_frame_received_count=50`、`edge_perception_call_count=50`、`yolov9_inference_call_count=11`、`edge_yolov9_fallback_used_during_route=false`、`partial_route_progress_seen=true`。此項只代表 selected row 進入 route loop 並產生早期 no-fallback breadcrumbs，不宣稱 route completion 或 YOLOv9 selected route runtime pass。
 - [x] **Phase 12C-YOLOv9-R1-LATENCY Route-Loop Latency Profile Completed**: 已新增 latency/cadence parent wrapper 與 diagnostic-only inference stride/cache flags；`experiments\phase12\20260701T103721Z` 記錄 `latency_probe_completed=true`、`executed_variant_count=2`、`completed_variant_count=1`、`blocked_variant_count=1`、`best_variant_id=variant_01_current_cadence`、`best_variant_effective_fps=0.239313`、`baseline_current_cadence_yolov9_avg_ms=2522.06`、`latency_bottleneck_classification=yolov9_forward_dominant`、`recommended_next_phase=R1-LATENCY-OPT`。此項只代表 latency/cadence profiling，不宣稱 route completion 或 YOLOv9 selected route runtime pass。
 - [x] **Phase 12C-YOLOv9-R1-LATENCY-OPT Forward-Latency Optimization No-Improvement**: `experiments\phase12\20260701T115744Z` 記錄 `latency_opt_completed=true`、`useful_latency_improvement_verified=false`、`executed_variant_count=4`、`completed_variant_count=2`、`blocked_variant_count=2`、`best_variant_id=variant_01_baseline_recheck`、`best_variant_effective_fps=0.168392`、`best_variant_yolov9_avg_ms=2194.8`、`best_avg_ms_improvement_pct=12.976`、`best_fps_improvement_pct=-29.635`、`latency_opt_bottleneck_classification=latency_regressed`、`recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT`。此項只代表 latency optimization profiling，不宣稱 route completion、YOLOv9 model accuracy 或 benchmark pass。
+- [x] **Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT Lightweight Feasibility Blocked**: `experiments\phase12\20260701T165325Z` 記錄 `source_adapter_verified=true`、`edge_yolov9_fallback_used=false`、`edge_yolov9_no_fallback_verified=true`、`latency_opt_completed=true`，但 `lightweight_weights_configured=false`、`lightweight_weights_ready=false`，因此 `status=blocked`、`lightweight_bottleneck_classification=lightweight_weights_missing`、`executed_variant_count=0`、`completed_variant_count=0`、`blocked_variant_count=5`、`recommended_next_phase=R1-RT-DETR-UNLOCK`。此項只建立 lightweight asset contract 與 blocked evidence，不下載、不提交 YOLOv9 assets，不宣稱 route completion、YOLOv9 model accuracy 或 benchmark pass。
 
 ### VLM Reasoner
 - [x] **VLMReasoner Provider Abstraction**: 定義清楚的 VLM 介面，統一回傳 `VLMOutput`。
@@ -178,7 +179,7 @@ leaderboard_route_criteria_evaluated=false
 | **YOLOv9 Post-Unlock Verification** | — | 100% | — | 🟢 Phase 12C-YOLOv9-V Pass |
 | **YOLOv9 Source Adapter Verification** | — | 100% | — | 🟡 Phase 12C-YOLOv9-SRC Prepared |
 | **YOLOv9 Source Adapter No-Fallback Verification** | — | 100% | — | 🟢 Phase 12C-YOLOv9-SRC-V Pass |
-| **YOLOv9 Selected Runtime Row** | — | 100% | — | 🟡 Phase 12C-YOLOv9-R1-LATENCY-OPT no-improvement |
+| **YOLOv9 Selected Runtime Row** | — | 100% | — | 🟡 Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT blocked |
 | **生產容器化部署** | 0% | — | 100% | 🔴 TODO |
 
 Phase 12C-YOLOv9-R1-DIAG status note: timeout diagnosis is completed, with `timeout_classification=map_load_or_spawn_stall`; selected YOLOv9 runtime row remains blocked and `yolo_runtime_row_verified=false`.
@@ -190,6 +191,8 @@ Phase 12C-YOLOv9-R1-SHORT status note: short route-begin probe passed for the sa
 Phase 12C-YOLOv9-R1-LATENCY status note: latency profiling completed for the same selected row with `latency_probe_completed=true`; current cadence is `yolov9_forward_dominant` with `best_variant_effective_fps=0.239313` and average YOLOv9 inference `2522.06ms`. Recommended next phase is `R1-LATENCY-OPT`; route completion, selected runtime pass, model accuracy, and all benchmark claims remain false.
 
 Phase 12C-YOLOv9-R1-LATENCY-OPT status note: optimization profiling completed for the same selected row with `latency_opt_completed=true`, but `useful_latency_improvement_verified=false`. The best bounded variant was `variant_01_baseline_recheck` with average YOLOv9 inference `2194.8ms`, effective FPS `0.168392`, average-latency improvement `12.976%`, and FPS improvement `-29.635%`. Recommended next phase is `R1-YOLOv9-LIGHTWEIGHT`; route completion, selected runtime pass, model accuracy, and all benchmark claims remain false.
+
+Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT status note: lightweight feasibility probe is blocked locally because `YOLOV9_LIGHTWEIGHT_WEIGHTS` is not configured. Baseline no-fallback readiness remains true, but no lightweight variant executed and `useful_lightweight_profile_verified=false`. Recommended next phase is `R1-RT-DETR-UNLOCK`; route completion, selected runtime pass, model accuracy, and all benchmark claims remain false.
 
 ## 🚧 Explicitly Not Verified
 

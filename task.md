@@ -1,20 +1,22 @@
-# Current Task - Phase 12C-YOLOv9-R1-LATENCY-OPT
+# Current Task - Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT
 
 ## Latest Status
 
 ```text
-Phase 12C-YOLOv9-R1-LATENCY-OPT No-Improvement - optimization probe completed, but YOLOv9 forward latency remains too high for route completion.
+Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT Blocked - lightweight YOLOv9 probe could not produce bounded no-fallback route-loop timing evidence.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-YOLOv9-R1-LATENCY-OPT is latency optimization evidence only. It does not claim selected YOLOv9 route runtime pass, route completion, YOLOv9 model accuracy, full Phase 12C perception ablation runtime pass, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT is lightweight runtime feasibility evidence only. It does not download or commit YOLOv9 assets, and it does not claim selected YOLOv9 route runtime pass, route completion, YOLOv9 model accuracy, full Phase 12C perception ablation runtime pass, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
 ```
 
 ## Latest Evidence
 
 ```text
+lightweight_evidence_dir=experiments\phase12\20260701T165325Z
+lightweight_dry_run_evidence_dir=experiments\phase12\20260701T165245Z
 latency_opt_evidence_dir=experiments\phase12\20260701T115744Z
 latency_evidence_dir=experiments\phase12\20260701T103721Z
 route_id=route_01
@@ -26,21 +28,41 @@ edge_yolov9_no_fallback_verified=true
 setup_probe_passed=true
 short_route_begin_verified=true
 latency_probe_completed=true
+latency_opt_completed=true
+lightweight_weights_configured=false
+lightweight_weights_ready=false
 variant_count=7
-executed_variant_count=4
-completed_variant_count=2
-blocked_variant_count=2
-best_variant_id=variant_01_baseline_recheck
-best_variant_effective_fps=0.168392
-best_variant_yolov9_avg_ms=2194.8
-best_avg_ms_improvement_pct=12.976
-best_fps_improvement_pct=-29.635
-latency_opt_bottleneck_classification=latency_regressed
-useful_latency_improvement_verified=false
-recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT
+executed_variant_count=0
+completed_variant_count=0
+blocked_variant_count=5
+best_variant_id=null
+best_variant_profile=null
+best_variant_effective_fps=null
+best_variant_yolov9_avg_ms=null
+best_avg_ms_improvement_vs_latency_pct=null
+best_avg_ms_improvement_vs_opt_pct=null
+best_fps_improvement_vs_opt_pct=null
+lightweight_bottleneck_classification=lightweight_weights_missing
+useful_lightweight_profile_verified=false
+recommended_next_phase=R1-RT-DETR-UNLOCK
 ```
 
-Image-size, half precision, forward-only profiling, stride, and cached perception behavior remain diagnostic-only unless promoted by a later phase.
+The baseline YOLOv9 source adapter still verifies no fallback, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` is not configured. Lightweight weights/profile remain diagnostic-only unless promoted by a later phase.
+
+## Previous Phase - R1-LATENCY-OPT
+
+```text
+Phase 12C-YOLOv9-R1-LATENCY-OPT No-Improvement - optimization probe completed, but YOLOv9 forward latency remains too high for route completion.
+```
+
+```text
+latency_opt_evidence_dir=experiments\phase12\20260701T115744Z
+useful_latency_improvement_verified=false
+best_variant_id=variant_01_baseline_recheck
+best_variant_yolov9_avg_ms=2194.8
+best_variant_effective_fps=0.168392
+recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT
+```
 
 ## Previous Phase - R1-LATENCY
 

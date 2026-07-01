@@ -90,8 +90,10 @@ class PerceptionResult:
 class YOLOv9SourceStatus:
     """YOLOv9 官方 source-repo 外部合約檢查結果。"""
 
+    profile: str
     source_root_env: str
     weights_env: str
+    weights_source: str
     source_root_value: str | None
     weights_value: str | None
     source_root_path: str | None
@@ -111,8 +113,10 @@ class YOLOv9SourceStatus:
 
     def to_metadata(self) -> dict[str, Any]:
         return {
+            "yolov9_profile": self.profile,
             "yolov9_source_root_env": self.source_root_env,
             "yolov9_weights_env": self.weights_env,
+            "yolov9_weights_source": self.weights_source,
             "yolov9_source_root": self.source_root_path or "<missing>",
             "yolov9_weights": self.weights_path or "<missing>",
             "yolov9_source_root_configured": self.source_root_configured,
@@ -131,13 +135,16 @@ def inspect_yolov9_source_contract(
     *,
     source_root_env: str = "YOLOV9_ROOT",
     weights_env: str = "YOLOV9_WEIGHTS",
+    profile: str = "baseline",
+    weights_override: str | None = None,
 ) -> YOLOv9SourceStatus:
     """檢查 operator 提供的 YOLOv9 source root 與 weights 是否符合外部合約。"""
 
     source_root_value = os.getenv(source_root_env)
-    weights_value = os.getenv(weights_env)
+    weights_value = weights_override or os.getenv(weights_env)
     source_root_configured = bool(source_root_value)
     weights_configured = bool(weights_value)
+    weights_source = "override" if weights_override else weights_env
     source_root = Path(source_root_value).expanduser() if source_root_value else None
     weights = Path(weights_value).expanduser() if weights_value else None
     source_root_ready = bool(source_root and source_root.exists() and source_root.is_dir())
@@ -166,8 +173,10 @@ def inspect_yolov9_source_contract(
         blocked_parts.append(f"{weights_env} path is missing or not a file")
 
     return YOLOv9SourceStatus(
+        profile=profile,
         source_root_env=source_root_env,
         weights_env=weights_env,
+        weights_source=weights_source,
         source_root_value=source_root_value,
         weights_value=weights_value,
         source_root_path=str(source_root.resolve()) if source_root and source_root.exists() else (str(source_root) if source_root else None),
@@ -454,6 +463,8 @@ class YOLOv9PerceptionBackend:
                 "letterbox_shape": [int(value) for value in letterbox_shape],
                 "device": str(self._device),
                 "device_hint": self._device_hint,
+                "profile": self._source_status.profile,
+                "weights_source": self._source_status.weights_source,
                 "img_size": int(self._img_size),
                 "half_requested": self._requested_half,
                 "half": self._half,
@@ -505,6 +516,8 @@ class YOLOv9PerceptionBackend:
             "letterbox_shape": [int(value) for value in letterbox_shape],
             "device": str(self._device),
             "device_hint": self._device_hint,
+            "profile": self._source_status.profile,
+            "weights_source": self._source_status.weights_source,
             "img_size": int(self._img_size),
             "half_requested": self._requested_half,
             "half": self._half,
@@ -706,9 +719,15 @@ class EdgePerception:
             if backend_type == "yolo":
                 self._backend = YOLOPerceptionBackend(model_name, conf)
             elif backend_type == "yolov9":
+                yolov9_profile = (cfg.perception.yolov9_profile or "baseline").strip().lower()
+                yolov9_weights_env = cfg.perception.yolov9_weights_env
+                if yolov9_profile == "lightweight" and not cfg.perception.yolov9_weights_override:
+                    yolov9_weights_env = "YOLOV9_LIGHTWEIGHT_WEIGHTS"
                 source_status = inspect_yolov9_source_contract(
                     source_root_env=cfg.perception.yolov9_source_root_env,
-                    weights_env=cfg.perception.yolov9_weights_env,
+                    weights_env=yolov9_weights_env,
+                    profile=yolov9_profile,
+                    weights_override=cfg.perception.yolov9_weights_override,
                 )
                 self._backend_metadata = source_status.to_metadata()
                 self._backend = YOLOv9PerceptionBackend(
@@ -897,6 +916,8 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Edge Perception CLI Test")
     parser.add_argument("--test", type=str, choices=["dummy", "yolo", "yolov9", "rtdetr"], required=True)
+    parser.add_argument("--yolov9-profile", choices=["baseline", "lightweight"], default="baseline")
+    parser.add_argument("--yolov9-weights", default=None)
     args = parser.parse_args()
     
     logger.info("開始測試 Perception Backend: %s", args.test)
@@ -911,12 +932,18 @@ if __name__ == "__main__":
     if args.test == "yolo":
         p_model = "yolov8n.pt"
     elif args.test == "yolov9":
-        p_model = os.getenv("YOLOV9_WEIGHTS", "yolov9")
+        p_model = args.yolov9_weights or os.getenv("YOLOV9_WEIGHTS", "yolov9")
     elif args.test == "rtdetr":
         p_model = "rtdetr-l.pt"
     
     # We must replace the perception field since it's frozen
-    cfg.perception = PerceptionConfig(backend=args.test, model_name=p_model, confidence_threshold=0.5)
+    cfg.perception = PerceptionConfig(
+        backend=args.test,
+        model_name=p_model,
+        confidence_threshold=0.5,
+        yolov9_profile=args.yolov9_profile,
+        yolov9_weights_override=args.yolov9_weights,
+    )
         
     try:
         perception = EdgePerception(cfg)
@@ -941,6 +968,8 @@ if __name__ == "__main__":
             no_fallback_verified = not result.fallback_used
             print("backend=yolov9")
             print(f"runtime_backend={result.backend}")
+            print(f"yolov9_profile={meta.get('yolov9_profile', 'baseline')}")
+            print(f"yolov9_weights_source={meta.get('yolov9_weights_source', '<missing>')}")
             print(f"yolov9_source_root={meta.get('yolov9_source_root', '<missing>')}")
             print(f"yolov9_weights={meta.get('yolov9_weights', '<missing>')}")
             print(f"yolov9_source_ready={str(bool(meta.get('yolov9_source_ready'))).lower()}")

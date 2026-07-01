@@ -84,6 +84,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-YOLOv9-R1-SHORT route-begin probe: **Probe Pass - selected YOLOv9 row entered the closed-loop route loop with 50 world ticks, 50 RGB frames, 50 EdgePerception calls, 11 YOLOv9 no-fallback inference samples, and partial route metrics at `experiments\phase12\20260701T064944Z`; no route completion or YOLOv9 runtime pass claimed**
   - Phase 12C-YOLOv9-R1-LATENCY route-loop latency probe: **Completed - current-cadence YOLOv9 route loop profiled at `experiments\phase12\20260701T103721Z`; effective FPS `0.239313`, YOLOv9 avg `2522.06ms`, bottleneck `yolov9_forward_dominant`, recommended next phase `R1-LATENCY-OPT`; no route completion claimed**
   - Phase 12C-YOLOv9-R1-LATENCY-OPT forward-latency optimization probe: **No-Improvement - bounded optimization variants completed at `experiments\phase12\20260701T115744Z`; best variant `variant_01_baseline_recheck`, effective FPS `0.168392`, YOLOv9 avg `2194.8ms`, avg improvement `12.976%`, FPS improvement `-29.635%`, useful improvement `false`, recommended next phase `R1-YOLOv9-LIGHTWEIGHT`; no route completion claimed**
+  - Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT lightweight feasibility probe: **Blocked - `experiments\phase12\20260701T165325Z` verified the baseline YOLOv9 source adapter no-fallback chain, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured; no lightweight route-loop timing evidence was produced, `recommended_next_phase=R1-RT-DETR-UNLOCK`, and no route completion is claimed**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -285,6 +286,7 @@ Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 >
 > Phase 12C-YOLOv9-R1-LATENCY route-loop latency probe 請見 [docs/phase12c_yolov9_r1_latency_probe.md](docs/phase12c_yolov9_r1_latency_probe.md)
 > Phase 12C-YOLOv9-R1-LATENCY-OPT forward-latency optimization probe 請見 [docs/phase12c_yolov9_r1_latency_opt_probe.md](docs/phase12c_yolov9_r1_latency_opt_probe.md)
+> Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT feasibility probe 請見 [docs/phase12c_yolov9_r1_lightweight_probe.md](docs/phase12c_yolov9_r1_lightweight_probe.md)
 
 ```powershell
 python scripts\run_phase12_experiment_plan.py --output-dir experiments\phase12

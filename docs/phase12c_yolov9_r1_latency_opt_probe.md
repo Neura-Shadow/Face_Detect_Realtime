@@ -58,3 +58,17 @@ recommended_next_phase=R1-YOLOv9-LIGHTWEIGHT
 R1-LATENCY-OPT is latency optimization evidence only. It does not claim selected YOLOv9 route runtime pass, route completion, YOLOv9 model accuracy, full Phase 12C perception ablation runtime pass, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
 
 Image-size changes, half precision, forward-only profiling, stride, and cached perception behavior remain diagnostic-only unless a later phase explicitly promotes them.
+
+## Follow-Up: R1-YOLOv9-LIGHTWEIGHT Probe
+
+R1-YOLOv9-LIGHTWEIGHT implemented the operator-provided lightweight YOLOv9 asset contract and produced blocked evidence at `experiments\phase12\20260701T165325Z`. The baseline YOLOv9 source adapter still verified no fallback, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured, so no lightweight route-loop timing variant executed.
+
+```text
+lightweight_weights_configured=false
+lightweight_weights_ready=false
+lightweight_bottleneck_classification=lightweight_weights_missing
+useful_lightweight_profile_verified=false
+recommended_next_phase=R1-RT-DETR-UNLOCK
+```
+
+The follow-up does not download or commit YOLOv9 assets and does not claim route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

@@ -170,7 +170,10 @@ def _build_config(args: argparse.Namespace) -> AgentConfig:
         "yolov9_half": args.yolov9_half,
         "yolov9_warmup_runs": max(0, int(args.yolov9_warmup_runs)),
         "yolov9_forward_only_profile": args.yolov9_forward_only_profile,
+        "yolov9_profile": args.yolov9_profile,
     }
+    if args.yolov9_weights:
+        perception_updates["yolov9_weights_override"] = args.yolov9_weights
     if args.yolov9_img_size is not None:
         perception_updates["yolov9_default_img_size"] = int(args.yolov9_img_size)
     if args.yolov9_device:
@@ -653,6 +656,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--yolov9-device", default=None)
     parser.add_argument("--yolov9-warmup-runs", type=int, default=0)
     parser.add_argument("--yolov9-forward-only-profile", action="store_true")
+    parser.add_argument("--yolov9-profile", choices=["baseline", "lightweight"], default="baseline")
+    parser.add_argument("--yolov9-weights", default=None)
     parser.add_argument("--enable-vlm", action="store_true")
     parser.add_argument("--force-vlm-every", type=int, default=0)
     parser.add_argument("--publish-telemetry", action="store_true")

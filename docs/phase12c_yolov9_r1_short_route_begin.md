@@ -192,3 +192,9 @@ R1-LATENCY confirms that current-cadence route-loop speed is dominated by YOLOv9
 R1-LATENCY-OPT completed bounded optimization profiling at `experiments\phase12\20260701T115744Z` with `useful_latency_improvement_verified=false`. The best variant was `variant_01_baseline_recheck` with `best_variant_yolov9_avg_ms=2194.8`, `best_variant_effective_fps=0.168392`, `best_avg_ms_improvement_pct=12.976`, and `best_fps_improvement_pct=-29.635`. Recommended next phase is `R1-YOLOv9-LIGHTWEIGHT`.
 
 This remains latency optimization evidence only and does not promote the route-begin result into route completion, model accuracy, full ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
+## Follow-Up: R1-YOLOv9-LIGHTWEIGHT Probe
+
+R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701T165325Z`. Baseline no-fallback readiness remained true, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured, so no lightweight route-loop timing profile was executed.
+
+`lightweight_bottleneck_classification=lightweight_weights_missing`, `useful_lightweight_profile_verified=false`, and `recommended_next_phase=R1-RT-DETR-UNLOCK`. This does not claim route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

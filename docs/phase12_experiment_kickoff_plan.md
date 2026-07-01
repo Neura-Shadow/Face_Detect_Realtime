@@ -966,3 +966,9 @@ R1 wrapper 已驗證 YOLOv9 source/weights 與 EdgePerception no-fallback readin
 詳細記錄請見 [phase12c_yolov9_runtime_confirmation.md](phase12c_yolov9_runtime_confirmation.md)。
 
 Phase 12C-YOLOv9-R1 不代表 full Phase 12C perception ablation runtime pass，不代表 YOLOv9 accuracy，不代表 RT-DETR runtime verification，也不代表 CARLA Leaderboard、formal route benchmark 或 infraction benchmark。RT-DETR optional dependency unlock 仍應保持手動/顯式，不加入 baseline requirements，也不自動安裝套件。
+
+## Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT Addendum
+
+R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701T165325Z`. Baseline no-fallback readiness remained true, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured, so no lightweight route-loop timing profile was executed.
+
+`lightweight_bottleneck_classification=lightweight_weights_missing`, `useful_lightweight_profile_verified=false`, and `recommended_next_phase=R1-RT-DETR-UNLOCK`. This phase does not download or commit YOLOv9 assets and does not claim route completion, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

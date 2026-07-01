@@ -180,6 +180,8 @@ class PerceptionConfig:
     confidence_threshold: float = 0.5
     yolov9_source_root_env: str = "YOLOV9_ROOT"
     yolov9_weights_env: str = "YOLOV9_WEIGHTS"
+    yolov9_profile: str = "baseline"
+    yolov9_weights_override: str | None = None
     yolov9_default_img_size: int = 640
     yolov9_confidence_threshold: float = 0.25
     yolov9_iou_threshold: float = 0.45
@@ -307,6 +309,8 @@ class AgentConfig:
             confidence_threshold=float(_env("PERCEPTION_CONFIDENCE", _yaml_nested("perception.confidence_threshold", 0.5))),
             yolov9_source_root_env=_env("YOLOV9_SOURCE_ROOT_ENV", _yaml_nested("perception.yolov9.source_root_env", "YOLOV9_ROOT")),
             yolov9_weights_env=_env("YOLOV9_WEIGHTS_ENV", _yaml_nested("perception.yolov9.weights_env", "YOLOV9_WEIGHTS")),
+            yolov9_profile=_env("YOLOV9_PROFILE", _yaml_nested("perception.yolov9.profile", "baseline")),
+            yolov9_weights_override=_env("YOLOV9_WEIGHTS_OVERRIDE", _yaml_nested("perception.yolov9.weights_override", None)),
             yolov9_default_img_size=int(_env("YOLOV9_DEFAULT_IMG_SIZE", _yaml_nested("perception.yolov9.default_img_size", 640))),
             yolov9_confidence_threshold=float(_env("YOLOV9_CONFIDENCE_THRESHOLD", _yaml_nested("perception.yolov9.confidence_threshold", 0.25))),
             yolov9_iou_threshold=float(_env("YOLOV9_IOU_THRESHOLD", _yaml_nested("perception.yolov9.iou_threshold", 0.45))),

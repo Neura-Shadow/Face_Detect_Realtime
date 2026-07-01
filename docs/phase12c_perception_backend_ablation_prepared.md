@@ -375,3 +375,9 @@ metrics_read_status=loaded
 R1-RERUN 只確認 selected single-route runtime gate 的 blocked evidence handling：CARLA server 已可達，selected `grp_follower + yolov9` row 已啟動，但 child route runtime timeout，未產生 route metrics 或 goal-reach evidence。它不是 full Phase 12C perception ablation runtime pass，也不是 YOLOv9 accuracy、RT-DETR runtime、CARLA Leaderboard、formal route benchmark 或 infraction benchmark。
 
 詳細記錄請見 [phase12c_yolov9_runtime_confirmation.md](phase12c_yolov9_runtime_confirmation.md)。
+
+## Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT Addendum
+
+R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701T165325Z`. Baseline no-fallback readiness remained true, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured, so no lightweight route-loop timing profile was executed.
+
+`lightweight_bottleneck_classification=lightweight_weights_missing`, `useful_lightweight_profile_verified=false`, and `recommended_next_phase=R1-RT-DETR-UNLOCK`. This remains selected-row feasibility evidence only, not full Phase 12C perception ablation runtime pass, model accuracy evidence, Leaderboard, formal route benchmark, or infraction benchmark.

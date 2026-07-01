@@ -227,3 +227,9 @@ YOLOv9 source and weights remain external operator assets and are not committed 
 R1-LATENCY-OPT completed bounded forward-latency optimization profiling at `experiments\phase12\20260701T115744Z`. The result is `completed_no_improvement`: `best_variant_id=variant_01_baseline_recheck`, `best_variant_yolov9_avg_ms=2194.8`, `best_avg_ms_improvement_pct=12.976`, `best_fps_improvement_pct=-29.635`, and `useful_latency_improvement_verified=false`.
 
 The recommended next phase is `R1-YOLOv9-LIGHTWEIGHT`. This does not claim selected YOLOv9 route runtime pass, route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Follow-Up: R1-YOLOv9-LIGHTWEIGHT Probe
+
+R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701T165325Z`. Baseline no-fallback readiness remained true, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured, so no lightweight route-loop timing profile was executed.
+
+`lightweight_bottleneck_classification=lightweight_weights_missing`, `useful_lightweight_profile_verified=false`, and `recommended_next_phase=R1-RT-DETR-UNLOCK`. This does not claim route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

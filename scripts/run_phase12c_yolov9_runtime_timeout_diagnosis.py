@@ -212,6 +212,10 @@ def _build_child_command(args: argparse.Namespace, child_output_root: Path) -> l
         command.extend(["--yolov9-warmup-runs", str(args.yolov9_warmup_runs)])
     if args.yolov9_forward_only_profile:
         command.append("--yolov9-forward-only-profile")
+    if args.yolov9_profile:
+        command.extend(["--yolov9-profile", args.yolov9_profile])
+    if args.yolov9_weights:
+        command.extend(["--yolov9-weights", args.yolov9_weights])
     if args.reuse_last_perception_between_inference:
         command.append("--reuse-last-perception-between-inference")
     if args.record_perception_cache_events:
@@ -479,6 +483,10 @@ def _build_summary(
         "yolov9_device": args.yolov9_device,
         "yolov9_warmup_runs": args.yolov9_warmup_runs,
         "yolov9_forward_only_profile": args.yolov9_forward_only_profile,
+        "yolov9_profile": args.yolov9_profile,
+        "yolov9_weights_source": preflight.get("yolov9_weights_source"),
+        "lightweight_weights_configured": preflight.get("YOLOV9_LIGHTWEIGHT_WEIGHTS_configured"),
+        "lightweight_weights_ready": preflight.get("yolov9_lightweight_weights_ready"),
         "carla_server_host": args.host,
         "carla_server_port": args.port,
         "carla_server_reachable": preflight.get("carla_server_reachable"),
@@ -675,6 +683,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--yolov9-device", default=None)
     parser.add_argument("--yolov9-warmup-runs", type=int, default=0)
     parser.add_argument("--yolov9-forward-only-profile", action="store_true")
+    parser.add_argument("--yolov9-profile", choices=["baseline", "lightweight"], default="baseline")
+    parser.add_argument("--yolov9-weights", default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--skip-source-adapter-evidence-check", action="store_true")
     parser.add_argument("--source-adapter-verified-evidence-dir", type=Path, default=DEFAULT_SOURCE_ADAPTER_EVIDENCE_DIR)
