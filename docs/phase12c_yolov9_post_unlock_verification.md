@@ -264,3 +264,9 @@ This follow-up keeps image-size, half precision, forward-only profiling, stride,
 R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701T165325Z`. Baseline no-fallback readiness remained true, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured, so no lightweight route-loop timing profile was executed.
 
 `lightweight_bottleneck_classification=lightweight_weights_missing`, `useful_lightweight_profile_verified=false`, and `recommended_next_phase=R1-RT-DETR-UNLOCK`. This does not claim route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Follow-Up: R1 Formal Runtime Gate Rerun
+
+The latest R1 gate evidence is `experiments\phase12\20260701T172906Z`. Post-unlock readiness remained true: `post_unlock_verified=true`, `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, and `edge_yolov9_no_fallback_verified=true`. The selected runtime row stayed blocked because `carla_server_reachable=false`; consequently `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`.
+
+This preserves the boundary that post-unlock verification is readiness evidence, not route completion, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.

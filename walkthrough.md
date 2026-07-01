@@ -1,37 +1,49 @@
-# Walkthrough - Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT Feasibility Probe
+# Walkthrough - Phase 12C-YOLOv9-R1 Runtime Confirmation
 
 ## Latest Result
 
 ```text
-Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT Blocked - lightweight YOLOv9 probe could not produce bounded no-fallback route-loop timing evidence.
+Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
 ```
 
 ```text
-lightweight_evidence_dir=experiments\phase12\20260701T165325Z
-lightweight_dry_run_evidence_dir=experiments\phase12\20260701T165245Z
-latency_opt_evidence_dir=experiments\phase12\20260701T115744Z
-latency_evidence_dir=experiments\phase12\20260701T103721Z
+runtime_evidence_dir=experiments\phase12\20260701T172906Z
+dry_run_evidence_dir=experiments\phase12\20260701T172854Z
 route_id=route_01
 controller_mode=grp_follower
 perception_backend=yolov9
 source_adapter_verified=true
 edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
+carla_server_reachable=false
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+goal_reached=null
+distance_to_goal_m=null
+route_progress_pct=null
+collision_count=null
+lane_invasion_count=null
+metrics_read_status=not_run
+yolo_runtime_row_verified=false
+blocked_reason=CARLA server is not reachable
+```
+
+The wrapper verified the external YOLOv9 source adapter and weights, then confirmed `EdgePerception --test yolov9` stayed no-fallback. The runtime remained blocked because the local CARLA server was not reachable at `127.0.0.1:2000`, so no child route metrics were produced.
+
+## Previous Walkthrough - R1-YOLOv9-LIGHTWEIGHT
+
+```text
+lightweight_evidence_dir=experiments\phase12\20260701T165325Z
 lightweight_weights_configured=false
 lightweight_weights_ready=false
-executed_variant_count=0
-completed_variant_count=0
-blocked_variant_count=5
-best_variant_id=null
-best_variant_profile=null
-best_variant_effective_fps=null
-best_variant_yolov9_avg_ms=null
 lightweight_bottleneck_classification=lightweight_weights_missing
 useful_lightweight_profile_verified=false
 recommended_next_phase=R1-RT-DETR-UNLOCK
 ```
 
-R1-LATENCY identified YOLOv9 model-forward time as the dominant bottleneck. R1-LATENCY-OPT tested diagnostic-only image-size and cached-cadence variants, but did not verify a useful no-fallback latency improvement. R1-YOLOv9-LIGHTWEIGHT then added the operator-provided lightweight asset contract; the local run is blocked because `YOLOV9_LIGHTWEIGHT_WEIGHTS` is not configured.
+R1-LATENCY identified YOLOv9 model-forward time as the dominant bottleneck. R1-LATENCY-OPT tested diagnostic-only image-size and cached-cadence variants, but did not verify a useful no-fallback latency improvement. R1-YOLOv9-LIGHTWEIGHT then added the operator-provided lightweight asset contract; the local run was blocked because `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured.
 
 ## Previous Walkthrough - R1-LATENCY-OPT
 

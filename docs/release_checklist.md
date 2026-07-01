@@ -1,5 +1,11 @@
 # MA-VLNA Release Checklist
 
+## Latest Phase 12C-YOLOv9-R1 Formal Gate Addendum
+
+- [x] **Phase 12C-YOLOv9-R1 Selected Runtime Confirmation Blocked**: `experiments\phase12\20260701T172906Z` records `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`, but `carla_server_reachable=false`. Therefore `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`.
+
+Boundary: this is selected single-route gate evidence only. It is not full Phase 12C perception ablation runtime pass, not YOLOv9 model accuracy evidence, not RT-DETR runtime verification, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
+
 > 版本發佈前驗證清單 — 記錄所有驗證結果與待辦事項 (v0.3.1 Release)
 
 ---

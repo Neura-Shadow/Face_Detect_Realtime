@@ -258,3 +258,9 @@ The source adapter remains verified. The remaining issue is insufficient YOLOv9 
 R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701T165325Z`. Baseline no-fallback readiness remained true, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured, so no lightweight route-loop timing profile was executed.
 
 `lightweight_bottleneck_classification=lightweight_weights_missing`, `useful_lightweight_profile_verified=false`, and `recommended_next_phase=R1-RT-DETR-UNLOCK`. This does not claim route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Follow-Up: R1 Formal Runtime Gate Rerun
+
+The latest selected runtime confirmation gate produced blocked evidence at `experiments\phase12\20260701T172906Z`. The external YOLOv9 source-root and weights remained ready, and `EdgePerception --test yolov9` stayed no-fallback: `edge_yolov9_fallback_used=false` and `edge_yolov9_no_fallback_verified=true`. The runtime blocker was `carla_server_reachable=false`, so no child route runtime was launched and `metrics_read_status=not_run`.
+
+This is not a full Phase 12C perception ablation runtime pass, not YOLOv9 accuracy evidence, not RT-DETR runtime verification, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.

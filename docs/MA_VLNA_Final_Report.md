@@ -16,6 +16,9 @@ MA-VLNA 採用模組化的軟體架構，主要包含以下核心元件：
 * **Telemetry Publisher**：遠端遙測模組，透過非同步機制將系統狀態、場景記憶與 VLM 決策紀錄上傳至 Supabase 進行後續分析與 Dashboard 視覺化。
 
 ### 3. 開發歷程與重要里程碑 (Development Milestones)
+
+Latest Phase 12C-YOLOv9-R1 formal gate addendum: `experiments\phase12\20260701T172906Z` records a selected runtime confirmation blocker. The external YOLOv9 source adapter and weights are ready, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`, but `carla_server_reachable=false`; therefore `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. This addendum is selected single-route gate evidence only, not full Phase 12C perception ablation runtime pass, YOLOv9 model accuracy evidence, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
 * **Phase 1-4: 基礎設施與後端建立**
   - 完成 FastAPI 後端與 Supabase 整合。
   - 實作 CLIP 向量特徵提取與 `pgvector` 相似度搜尋。

@@ -381,3 +381,26 @@ R1-RERUN 只確認 selected single-route runtime gate 的 blocked evidence handl
 R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701T165325Z`. Baseline no-fallback readiness remained true, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured, so no lightweight route-loop timing profile was executed.
 
 `lightweight_bottleneck_classification=lightweight_weights_missing`, `useful_lightweight_profile_verified=false`, and `recommended_next_phase=R1-RT-DETR-UNLOCK`. This remains selected-row feasibility evidence only, not full Phase 12C perception ablation runtime pass, model accuracy evidence, Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Phase 12C-YOLOv9-R1 Formal Gate Addendum
+
+The latest selected YOLOv9 runtime confirmation gate is `experiments\phase12\20260701T172906Z`.
+
+```text
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+source_adapter_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
+carla_server_reachable=false
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+metrics_read_status=not_run
+yolo_runtime_row_verified=false
+blocked_reason=CARLA server is not reachable
+```
+
+The scaffold remains command-ready for YOLOv9 optional rows, but this gate did not execute the selected child route runtime because CARLA TCP reachability failed. It is not a full Phase 12C perception ablation runtime pass and does not make accuracy, RT-DETR, Leaderboard, formal route benchmark, or infraction benchmark claims.

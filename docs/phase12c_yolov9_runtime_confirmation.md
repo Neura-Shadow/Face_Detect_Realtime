@@ -1,5 +1,51 @@
 # Phase 12C-YOLOv9-R1 - Selected YOLOv9 Runtime Confirmation
 
+## Latest Formal Gate
+
+```text
+Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
+```
+
+The latest formal gate was executed with the required YOLOv9 source and weights configured. The wrapper verified the external source adapter and `EdgePerception --test yolov9` no-fallback path, but did not launch the child route runtime because the CARLA server was not reachable at `127.0.0.1:2000`.
+
+```text
+runtime_evidence_dir=experiments\phase12\20260701T172906Z
+dry_run_evidence_dir=experiments\phase12\20260701T172854Z
+previous_runtime_evidence_dir=experiments\phase12\20260630T134322Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+runtime_scope=selected_single_route
+source_adapter_verified=true
+post_unlock_verified=true
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
+edge_yolov9_command_passed=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+YOLOV9_ROOT_configured=true
+YOLOV9_WEIGHTS_configured=true
+yolov9_source_root_ready=true
+yolov9_weights_ready=true
+carla_server_reachable=false
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+executed_row_count=0
+passed_count=0
+blocked_count=1
+goal_reached=null
+distance_to_goal_m=null
+route_progress_pct=null
+grp_route_progress_pct=null
+collision_count=null
+lane_invasion_count=null
+metrics_read_status=not_run
+yolo_runtime_row_verified=false
+blocked_reason=CARLA server is not reachable
+```
+
+This is a selected single-route runtime confirmation blocker only. It is not a full Phase 12C perception ablation runtime pass, not YOLOv9 model accuracy evidence, not RT-DETR validation, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
+
 ## Status
 
 ```text

@@ -1,53 +1,65 @@
-# Current Task - Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT
+# Current Task - Phase 12C-YOLOv9-R1 Runtime Confirmation
 
 ## Latest Status
 
 ```text
-Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT Blocked - lightweight YOLOv9 probe could not produce bounded no-fallback route-loop timing evidence.
+Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT is lightweight runtime feasibility evidence only. It does not download or commit YOLOv9 assets, and it does not claim selected YOLOv9 route runtime pass, route completion, YOLOv9 model accuracy, full Phase 12C perception ablation runtime pass, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+Phase 12C-YOLOv9-R1 is a selected single-route runtime confirmation gate only. It does not claim full Phase 12C perception ablation runtime pass, YOLOv9 model accuracy, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
 ```
 
 ## Latest Evidence
 
 ```text
-lightweight_evidence_dir=experiments\phase12\20260701T165325Z
-lightweight_dry_run_evidence_dir=experiments\phase12\20260701T165245Z
-latency_opt_evidence_dir=experiments\phase12\20260701T115744Z
-latency_evidence_dir=experiments\phase12\20260701T103721Z
+runtime_evidence_dir=experiments\phase12\20260701T172906Z
+dry_run_evidence_dir=experiments\phase12\20260701T172854Z
 route_id=route_01
 controller_mode=grp_follower
 perception_backend=yolov9
 source_adapter_verified=true
 edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
-setup_probe_passed=true
-short_route_begin_verified=true
-latency_probe_completed=true
-latency_opt_completed=true
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
+carla_server_reachable=false
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+row_count=1
+executed_variant_count=0
+passed_count=0
+blocked_count=1
+goal_reached=null
+distance_to_goal_m=null
+route_progress_pct=null
+grp_route_progress_pct=null
+collision_count=null
+lane_invasion_count=null
+metrics_read_status=not_run
+yolo_runtime_row_verified=false
+blocked_reason=CARLA server is not reachable
+```
+
+The formal wrapper verified YOLOv9 source/weights and EdgePerception no-fallback readiness, but `127.0.0.1:2000` was not reachable, so the Phase 12B / Phase 11M child route runtime was not launched.
+
+## Previous Phase - R1-YOLOv9-LIGHTWEIGHT
+
+```text
+Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT Blocked - lightweight YOLOv9 probe could not produce bounded no-fallback route-loop timing evidence.
+```
+
+```text
+lightweight_evidence_dir=experiments\phase12\20260701T165325Z
+lightweight_dry_run_evidence_dir=experiments\phase12\20260701T165245Z
 lightweight_weights_configured=false
 lightweight_weights_ready=false
-variant_count=7
-executed_variant_count=0
-completed_variant_count=0
-blocked_variant_count=5
-best_variant_id=null
-best_variant_profile=null
-best_variant_effective_fps=null
-best_variant_yolov9_avg_ms=null
-best_avg_ms_improvement_vs_latency_pct=null
-best_avg_ms_improvement_vs_opt_pct=null
-best_fps_improvement_vs_opt_pct=null
 lightweight_bottleneck_classification=lightweight_weights_missing
 useful_lightweight_profile_verified=false
 recommended_next_phase=R1-RT-DETR-UNLOCK
 ```
-
-The baseline YOLOv9 source adapter still verifies no fallback, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` is not configured. Lightweight weights/profile remain diagnostic-only unless promoted by a later phase.
 
 ## Previous Phase - R1-LATENCY-OPT
 

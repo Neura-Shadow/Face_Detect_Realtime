@@ -972,3 +972,9 @@ Phase 12C-YOLOv9-R1 不代表 full Phase 12C perception ablation runtime pass，
 R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701T165325Z`. Baseline no-fallback readiness remained true, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured, so no lightweight route-loop timing profile was executed.
 
 `lightweight_bottleneck_classification=lightweight_weights_missing`, `useful_lightweight_profile_verified=false`, and `recommended_next_phase=R1-RT-DETR-UNLOCK`. This phase does not download or commit YOLOv9 assets and does not claim route completion, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Phase 12C-YOLOv9-R1 Formal Gate Addendum
+
+Phase 12C-YOLOv9-R1 was rerun as the selected single-route runtime confirmation gate. Evidence `experiments\phase12\20260701T172906Z` records `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`. The gate is blocked by local CARLA reachability: `carla_server_reachable=false`, `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`.
+
+This is the selected YOLOv9 runtime confirmation boundary only. It does not claim full Phase 12C perception ablation runtime pass, YOLOv9 model accuracy, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
