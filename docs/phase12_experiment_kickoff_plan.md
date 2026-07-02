@@ -979,6 +979,27 @@ After R1-YOLOv9-LIGHTWEIGHT ended blocked because no lightweight YOLOv9 weights 
 
 The recommended next phase is `R1-RT-DETR-ASSET-SETUP`. This branch does not start CARLA route runtime, does not verify RT-DETR accuracy, does not claim RT-DETR runtime pass, and does not claim full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.
 
+## Phase 12C-R1-RT-DETR-ASSET-SETUP Addendum
+
+Phase 12C-R1-RT-DETR-ASSET-SETUP produced command-ready evidence at `experiments\phase12\20260702T040554Z`. The wrapper writes explicit commands for the target CARLA Python 3.12 runtime, dependency install, local asset directory preparation, `RTDETR_WEIGHTS`, post-setup EdgePerception smoke, and optional RT-DETR-only row refresh.
+
+```text
+status=command_ready
+ultralytics_import_ready_before=false
+ultralytics_import_ready_after=false
+dependency_install_requested=false
+dependency_install_executed=false
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
+edge_rtdetr_command_passed=null
+edge_rtdetr_fallback_used=null
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+This setup gate remains dependency/local asset setup only. It does not silently install dependencies, download or commit RT-DETR weights, modify baseline requirements, start CARLA route runtime, verify RT-DETR accuracy, claim RT-DETR runtime pass, or claim full Phase 12C ablation / Leaderboard / formal route / infraction benchmark evidence.
+
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 Phase 12C-YOLOv9-R1 was rerun as the selected single-route runtime confirmation gate. Evidence `experiments\phase12\20260701T172906Z` records `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`. The gate is blocked by local CARLA reachability: `carla_server_reachable=false`, `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`.

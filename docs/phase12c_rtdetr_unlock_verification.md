@@ -99,3 +99,25 @@ leaderboard_route_criteria_evaluated=false
 
 This phase is RT-DETR unlock / no-fallback readiness only. It is not an RT-DETR route runtime pass, not route completion, not RT-DETR accuracy verification, not a YOLOv9 route pass, not full Phase 12C ablation, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
 
+## Follow-Up - RT-DETR-ASSET-SETUP
+
+```text
+Phase 12C-R1-RT-DETR-ASSET-SETUP Command-Ready - explicit RT-DETR setup commands and asset contract are written, but setup was not executed.
+```
+
+```text
+rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
+ultralytics_import_ready_before=false
+ultralytics_import_ready_after=false
+dependency_install_requested=false
+dependency_install_executed=false
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
+edge_rtdetr_command_passed=null
+edge_rtdetr_fallback_used=null
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+The follow-up setup gate remains dependency and local asset setup only. It does not silently install dependencies, download or commit RT-DETR weights, modify baseline requirements, start CARLA route runtime, verify RT-DETR accuracy, or claim full Phase 12C ablation / Leaderboard / formal route / infraction benchmark evidence.

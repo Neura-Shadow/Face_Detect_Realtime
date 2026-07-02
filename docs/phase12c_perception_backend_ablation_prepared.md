@@ -402,6 +402,29 @@ recommended_next_phase=R1-RT-DETR-ASSET-SETUP
 
 The RT-DETR rows are intentionally kept `backend_unavailable` until the target CARLA Python 3.12 runtime has `ultralytics`, local `RTDETR_WEIGHTS`, and EdgePerception no-fallback readiness. No CARLA route runtime was started.
 
+## Phase 12C-R1-RT-DETR-ASSET-SETUP Addendum
+
+The RT-DETR dependency and local asset setup gate produced command-ready evidence at `experiments\phase12\20260702T040554Z`.
+
+```text
+target_perception_backend=rtdetr
+runtime_scope=rtdetr_dependency_asset_setup_only
+status=command_ready
+ultralytics_import_ready_before=false
+ultralytics_import_ready_after=false
+dependency_install_requested=false
+dependency_install_executed=false
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
+edge_rtdetr_command_passed=null
+edge_rtdetr_fallback_used=null
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+The setup gate writes operator commands for dependency installation, asset directory preparation, local RT-DETR weights, post-setup EdgePerception smoke, and optional RT-DETR-only row refresh. It does not install dependencies or download weights unless the operator runs an explicit setup command, and it does not start CARLA route runtime.
+
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 The latest selected YOLOv9 runtime confirmation gate is `experiments\phase12\20260701T172906Z`.

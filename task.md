@@ -1,34 +1,55 @@
-# Current Task - Phase 12C-R1-RT-DETR-UNLOCK
+# Current Task - Phase 12C-R1-RT-DETR-ASSET-SETUP
 
 ## Latest Status
 
 ```text
-Phase 12C-R1-RT-DETR-UNLOCK Blocked - RT-DETR optional backend could not be verified because dependency or model assets are unavailable.
+Phase 12C-R1-RT-DETR-ASSET-SETUP Command-Ready - explicit RT-DETR setup commands and asset contract are written, but setup was not executed.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-R1-RT-DETR-UNLOCK is RT-DETR unlock / no-fallback readiness only. It does not start CARLA route runtime, does not claim RT-DETR route runtime pass, does not claim RT-DETR accuracy, and does not claim full Phase 12C perception ablation runtime pass, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+Phase 12C-R1-RT-DETR-ASSET-SETUP is dependency and local asset setup only. It does not silently install dependencies, does not download RT-DETR weights, does not start CARLA route runtime, does not claim RT-DETR route runtime pass, does not claim RT-DETR accuracy, and does not claim full Phase 12C perception ablation runtime pass, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
 ```
 
 ## Latest Evidence
 
 ```text
+rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
 rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
-rtdetr_unlock_dry_run_evidence_dir=experiments\phase12\20260702T022636Z
 lightweight_evidence_dir=experiments\phase12\20260701T165325Z
-route_id=route_01
-controller_mode=grp_follower
-previous_perception_backend=yolov9
 target_perception_backend=rtdetr
-recommended_from_previous_phase=R1-RT-DETR-UNLOCK
-ultralytics_import_ready=false
-ultralytics_version=null
+runtime_scope=rtdetr_dependency_asset_setup_only
+status=command_ready
+ultralytics_import_ready_before=false
+ultralytics_import_ready_after=false
+dependency_install_requested=false
+dependency_install_executed=false
 rtdetr_weights_configured=false
 rtdetr_weights_ready=false
 rtdetr_model_hint=rtdetr-l.pt
-edge_rtdetr_backend_registered=true
+rtdetr_device=auto
+edge_rtdetr_command_passed=null
+edge_rtdetr_fallback_used=null
+edge_rtdetr_no_fallback_verified=false
+post_setup_smoke_executed=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+The setup wrapper wrote auditable commands for dependency install, asset directory preparation, local weights configuration, post-setup smoke, and optional RT-DETR-only row refresh. No install was executed because `--execute-dependency-install` was not provided, and no weights were downloaded or committed.
+
+## Previous Phase - RT-DETR-UNLOCK
+
+```text
+Phase 12C-R1-RT-DETR-UNLOCK Blocked - RT-DETR optional backend could not be verified because dependency or model assets are unavailable.
+```
+
+```text
+rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
+ultralytics_import_ready=false
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
 edge_rtdetr_command_supported=true
 edge_rtdetr_command_passed=true
 edge_rtdetr_fallback_used=true
@@ -36,17 +57,7 @@ edge_rtdetr_no_fallback_verified=false
 phase12c_rtdetr_rows_available=false
 phase12c_rtdetr_backend_unavailable_count=5
 recommended_next_phase=R1-RT-DETR-ASSET-SETUP
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
-rtdetr_runtime_verified=false
-rtdetr_accuracy_verified=false
-yolo_runtime_row_verified=false
-selected_route_completion_verified=false
-full_phase12c_perception_ablation_runtime_pass=false
-blocked_reason=dependency_missing; weights_missing; fallback_used; rtdetr_rows_unavailable
 ```
-
-The RT-DETR command path is registered, but the CARLA Python 3.12 runtime cannot import `ultralytics`, and no local `RTDETR_WEIGHTS` asset is configured. EdgePerception therefore falls back, and RT-DETR rows remain unavailable.
 
 ## Previous Phase - R1-YOLOv9-LIGHTWEIGHT
 

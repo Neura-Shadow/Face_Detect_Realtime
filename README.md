@@ -86,6 +86,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-YOLOv9-R1-LATENCY-OPT forward-latency optimization probe: **No-Improvement - bounded optimization variants completed at `experiments\phase12\20260701T115744Z`; best variant `variant_01_baseline_recheck`, effective FPS `0.168392`, YOLOv9 avg `2194.8ms`, avg improvement `12.976%`, FPS improvement `-29.635%`, useful improvement `false`, recommended next phase `R1-YOLOv9-LIGHTWEIGHT`; no route completion claimed**
   - Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT lightweight feasibility probe: **Blocked - `experiments\phase12\20260701T165325Z` verified the baseline YOLOv9 source adapter no-fallback chain, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured; no lightweight route-loop timing evidence was produced, `recommended_next_phase=R1-RT-DETR-UNLOCK`, and no route completion is claimed**
   - Phase 12C-R1-RT-DETR-UNLOCK optional backend readiness gate: **Blocked - `experiments\phase12\20260702T022636Z-1` verified the RT-DETR command path is registered, but `ultralytics_import_ready=false` and `rtdetr_weights_ready=false`; RT-DETR rows remain unavailable and `recommended_next_phase=R1-RT-DETR-ASSET-SETUP`**
+  - Phase 12C-R1-RT-DETR-ASSET-SETUP dependency and local asset gate: **Command-Ready - `experiments\phase12\20260702T040554Z` wrote explicit install/setup/smoke commands and the local RT-DETR asset contract; no dependency install, weight download, post-setup smoke, CARLA route runtime, or benchmark claim was executed**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -289,6 +290,7 @@ Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 > Phase 12C-YOLOv9-R1-LATENCY-OPT forward-latency optimization probe 請見 [docs/phase12c_yolov9_r1_latency_opt_probe.md](docs/phase12c_yolov9_r1_latency_opt_probe.md)
 > Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT feasibility probe 請見 [docs/phase12c_yolov9_r1_lightweight_probe.md](docs/phase12c_yolov9_r1_lightweight_probe.md)
 > Phase 12C-R1-RT-DETR-UNLOCK optional backend readiness gate 請見 [docs/phase12c_rtdetr_unlock_verification.md](docs/phase12c_rtdetr_unlock_verification.md)
+> Phase 12C-R1-RT-DETR-ASSET-SETUP dependency/local asset gate 請見 [docs/phase12c_rtdetr_asset_setup.md](docs/phase12c_rtdetr_asset_setup.md)
 
 ```powershell
 python scripts\run_phase12_experiment_plan.py --output-dir experiments\phase12
@@ -501,6 +503,50 @@ runtime_confirmation_executed=false
 carla_route_runtime_executed=false
 rtdetr_runtime_verified=false
 rtdetr_accuracy_verified=false
+```
+
+Phase 12C-R1-RT-DETR-ASSET-SETUP dependency/local asset gate（不自動安裝、不下載權重、不啟動 CARLA）：
+
+```powershell
+python scripts\run_phase12c_rtdetr_asset_setup.py --dry-run --output-dir experiments\phase12 --rtdetr-unlock-evidence-dir experiments\phase12\20260702T022636Z-1
+
+python scripts\run_phase12c_rtdetr_asset_setup.py --output-dir experiments\phase12 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --carla-root D:\CARLA\packages\CARLA_0.9.16 --execute-dependency-install
+
+$env:RTDETR_WEIGHTS = "D:\AIModels\rtdetr\rtdetr-l.pt"
+$env:RTDETR_MODEL_HINT = "rtdetr-l.pt"
+$env:RTDETR_DEVICE = "auto"
+$env:RTDETR_IMG_SIZE = "640"
+
+python scripts\run_phase12c_rtdetr_asset_setup.py --output-dir experiments\phase12 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --carla-root D:\CARLA\packages\CARLA_0.9.16 --run-post-setup-smoke
+```
+
+Latest Phase 12C-R1-RT-DETR-ASSET-SETUP evidence:
+
+```text
+rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
+rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
+target_perception_backend=rtdetr
+status=command_ready
+ultralytics_import_ready_before=false
+ultralytics_import_ready_after=false
+dependency_install_requested=false
+dependency_install_executed=false
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
+edge_rtdetr_command_passed=null
+edge_rtdetr_fallback_used=null
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+baseline_requirements_modified=false
+auto_install_performed=false
+weights_downloaded=false
+weights_committed=false
+carla_route_runtime_executed=false
+rtdetr_runtime_verified=false
+rtdetr_accuracy_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
+leaderboard_evaluated=false
 ```
 
 Phase 12C-YOLOv9-R1-DIAG timeout diagnosis（bounded instrumentation only；不宣稱 YOLOv9 runtime pass）：

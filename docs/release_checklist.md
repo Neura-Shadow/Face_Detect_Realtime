@@ -1,5 +1,11 @@
 # MA-VLNA Release Checklist
 
+## Latest Phase 12C-R1-RT-DETR-ASSET-SETUP Addendum
+
+- [x] **Phase 12C-R1-RT-DETR-ASSET-SETUP Command-Ready**: `experiments\phase12\20260702T040554Z` writes explicit RT-DETR dependency install, asset-directory, local-weight, post-setup smoke, and RT-DETR-only row-refresh commands. Current evidence records `ultralytics_import_ready_before=false`, `ultralytics_import_ready_after=false`, `dependency_install_requested=false`, `dependency_install_executed=false`, `rtdetr_weights_configured=false`, `rtdetr_weights_ready=false`, `edge_rtdetr_command_passed=null`, `edge_rtdetr_fallback_used=null`, `edge_rtdetr_no_fallback_verified=false`, `phase12c_rtdetr_rows_available=false`, and `recommended_next_phase=R1-RT-DETR-ASSET-SETUP`.
+
+Boundary: this is dependency and local asset setup only. It does not silently install dependencies, download or commit RT-DETR weights, modify baseline requirements, start CARLA route runtime, claim RT-DETR runtime pass, verify RT-DETR accuracy, or claim full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
 ## Latest Phase 12C-R1-RT-DETR-UNLOCK Addendum
 
 - [x] **Phase 12C-R1-RT-DETR-UNLOCK Optional Backend Readiness Blocked**: `experiments\phase12\20260702T022636Z-1` records `ultralytics_import_ready=false`, `rtdetr_weights_configured=false`, `rtdetr_weights_ready=false`, `edge_rtdetr_command_supported=true`, `edge_rtdetr_command_passed=true`, `edge_rtdetr_fallback_used=true`, `edge_rtdetr_no_fallback_verified=false`, `phase12c_rtdetr_rows_available=false`, `phase12c_rtdetr_backend_unavailable_count=5`, and `recommended_next_phase=R1-RT-DETR-ASSET-SETUP`. The dry-run evidence is `experiments\phase12\20260702T022636Z`.

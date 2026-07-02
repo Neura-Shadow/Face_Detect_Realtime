@@ -1,19 +1,42 @@
-# Walkthrough - Phase 12C-R1-RT-DETR-UNLOCK
+# Walkthrough - Phase 12C-R1-RT-DETR-ASSET-SETUP
 
 ## Latest Result
 
 ```text
-Phase 12C-R1-RT-DETR-UNLOCK Blocked - RT-DETR optional backend could not be verified because dependency or model assets are unavailable.
+Phase 12C-R1-RT-DETR-ASSET-SETUP Command-Ready - explicit RT-DETR setup commands and asset contract are written, but setup was not executed.
 ```
 
 ```text
+rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
 rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
-rtdetr_unlock_dry_run_evidence_dir=experiments\phase12\20260702T022636Z
 lightweight_evidence_dir=experiments\phase12\20260701T165325Z
-route_id=route_01
-controller_mode=grp_follower
-previous_perception_backend=yolov9
 target_perception_backend=rtdetr
+runtime_scope=rtdetr_dependency_asset_setup_only
+status=command_ready
+ultralytics_import_ready_before=false
+ultralytics_import_ready_after=false
+dependency_install_requested=false
+dependency_install_executed=false
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
+edge_rtdetr_command_passed=null
+edge_rtdetr_fallback_used=null
+edge_rtdetr_no_fallback_verified=false
+post_setup_smoke_executed=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+carla_route_runtime_executed=false
+rtdetr_runtime_verified=false
+rtdetr_accuracy_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
+```
+
+R1-LIGHTWEIGHT ended blocked because no operator-provided lightweight YOLOv9 weights were configured, so the branch moved to RT-DETR. R1-RT-DETR-UNLOCK confirmed the command path exists, then blocked because `ultralytics` and `RTDETR_WEIGHTS` were unavailable in the target runtime. R1-RT-DETR-ASSET-SETUP now writes the explicit dependency and local asset setup gate without installing anything automatically.
+
+## Previous Walkthrough - RT-DETR-UNLOCK
+
+```text
+rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
 ultralytics_import_ready=false
 rtdetr_weights_configured=false
 rtdetr_weights_ready=false
@@ -24,15 +47,7 @@ edge_rtdetr_no_fallback_verified=false
 phase12c_rtdetr_rows_available=false
 phase12c_rtdetr_backend_unavailable_count=5
 recommended_next_phase=R1-RT-DETR-ASSET-SETUP
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
-rtdetr_runtime_verified=false
-rtdetr_accuracy_verified=false
-full_phase12c_perception_ablation_runtime_pass=false
-blocked_reason=dependency_missing; weights_missing; fallback_used; rtdetr_rows_unavailable
 ```
-
-R1-LIGHTWEIGHT ended blocked because no operator-provided lightweight YOLOv9 weights were configured, so the next branch is RT-DETR unlock instead of another YOLOv9 route-runtime claim. The RT-DETR verifier confirms the command path exists, then blocks readiness because `ultralytics` and `RTDETR_WEIGHTS` are unavailable in the target runtime.
 
 ## Previous Walkthrough - R1-YOLOv9-LIGHTWEIGHT
 
