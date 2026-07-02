@@ -1,49 +1,52 @@
-# Current Task - Phase 12C-YOLOv9-R1 Runtime Confirmation
+# Current Task - Phase 12C-R1-RT-DETR-UNLOCK
 
 ## Latest Status
 
 ```text
-Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
+Phase 12C-R1-RT-DETR-UNLOCK Blocked - RT-DETR optional backend could not be verified because dependency or model assets are unavailable.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-YOLOv9-R1 is a selected single-route runtime confirmation gate only. It does not claim full Phase 12C perception ablation runtime pass, YOLOv9 model accuracy, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+Phase 12C-R1-RT-DETR-UNLOCK is RT-DETR unlock / no-fallback readiness only. It does not start CARLA route runtime, does not claim RT-DETR route runtime pass, does not claim RT-DETR accuracy, and does not claim full Phase 12C perception ablation runtime pass, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
 ```
 
 ## Latest Evidence
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260701T172906Z
-dry_run_evidence_dir=experiments\phase12\20260701T172854Z
+rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
+rtdetr_unlock_dry_run_evidence_dir=experiments\phase12\20260702T022636Z
+lightweight_evidence_dir=experiments\phase12\20260701T165325Z
 route_id=route_01
 controller_mode=grp_follower
-perception_backend=yolov9
-source_adapter_verified=true
-edge_yolov9_fallback_used=false
-edge_yolov9_no_fallback_verified=true
-phase12c_yolov9_rows_available=true
-backend_unavailable_count=0
-carla_server_reachable=false
+previous_perception_backend=yolov9
+target_perception_backend=rtdetr
+recommended_from_previous_phase=R1-RT-DETR-UNLOCK
+ultralytics_import_ready=false
+ultralytics_version=null
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
+rtdetr_model_hint=rtdetr-l.pt
+edge_rtdetr_backend_registered=true
+edge_rtdetr_command_supported=true
+edge_rtdetr_command_passed=true
+edge_rtdetr_fallback_used=true
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+phase12c_rtdetr_backend_unavailable_count=5
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
 runtime_confirmation_executed=false
 carla_route_runtime_executed=false
-row_count=1
-executed_variant_count=0
-passed_count=0
-blocked_count=1
-goal_reached=null
-distance_to_goal_m=null
-route_progress_pct=null
-grp_route_progress_pct=null
-collision_count=null
-lane_invasion_count=null
-metrics_read_status=not_run
+rtdetr_runtime_verified=false
+rtdetr_accuracy_verified=false
 yolo_runtime_row_verified=false
-blocked_reason=CARLA server is not reachable
+selected_route_completion_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
+blocked_reason=dependency_missing; weights_missing; fallback_used; rtdetr_rows_unavailable
 ```
 
-The formal wrapper verified YOLOv9 source/weights and EdgePerception no-fallback readiness, but `127.0.0.1:2000` was not reachable, so the Phase 12B / Phase 11M child route runtime was not launched.
+The RT-DETR command path is registered, but the CARLA Python 3.12 runtime cannot import `ultralytics`, and no local `RTDETR_WEIGHTS` asset is configured. EdgePerception therefore falls back, and RT-DETR rows remain unavailable.
 
 ## Previous Phase - R1-YOLOv9-LIGHTWEIGHT
 

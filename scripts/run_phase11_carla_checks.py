@@ -87,6 +87,7 @@ def main() -> int:
                 "scripts/run_phase12c_yolov9_r1_latency_probe.py",
                 "scripts/run_phase12c_yolov9_r1_latency_opt_probe.py",
                 "scripts/run_phase12c_yolov9_r1_lightweight_probe.py",
+                "scripts/run_phase12c_rtdetr_unlock_verification.py",
             ],
             "expected": [],
         },

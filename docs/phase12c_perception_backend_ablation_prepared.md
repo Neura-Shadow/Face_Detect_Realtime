@@ -382,6 +382,26 @@ R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701
 
 `lightweight_bottleneck_classification=lightweight_weights_missing`, `useful_lightweight_profile_verified=false`, and `recommended_next_phase=R1-RT-DETR-UNLOCK`. This remains selected-row feasibility evidence only, not full Phase 12C perception ablation runtime pass, model accuracy evidence, Leaderboard, formal route benchmark, or infraction benchmark.
 
+## Phase 12C-R1-RT-DETR-UNLOCK Addendum
+
+The RT-DETR optional backend readiness gate produced blocked evidence at `experiments\phase12\20260702T022636Z-1`.
+
+```text
+target_perception_backend=rtdetr
+ultralytics_import_ready=false
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
+edge_rtdetr_command_supported=true
+edge_rtdetr_command_passed=true
+edge_rtdetr_fallback_used=true
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+phase12c_rtdetr_backend_unavailable_count=5
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+The RT-DETR rows are intentionally kept `backend_unavailable` until the target CARLA Python 3.12 runtime has `ultralytics`, local `RTDETR_WEIGHTS`, and EdgePerception no-fallback readiness. No CARLA route runtime was started.
+
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 The latest selected YOLOv9 runtime confirmation gate is `experiments\phase12\20260701T172906Z`.

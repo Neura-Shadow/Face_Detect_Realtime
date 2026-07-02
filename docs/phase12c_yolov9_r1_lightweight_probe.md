@@ -78,3 +78,22 @@ No lightweight route-loop variant executed because the lightweight asset contrac
 R1-YOLOv9-LIGHTWEIGHT is lightweight runtime feasibility evidence only. It does not claim selected YOLOv9 route runtime pass, route completion, YOLOv9 model accuracy, full Phase 12C perception ablation runtime pass, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
 
 Lightweight weights/profile remain diagnostic-only unless a later phase promotes them.
+
+## Follow-Up: RT-DETR Unlock
+
+The next branch is RT-DETR unlock, not another YOLOv9 runtime claim. Phase 12C-R1-RT-DETR-UNLOCK produced blocked evidence at `experiments\phase12\20260702T022636Z-1`:
+
+```text
+target_perception_backend=rtdetr
+ultralytics_import_ready=false
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
+edge_rtdetr_command_supported=true
+edge_rtdetr_command_passed=true
+edge_rtdetr_fallback_used=true
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_backend_unavailable_count=5
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+RT-DETR weights remain operator-provided local assets and are not committed. This follow-up does not start CARLA route runtime, does not claim RT-DETR accuracy, and does not claim full Phase 12C ablation or benchmark pass.

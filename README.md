@@ -85,6 +85,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-YOLOv9-R1-LATENCY route-loop latency probe: **Completed - current-cadence YOLOv9 route loop profiled at `experiments\phase12\20260701T103721Z`; effective FPS `0.239313`, YOLOv9 avg `2522.06ms`, bottleneck `yolov9_forward_dominant`, recommended next phase `R1-LATENCY-OPT`; no route completion claimed**
   - Phase 12C-YOLOv9-R1-LATENCY-OPT forward-latency optimization probe: **No-Improvement - bounded optimization variants completed at `experiments\phase12\20260701T115744Z`; best variant `variant_01_baseline_recheck`, effective FPS `0.168392`, YOLOv9 avg `2194.8ms`, avg improvement `12.976%`, FPS improvement `-29.635%`, useful improvement `false`, recommended next phase `R1-YOLOv9-LIGHTWEIGHT`; no route completion claimed**
   - Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT lightweight feasibility probe: **Blocked - `experiments\phase12\20260701T165325Z` verified the baseline YOLOv9 source adapter no-fallback chain, but `YOLOV9_LIGHTWEIGHT_WEIGHTS` was not configured; no lightweight route-loop timing evidence was produced, `recommended_next_phase=R1-RT-DETR-UNLOCK`, and no route completion is claimed**
+  - Phase 12C-R1-RT-DETR-UNLOCK optional backend readiness gate: **Blocked - `experiments\phase12\20260702T022636Z-1` verified the RT-DETR command path is registered, but `ultralytics_import_ready=false` and `rtdetr_weights_ready=false`; RT-DETR rows remain unavailable and `recommended_next_phase=R1-RT-DETR-ASSET-SETUP`**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -287,6 +288,7 @@ Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 > Phase 12C-YOLOv9-R1-LATENCY route-loop latency probe 請見 [docs/phase12c_yolov9_r1_latency_probe.md](docs/phase12c_yolov9_r1_latency_probe.md)
 > Phase 12C-YOLOv9-R1-LATENCY-OPT forward-latency optimization probe 請見 [docs/phase12c_yolov9_r1_latency_opt_probe.md](docs/phase12c_yolov9_r1_latency_opt_probe.md)
 > Phase 12C-YOLOv9-R1-YOLOv9-LIGHTWEIGHT feasibility probe 請見 [docs/phase12c_yolov9_r1_lightweight_probe.md](docs/phase12c_yolov9_r1_lightweight_probe.md)
+> Phase 12C-R1-RT-DETR-UNLOCK optional backend readiness gate 請見 [docs/phase12c_rtdetr_unlock_verification.md](docs/phase12c_rtdetr_unlock_verification.md)
 
 ```powershell
 python scripts\run_phase12_experiment_plan.py --output-dir experiments\phase12
@@ -465,6 +467,40 @@ lane_invasion_count=null
 metrics_read_status=not_run
 yolo_runtime_row_verified=false
 blocked_reason=CARLA server is not reachable
+```
+
+Phase 12C-R1-RT-DETR-UNLOCK optional backend readiness gate（不啟動 CARLA、不宣稱 RT-DETR runtime pass）：
+
+```powershell
+python scripts\run_phase12c_rtdetr_unlock_verification.py --dry-run --output-dir experiments\phase12
+
+$env:RTDETR_WEIGHTS = "D:\AIModels\rtdetr\rtdetr-l.pt"
+$env:RTDETR_MODEL_HINT = "rtdetr-l.pt"
+$env:RTDETR_DEVICE = "auto"
+
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_rtdetr_unlock_verification.py --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --base-python python --carla-root D:\CARLA\packages\CARLA_0.9.16 --output-dir experiments\phase12 --require-verified
+```
+
+Latest Phase 12C-R1-RT-DETR-UNLOCK evidence:
+
+```text
+rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
+rtdetr_unlock_dry_run_evidence_dir=experiments\phase12\20260702T022636Z
+target_perception_backend=rtdetr
+ultralytics_import_ready=false
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
+edge_rtdetr_command_supported=true
+edge_rtdetr_command_passed=true
+edge_rtdetr_fallback_used=true
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+phase12c_rtdetr_backend_unavailable_count=5
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+runtime_confirmation_executed=false
+carla_route_runtime_executed=false
+rtdetr_runtime_verified=false
+rtdetr_accuracy_verified=false
 ```
 
 Phase 12C-YOLOv9-R1-DIAG timeout diagnosis（bounded instrumentation only；不宣稱 YOLOv9 runtime pass）：

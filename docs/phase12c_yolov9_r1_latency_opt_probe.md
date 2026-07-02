@@ -72,3 +72,9 @@ recommended_next_phase=R1-RT-DETR-UNLOCK
 ```
 
 The follow-up does not download or commit YOLOv9 assets and does not claim route completion, YOLOv9 model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Follow-Up: RT-DETR Unlock
+
+R1-LATENCY-OPT recommended `R1-YOLOv9-LIGHTWEIGHT`; that phase then blocked on missing lightweight YOLOv9 weights and recommended `R1-RT-DETR-UNLOCK`. The RT-DETR unlock gate at `experiments\phase12\20260702T022636Z-1` is blocked because `ultralytics_import_ready=false` and `rtdetr_weights_ready=false`; EdgePerception command support is present but fallback is used, so `edge_rtdetr_no_fallback_verified=false`.
+
+This is a backend readiness branch only. It does not claim RT-DETR route runtime pass, RT-DETR accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark.

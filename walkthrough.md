@@ -1,36 +1,38 @@
-# Walkthrough - Phase 12C-YOLOv9-R1 Runtime Confirmation
+# Walkthrough - Phase 12C-R1-RT-DETR-UNLOCK
 
 ## Latest Result
 
 ```text
-Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
+Phase 12C-R1-RT-DETR-UNLOCK Blocked - RT-DETR optional backend could not be verified because dependency or model assets are unavailable.
 ```
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260701T172906Z
-dry_run_evidence_dir=experiments\phase12\20260701T172854Z
+rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
+rtdetr_unlock_dry_run_evidence_dir=experiments\phase12\20260702T022636Z
+lightweight_evidence_dir=experiments\phase12\20260701T165325Z
 route_id=route_01
 controller_mode=grp_follower
-perception_backend=yolov9
-source_adapter_verified=true
-edge_yolov9_fallback_used=false
-edge_yolov9_no_fallback_verified=true
-phase12c_yolov9_rows_available=true
-backend_unavailable_count=0
-carla_server_reachable=false
+previous_perception_backend=yolov9
+target_perception_backend=rtdetr
+ultralytics_import_ready=false
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
+edge_rtdetr_command_supported=true
+edge_rtdetr_command_passed=true
+edge_rtdetr_fallback_used=true
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+phase12c_rtdetr_backend_unavailable_count=5
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
 runtime_confirmation_executed=false
 carla_route_runtime_executed=false
-goal_reached=null
-distance_to_goal_m=null
-route_progress_pct=null
-collision_count=null
-lane_invasion_count=null
-metrics_read_status=not_run
-yolo_runtime_row_verified=false
-blocked_reason=CARLA server is not reachable
+rtdetr_runtime_verified=false
+rtdetr_accuracy_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
+blocked_reason=dependency_missing; weights_missing; fallback_used; rtdetr_rows_unavailable
 ```
 
-The wrapper verified the external YOLOv9 source adapter and weights, then confirmed `EdgePerception --test yolov9` stayed no-fallback. The runtime remained blocked because the local CARLA server was not reachable at `127.0.0.1:2000`, so no child route metrics were produced.
+R1-LIGHTWEIGHT ended blocked because no operator-provided lightweight YOLOv9 weights were configured, so the next branch is RT-DETR unlock instead of another YOLOv9 route-runtime claim. The RT-DETR verifier confirms the command path exists, then blocks readiness because `ultralytics` and `RTDETR_WEIGHTS` are unavailable in the target runtime.
 
 ## Previous Walkthrough - R1-YOLOv9-LIGHTWEIGHT
 

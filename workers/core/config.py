@@ -189,6 +189,10 @@ class PerceptionConfig:
     yolov9_half: bool = False
     yolov9_warmup_runs: int = 0
     yolov9_forward_only_profile: bool = False
+    rtdetr_weights_override: str | None = None
+    rtdetr_model_hint: str = "rtdetr-l.pt"
+    rtdetr_device: str = "auto"
+    rtdetr_img_size: int | None = None
 
 
 # ════════════════════════════════════════════════════════════════
@@ -320,6 +324,12 @@ class AgentConfig:
             yolov9_forward_only_profile=_env_bool(
                 "YOLOV9_FORWARD_ONLY_PROFILE",
                 bool(_yaml_nested("perception.yolov9.forward_only_profile", False)),
+            ),
+            rtdetr_weights_override=_env("RTDETR_WEIGHTS", _yaml_nested("perception.rtdetr.weights", None)),
+            rtdetr_model_hint=_env("RTDETR_MODEL_HINT", _yaml_nested("perception.rtdetr.model_hint", "rtdetr-l.pt")),
+            rtdetr_device=_env("RTDETR_DEVICE", _yaml_nested("perception.rtdetr.device", "auto")),
+            rtdetr_img_size=(
+                int(_env("RTDETR_IMG_SIZE", _yaml_nested("perception.rtdetr.img_size", 0))) or None
             ),
         )
 

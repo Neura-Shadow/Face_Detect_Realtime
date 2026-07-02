@@ -538,12 +538,29 @@ class YOLOv9PerceptionBackend:
 
 
 class RTDETRPerceptionBackend:
-    def __init__(self, model_name: str, conf_threshold: float):
+    def __init__(
+        self,
+        model_name: str,
+        conf_threshold: float,
+        *,
+        device: str = "auto",
+        img_size: int | None = None,
+        weights_path: str | None = None,
+    ):
         if not _HAS_ULTRALYTICS:
             raise RuntimeError("ultralytics package is required for RT-DETR backend")
-        self._model_name = model_name
+        if weights_path and not Path(weights_path).is_file():
+            raise RuntimeError(f"RT-DETR weights missing: {weights_path}")
+        if not weights_path and (str(model_name).endswith(".pt") or str(model_name).endswith(".onnx")):
+            raise RuntimeError("RT-DETR weights must be provided through RTDETR_WEIGHTS or --rtdetr-weights")
+        effective_model = weights_path or model_name
+        self._model_name = str(effective_model)
         self._conf_threshold = conf_threshold
+        self._device = device
+        self._img_size = img_size
+        self._weights_path = weights_path
         self._model = RTDETR(self._model_name)
+        self._last_inference_metadata: dict[str, Any] = {}
 
     @property
     def model_name(self) -> str:
@@ -551,7 +568,12 @@ class RTDETRPerceptionBackend:
 
     def detect(self, frame: np.ndarray) -> tuple[list[Detection], int]:
         start = time.monotonic()
-        results = self._model(frame, verbose=False)
+        kwargs: dict[str, Any] = {"verbose": False}
+        if self._device and self._device != "auto":
+            kwargs["device"] = self._device
+        if self._img_size:
+            kwargs["imgsz"] = self._img_size
+        results = self._model(frame, **kwargs)
         detections: list[Detection] = []
         for result in results:
             boxes = result.boxes
@@ -570,7 +592,18 @@ class RTDETRPerceptionBackend:
                         class_id=cls_id
                     ))
         inf_ms = int((time.monotonic() - start) * 1000)
+        self._last_inference_metadata = {
+            "rtdetr_inference_ms": inf_ms,
+            "rtdetr_device": self._device,
+            "rtdetr_img_size": self._img_size,
+            "rtdetr_weights_source": "RTDETR_WEIGHTS" if self._weights_path else "model_hint",
+            "rtdetr_weights_ready": bool(self._weights_path),
+        }
         return detections, inf_ms
+
+    @property
+    def last_inference_metadata(self) -> dict[str, Any]:
+        return dict(self._last_inference_metadata)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -742,7 +775,24 @@ class EdgePerception:
                     forward_only_profile=cfg.perception.yolov9_forward_only_profile,
                 )
             elif backend_type == "rtdetr":
-                self._backend = RTDETRPerceptionBackend(model_name, conf)
+                rtdetr_weights = cfg.perception.rtdetr_weights_override
+                rtdetr_model = rtdetr_weights or cfg.perception.rtdetr_model_hint or model_name
+                self._backend_metadata = {
+                    "rtdetr_backend_registered": True,
+                    "rtdetr_dependency_ready": _HAS_ULTRALYTICS,
+                    "rtdetr_weights_configured": bool(rtdetr_weights),
+                    "rtdetr_weights_ready": bool(rtdetr_weights and Path(rtdetr_weights).is_file()),
+                    "rtdetr_model_hint": cfg.perception.rtdetr_model_hint,
+                    "rtdetr_device": cfg.perception.rtdetr_device,
+                    "rtdetr_img_size": cfg.perception.rtdetr_img_size,
+                }
+                self._backend = RTDETRPerceptionBackend(
+                    rtdetr_model,
+                    conf,
+                    device=cfg.perception.rtdetr_device,
+                    img_size=cfg.perception.rtdetr_img_size,
+                    weights_path=rtdetr_weights,
+                )
             else:
                 self._backend = DummyPerceptionBackend()
         except Exception as e:
@@ -750,6 +800,10 @@ class EdgePerception:
             logger.info("Graceful fallback to DummyPerceptionBackend")
             self._fallback_reason = str(e)
             if backend_type == "yolov9":
+                self._backend_metadata.setdefault("blocked_reason", str(e))
+            if backend_type == "rtdetr":
+                self._backend_metadata.setdefault("rtdetr_backend_registered", True)
+                self._backend_metadata.setdefault("rtdetr_dependency_ready", _HAS_ULTRALYTICS)
                 self._backend_metadata.setdefault("blocked_reason", str(e))
             self._backend = DummyPerceptionBackend()
             self._fallback_used = True
@@ -818,6 +872,11 @@ class EdgePerception:
             timing_payload = dict(last_timing)
         if timing_payload:
             backend_metadata["yolov9_timing"] = timing_payload
+        rtdetr_metadata = getattr(self._backend, "last_inference_metadata", None)
+        if callable(rtdetr_metadata):
+            backend_metadata["rtdetr_timing"] = rtdetr_metadata()
+        elif isinstance(rtdetr_metadata, dict) and rtdetr_metadata:
+            backend_metadata["rtdetr_timing"] = dict(rtdetr_metadata)
 
         result = PerceptionResult(
             frame_id=frame_id,
@@ -918,6 +977,10 @@ if __name__ == "__main__":
     parser.add_argument("--test", type=str, choices=["dummy", "yolo", "yolov9", "rtdetr"], required=True)
     parser.add_argument("--yolov9-profile", choices=["baseline", "lightweight"], default="baseline")
     parser.add_argument("--yolov9-weights", default=None)
+    parser.add_argument("--rtdetr-weights", default=None)
+    parser.add_argument("--rtdetr-model-hint", default=os.getenv("RTDETR_MODEL_HINT", "rtdetr-l.pt"))
+    parser.add_argument("--rtdetr-device", default=os.getenv("RTDETR_DEVICE", "auto"))
+    parser.add_argument("--rtdetr-img-size", type=int, default=int(os.getenv("RTDETR_IMG_SIZE", "0") or 0))
     args = parser.parse_args()
     
     logger.info("開始測試 Perception Backend: %s", args.test)
@@ -934,7 +997,7 @@ if __name__ == "__main__":
     elif args.test == "yolov9":
         p_model = args.yolov9_weights or os.getenv("YOLOV9_WEIGHTS", "yolov9")
     elif args.test == "rtdetr":
-        p_model = "rtdetr-l.pt"
+        p_model = args.rtdetr_weights or args.rtdetr_model_hint
     
     # We must replace the perception field since it's frozen
     cfg.perception = PerceptionConfig(
@@ -943,6 +1006,10 @@ if __name__ == "__main__":
         confidence_threshold=0.5,
         yolov9_profile=args.yolov9_profile,
         yolov9_weights_override=args.yolov9_weights,
+        rtdetr_weights_override=args.rtdetr_weights or os.getenv("RTDETR_WEIGHTS"),
+        rtdetr_model_hint=args.rtdetr_model_hint,
+        rtdetr_device=args.rtdetr_device,
+        rtdetr_img_size=args.rtdetr_img_size or None,
     )
         
     try:
@@ -979,6 +1046,24 @@ if __name__ == "__main__":
             print(f"edge_yolov9_command_passed=true")
             print(f"edge_yolov9_fallback_used={str(result.fallback_used).lower()}")
             print(f"edge_yolov9_no_fallback_verified={str(no_fallback_verified).lower()}")
+            print(f"blocked_reason={blocked_reason or 'null'}")
+        elif args.test == "rtdetr":
+            meta = perception.backend_metadata
+            blocked_reason = perception.fallback_reason or meta.get("blocked_reason")
+            no_fallback_verified = not result.fallback_used
+            print("backend=rtdetr")
+            print(f"runtime_backend={result.backend}")
+            print(f"rtdetr_backend_registered={str(bool(meta.get('rtdetr_backend_registered'))).lower()}")
+            print(f"rtdetr_dependency_ready={str(bool(meta.get('rtdetr_dependency_ready'))).lower()}")
+            print(f"rtdetr_weights_configured={str(bool(meta.get('rtdetr_weights_configured'))).lower()}")
+            print(f"rtdetr_weights_ready={str(bool(meta.get('rtdetr_weights_ready'))).lower()}")
+            print(f"rtdetr_model_hint={meta.get('rtdetr_model_hint', args.rtdetr_model_hint)}")
+            print(f"rtdetr_device={meta.get('rtdetr_device', args.rtdetr_device)}")
+            print(f"rtdetr_img_size={meta.get('rtdetr_img_size', args.rtdetr_img_size or 'null')}")
+            print("edge_rtdetr_command_supported=true")
+            print("edge_rtdetr_command_passed=true")
+            print(f"edge_rtdetr_fallback_used={str(result.fallback_used).lower()}")
+            print(f"edge_rtdetr_no_fallback_verified={str(no_fallback_verified).lower()}")
             print(f"blocked_reason={blocked_reason or 'null'}")
             
         logger.info("[PASS] Edge Perception 測試成功！")

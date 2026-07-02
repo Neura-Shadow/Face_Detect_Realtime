@@ -1,5 +1,11 @@
 # MA-VLNA Release Checklist
 
+## Latest Phase 12C-R1-RT-DETR-UNLOCK Addendum
+
+- [x] **Phase 12C-R1-RT-DETR-UNLOCK Optional Backend Readiness Blocked**: `experiments\phase12\20260702T022636Z-1` records `ultralytics_import_ready=false`, `rtdetr_weights_configured=false`, `rtdetr_weights_ready=false`, `edge_rtdetr_command_supported=true`, `edge_rtdetr_command_passed=true`, `edge_rtdetr_fallback_used=true`, `edge_rtdetr_no_fallback_verified=false`, `phase12c_rtdetr_rows_available=false`, `phase12c_rtdetr_backend_unavailable_count=5`, and `recommended_next_phase=R1-RT-DETR-ASSET-SETUP`. The dry-run evidence is `experiments\phase12\20260702T022636Z`.
+
+Boundary: this is RT-DETR unlock / no-fallback readiness only. It does not start CARLA route runtime, does not claim RT-DETR accuracy, and does not claim full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
 ## Latest Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 - [x] **Phase 12C-YOLOv9-R1 Selected Runtime Confirmation Blocked**: `experiments\phase12\20260701T172906Z` records `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`, but `carla_server_reachable=false`. Therefore `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`.

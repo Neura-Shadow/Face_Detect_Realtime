@@ -56,6 +56,8 @@ SUMMARY_COLUMNS = (
     "backend_optional",
     "backend_available",
     "backend_status",
+    "backend_blocker",
+    "rtdetr_no_fallback_verified",
     "runtime_command_status",
     "result",
     "command",
@@ -123,7 +125,7 @@ BACKEND_MATRIX = (
         dependency_name="ultralytics",
         dependency_label="ultralytics",
         runtime_backend_supported=True,
-        notes="Optional RT-DETR backend; mark backend_unavailable when ultralytics is not installed.",
+        notes="Optional RT-DETR backend; mark backend_unavailable until ultralytics, local RT-DETR weights, and EdgePerception no-fallback smoke are verified.",
     ),
 )
 
@@ -226,12 +228,77 @@ def _yolov9_source_adapter_available(python_executable: str) -> bool:
     )
 
 
+def _rtdetr_edge_probe_status(python_executable: str) -> dict[str, Any]:
+    try:
+        completed = subprocess.run(
+            [python_executable, "-m", "workers.core.edge_perception", "--test", "rtdetr"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=240.0,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {
+            "edge_rtdetr_command_passed": False,
+            "edge_rtdetr_no_fallback_verified": False,
+            "backend_blocker": f"rtdetr_probe_failed={exc}",
+        }
+    values = _parse_key_values(completed.stdout + "\n" + completed.stderr)
+    dependency_ready = values.get("rtdetr_dependency_ready", "").lower() == "true"
+    weights_ready = values.get("rtdetr_weights_ready", "").lower() == "true"
+    command_passed = (
+        completed.returncode == 0
+        and values.get("edge_rtdetr_command_passed", "").lower() == "true"
+    )
+    fallback_used = values.get("edge_rtdetr_fallback_used", "").lower() == "true"
+    no_fallback = (
+        command_passed
+        and values.get("edge_rtdetr_no_fallback_verified", "").lower() == "true"
+        and not fallback_used
+    )
+    blocker = "none"
+    if not dependency_ready:
+        blocker = "dependency_missing"
+    elif not weights_ready:
+        blocker = "weights_missing"
+    elif not command_passed:
+        blocker = "edge_command_failed"
+    elif fallback_used:
+        blocker = "fallback_used"
+    return {
+        "edge_rtdetr_command_passed": command_passed,
+        "edge_rtdetr_no_fallback_verified": no_fallback,
+        "backend_blocker": blocker,
+    }
+
+
 def _backend_available(backend: BackendSpec, python_executable: str) -> bool:
     if backend.dependency_name is None:
         return True
     if backend.mode == "yolov9_optional":
         return _yolov9_source_adapter_available(python_executable)
+    if backend.mode == "rt_detr_optional":
+        return _rtdetr_edge_probe_status(python_executable)["edge_rtdetr_no_fallback_verified"] is True
     return _dependency_import_available(backend, python_executable)
+
+
+def _backend_probe_status(backend: BackendSpec, python_executable: str) -> dict[str, Any]:
+    if backend.mode == "rt_detr_optional":
+        status = _rtdetr_edge_probe_status(python_executable)
+        return {
+            "dependency_available": status["edge_rtdetr_no_fallback_verified"],
+            "backend_blocker": status["backend_blocker"],
+            "rtdetr_no_fallback_verified": status["edge_rtdetr_no_fallback_verified"],
+        }
+    dependency_available = _backend_available(backend, python_executable)
+    return {
+        "dependency_available": dependency_available,
+        "backend_blocker": "none" if dependency_available else f"dependency_or_source_adapter_unavailable={backend.dependency_name}",
+        "rtdetr_no_fallback_verified": None,
+    }
 
 
 def _build_runtime_command(args: argparse.Namespace, route: RouteSpec, backend: BackendSpec) -> list[str]:
@@ -275,6 +342,8 @@ def _row_from_matrix(
 ) -> dict[str, Any]:
     backend_available = dependency_available and backend.runtime_backend_supported
     backend_status = "available" if backend_available else "backend_unavailable"
+    backend_blocker = getattr(args, "_backend_blockers", {}).get(backend.mode, "none" if backend_available else "dependency_missing")
+    rtdetr_no_fallback_verified = getattr(args, "_rtdetr_no_fallback_verified", {}).get(backend.mode)
     runtime_status = (
         "wired_runtime_command"
         if backend_available
@@ -306,6 +375,8 @@ def _row_from_matrix(
         "backend_optional": backend.optional,
         "backend_available": backend_available,
         "backend_status": backend_status,
+        "backend_blocker": backend_blocker,
+        "rtdetr_no_fallback_verified": rtdetr_no_fallback_verified,
         "runtime_command_status": runtime_status,
         "result": result,
         "command": _command_text(command) if command else "",
@@ -315,10 +386,10 @@ def _row_from_matrix(
 
 def _build_rows(args: argparse.Namespace) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    availability = {
-        backend.mode: _backend_available(backend, args.python_executable)
-        for backend in BACKEND_MATRIX
-    }
+    probe_status = {backend.mode: _backend_probe_status(backend, args.python_executable) for backend in BACKEND_MATRIX}
+    availability = {mode: status["dependency_available"] for mode, status in probe_status.items()}
+    args._backend_blockers = {mode: status["backend_blocker"] for mode, status in probe_status.items()}
+    args._rtdetr_no_fallback_verified = {mode: status["rtdetr_no_fallback_verified"] for mode, status in probe_status.items()}
     for route in ROUTE_MATRIX:
         if args.route_id and route.route_id not in args.route_id:
             continue
@@ -379,6 +450,11 @@ def _summary_payload(args: argparse.Namespace, rows: list[dict[str, Any]]) -> di
             row["dependency_import_available"] is True
             for row in rows
             if row["perception_backend_mode"] == "yolov9_optional"
+        ),
+        "rtdetr_no_fallback_verified": any(
+            row.get("rtdetr_no_fallback_verified") is True
+            for row in rows
+            if row["perception_backend_mode"] == "rt_detr_optional"
         ),
         "benchmark_boundary_prepared": True,
         "benchmark_boundary_scope": BENCHMARK_BOUNDARY_SCOPE,
