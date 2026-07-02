@@ -3,10 +3,12 @@
 ## Status
 
 ```text
-Phase 12C-R1-RT-DETR-UNLOCK Blocked - RT-DETR optional backend could not be verified because dependency or model assets are unavailable.
+Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Completed - RT-DETR branch is formally frozen as external local-weight blocked and Phase 12C summary handoff is prepared.
 ```
 
 This phase moves beyond the YOLOv9 lightweight blocker into a separate RT-DETR optional backend readiness gate. It verifies dependency, operator-provided weights, EdgePerception command support, no-fallback behavior, and Phase 12C RT-DETR-only row availability. It does not start CARLA route runtime.
+
+Latest freeze interpretation: ASSET-EXEC later resolved the dependency side (`ultralytics_import_ready_after=true`, `ultralytics_version_after=8.4.84`), but local weights remain missing at `D:\AIModels\rtdetr\rtdetr-l.pt`. Therefore `rtdetr_weights_ready=false`, `rtdetr_no_fallback_ready=false`, `edge_rtdetr_no_fallback_verified=false`, and `phase12c_rtdetr_rows_available=false`. The branch is frozen as `rt_detr_branch_frozen_external_asset_blocker=true`; without weights the next branch is `Phase 12C-SUM`, and if weights appear the next technical branch is `R1-RT-DETR-WEIGHTS-LOCAL-RERUN`.
 
 ## Evidence
 

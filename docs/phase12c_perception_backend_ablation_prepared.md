@@ -479,6 +479,29 @@ recommended_next_phase=R1-RT-DETR-ASSET-SETUP
 
 RT-DETR optional rows remain unavailable because local weights are missing. The smoke and row refresh were correctly skipped, and no CARLA route runtime was started.
 
+## Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Addendum
+
+```text
+Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Completed
+rt_detr_branch_frozen_external_asset_blocker=true
+rtdetr_dependency_ready=true
+rtdetr_weights_ready=false
+rtdetr_no_fallback_ready=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase_without_weights=Phase 12C-SUM
+recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
+```
+
+The RT-DETR branch is now frozen as an external local-weight blocker. ASSET-EXEC resolved dependency readiness, but `D:\AIModels\rtdetr\rtdetr-l.pt` is still missing. WEIGHTS-LOCAL and WEIGHTS-LOCAL-RERUN correctly stopped before smoke, so no no-fallback readiness or RT-DETR rows are claimed.
+
+Phase 12C-SUM handoff:
+
+| backend | status | key evidence | boundary |
+| --- | --- | --- | --- |
+| `dummy` | `runtime_confirmed` | `experiments\phase12\20260628T173019Z` | Not infraction benchmark, not Leaderboard |
+| `yolov9` | `route_begin_and_latency_profiled_but_not_route_completion` | `experiments\phase12\20260630T060621Z`; `experiments\phase12\20260701T045047Z`; `experiments\phase12\20260701T064944Z`; `experiments\phase12\20260701T103721Z`; `experiments\phase12\20260701T115744Z`; `experiments\phase12\20260701T165325Z` | No route completion, no model accuracy, no full ablation pass |
+| `rtdetr` | `external_asset_blocked` | `experiments\phase12\20260702T022636Z-1`; `experiments\phase12\20260702T040554Z`; `experiments\phase12\20260702T044516Z`; `experiments\phase12\20260702T125105Z` | No no-fallback readiness, no runtime, no accuracy |
+
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 The latest selected YOLOv9 runtime confirmation gate is `experiments\phase12\20260702T182842Z`; the dry-run command evidence is `experiments\phase12\20260702T182831Z`.

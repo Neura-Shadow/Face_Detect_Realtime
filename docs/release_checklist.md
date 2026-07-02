@@ -1,5 +1,11 @@
 # MA-VLNA Release Checklist
 
+## Latest Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Addendum
+
+- [x] **Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Completed**: RT-DETR branch is formally frozen as an external local-weight blocker and Phase 12C summary handoff is prepared. The summary records `rt_detr_branch_frozen_external_asset_blocker=true`, `rtdetr_dependency_ready=true`, `ultralytics_import_ready_after=true`, `ultralytics_version_after=8.4.84`, `rtdetr_weights_ready=false`, `missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt`, `rtdetr_no_fallback_ready=false`, `edge_rtdetr_no_fallback_verified=false`, `phase12c_rtdetr_rows_available=false`, `recommended_next_phase_without_weights=Phase 12C-SUM`, and `recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN`.
+
+Boundary: this is docs and summary only. No dependency install, weight download, fake weight creation, post-setup smoke, RT-DETR row refresh, CARLA server startup, or CARLA route runtime was executed. It does not claim RT-DETR no-fallback readiness, RT-DETR route runtime pass, route completion, accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
 ## Latest Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 - [x] **Phase 12C-YOLOv9-R1 Selected Runtime Confirmation Blocked**: `experiments\phase12\20260702T182842Z` records `source_adapter_verified=true`, `post_unlock_verified=true`, `edge_yolov9_command_passed=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`, but `carla_server_reachable=false`. Therefore `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. The dry-run evidence is `experiments\phase12\20260702T182831Z`.

@@ -1,53 +1,46 @@
-# Current Task - Phase 12C-YOLOv9-R1 Runtime Confirmation
+# Current Task - Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE
 
 ## Latest Status
 
 ```text
-Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
+Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Completed - RT-DETR branch is formally frozen as external local-weight blocked and Phase 12C summary handoff is prepared.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-YOLOv9-R1 is selected single-route runtime confirmation only. It does not claim full Phase 12C perception ablation runtime pass, YOLOv9 model accuracy, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE is docs and summary only. It does not install dependencies, download RT-DETR weights, create fake weights, run post-setup smoke, refresh RT-DETR rows, start CARLA, or claim RT-DETR no-fallback readiness, runtime pass, route completion, accuracy, full Phase 12C ablation, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
 ```
 
 ## Latest Evidence
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260702T182842Z
-dry_run_evidence_dir=experiments\phase12\20260702T182831Z
-previous_runtime_evidence_dir=experiments\phase12\20260701T172906Z
-route_id=route_01
-controller_mode=grp_follower
-perception_backend=yolov9
-runtime_scope=selected_single_route
-status=blocked
-source_adapter_verified=true
-post_unlock_verified=true
-phase12c_yolov9_rows_available=true
-backend_unavailable_count=0
-edge_yolov9_command_passed=true
-edge_yolov9_fallback_used=false
-edge_yolov9_no_fallback_verified=true
-carla_server_reachable=false
-runtime_confirmation_executed=false
+rtdetr_weights_local_rerun_evidence_dir=experiments\phase12\20260702T125105Z
+rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
+rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
+rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
+target_perception_backend=rtdetr
+runtime_scope=docs_summary_external_asset_blocker_freeze_only
+rt_detr_branch_frozen_external_asset_blocker=true
+rtdetr_dependency_ready=true
+ultralytics_import_ready_after=true
+ultralytics_version_after=8.4.84
+rtdetr_weights_configured=true
+rtdetr_weights_ready=false
+missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
+rtdetr_no_fallback_ready=false
+post_setup_smoke_executed=false
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase_without_weights=Phase 12C-SUM
+recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
 carla_route_runtime_executed=false
-executed_row_count=0
-passed_count=0
-blocked_count=1
-goal_reached=null
-distance_to_goal_m=null
-route_progress_pct=null
-grp_route_progress_pct=null
-collision_count=null
-lane_invasion_count=null
-metrics_read_status=not_run
-yolo_runtime_row_verified=false
-blocked_reason=CARLA server is not reachable
+rtdetr_runtime_verified=false
+rtdetr_accuracy_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
 ```
 
-The wrapper verified the official external YOLOv9 source adapter and no-fallback EdgePerception path in the CARLA Python 3.12 runtime, but did not launch the child route runtime because the local CARLA server was not reachable at `127.0.0.1:2000`.
+ASSET-EXEC resolved the dependency side by installing `ultralytics 8.4.84` in the CARLA Python 3.12 runtime. WEIGHTS-LOCAL and WEIGHTS-LOCAL-RERUN both correctly stopped before smoke because `D:\AIModels\rtdetr\rtdetr-l.pt` is missing. The RT-DETR branch is frozen until the operator provides local weights; without weights, the project should move to `Phase 12C-SUM`.
 
 ## Previous Phase - RT-DETR-WEIGHTS-LOCAL
 

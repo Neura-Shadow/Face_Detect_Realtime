@@ -1046,6 +1046,33 @@ recommended_next_phase=R1-RT-DETR-ASSET-SETUP
 
 The target runtime dependency is ready, but local RT-DETR weights remain missing. No weights were downloaded or committed, no smoke was run, no CARLA route runtime was started, and no RT-DETR no-fallback / route / accuracy / benchmark result is claimed.
 
+## Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Addendum
+
+Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE completed the docs-only branch freeze. The RT-DETR dependency side is ready after ASSET-EXEC, but local weights remain missing at `D:\AIModels\rtdetr\rtdetr-l.pt`, so the branch is frozen as an external asset blocker.
+
+```text
+Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Completed
+rt_detr_branch_frozen_external_asset_blocker=true
+rtdetr_dependency_ready=true
+rtdetr_weights_ready=false
+rtdetr_no_fallback_ready=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase_without_weights=Phase 12C-SUM
+recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
+post_setup_smoke_executed=false
+carla_route_runtime_executed=false
+rtdetr_runtime_verified=false
+rtdetr_accuracy_verified=false
+```
+
+Phase 12C-SUM handoff:
+
+| backend | status | key evidence | claim | boundary |
+| --- | --- | --- | --- | --- |
+| `dummy` | `runtime_confirmed` | `experiments\phase12\20260628T173019Z` | 5/5 calibrated dummy backend smoke rows reached goal | Not infraction benchmark, not Leaderboard |
+| `yolov9` | `route_begin_and_latency_profiled_but_not_route_completion` | source adapter `experiments\phase12\20260630T060621Z`; setup `experiments\phase12\20260701T045047Z`; short route-begin `experiments\phase12\20260701T064944Z`; latency `experiments\phase12\20260701T103721Z`; latency opt `experiments\phase12\20260701T115744Z`; lightweight blocked `experiments\phase12\20260701T165325Z` | No-fallback source adapter verified, selected route loop entered, latency bottleneck characterized | No route completion, no model accuracy, no full ablation pass |
+| `rtdetr` | `external_asset_blocked` | unlock `experiments\phase12\20260702T022636Z-1`; asset setup `experiments\phase12\20260702T040554Z`; asset exec `experiments\phase12\20260702T044516Z`; weights-local rerun `experiments\phase12\20260702T125105Z` | Dependency installed, local weights missing | No no-fallback readiness, no runtime, no accuracy |
+
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 Phase 12C-YOLOv9-R1 was rerun as the selected single-route runtime confirmation gate. Evidence `experiments\phase12\20260702T182842Z` records `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`. The gate is blocked by local CARLA reachability: `carla_server_reachable=false`, `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. The dry-run command evidence is `experiments\phase12\20260702T182831Z`.

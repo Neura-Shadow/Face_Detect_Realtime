@@ -1,45 +1,44 @@
-# Walkthrough - Phase 12C-YOLOv9-R1 Runtime Confirmation
+# Walkthrough - Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE
 
 ## Latest Result
 
 ```text
-Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
+Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Completed - RT-DETR branch is formally frozen as external local-weight blocked and Phase 12C summary handoff is prepared.
 ```
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260702T182842Z
-dry_run_evidence_dir=experiments\phase12\20260702T182831Z
-previous_runtime_evidence_dir=experiments\phase12\20260701T172906Z
-route_id=route_01
-controller_mode=grp_follower
-perception_backend=yolov9
-runtime_scope=selected_single_route
-status=blocked
-source_adapter_verified=true
-post_unlock_verified=true
-phase12c_yolov9_rows_available=true
-backend_unavailable_count=0
-edge_yolov9_command_passed=true
-edge_yolov9_fallback_used=false
-edge_yolov9_no_fallback_verified=true
-carla_server_reachable=false
+rtdetr_weights_local_rerun_evidence_dir=experiments\phase12\20260702T125105Z
+rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
+rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
+target_perception_backend=rtdetr
+runtime_scope=docs_summary_external_asset_blocker_freeze_only
+rt_detr_branch_frozen_external_asset_blocker=true
+rtdetr_dependency_ready=true
+ultralytics_import_ready_after=true
+ultralytics_version_after=8.4.84
+rtdetr_weights_ready=false
+missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
+rtdetr_no_fallback_ready=false
+post_setup_smoke_executed=false
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase_without_weights=Phase 12C-SUM
+recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
 carla_route_runtime_executed=false
-runtime_confirmation_executed=false
-executed_row_count=0
-passed_count=0
-blocked_count=1
-goal_reached=null
-distance_to_goal_m=null
-route_progress_pct=null
-grp_route_progress_pct=null
-collision_count=null
-lane_invasion_count=null
-metrics_read_status=not_run
-yolo_runtime_row_verified=false
+rtdetr_runtime_verified=false
+rtdetr_accuracy_verified=false
 full_phase12c_perception_ablation_runtime_pass=false
 ```
 
-The selected row remains blocked before child route runtime because the local CARLA server is not reachable at `127.0.0.1:2000`. YOLOv9 source adapter readiness remains verified with no fallback; this is not route completion, YOLOv9 accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+The RT-DETR dependency side is ready after ASSET-EXEC, but local weights are still missing. The branch is frozen because repeating WEIGHTS-LOCAL without `D:\AIModels\rtdetr\rtdetr-l.pt` would only reproduce the same blocked evidence.
+
+## Phase 12C-SUM Handoff
+
+| backend | status | evidence | boundary |
+| --- | --- | --- | --- |
+| `dummy` | runtime_confirmed | `experiments\phase12\20260628T173019Z` | Not infraction benchmark, not Leaderboard |
+| `yolov9` | route_begin_and_latency_profiled_but_not_route_completion | `experiments\phase12\20260630T060621Z`, `experiments\phase12\20260701T064944Z`, `experiments\phase12\20260701T103721Z`, `experiments\phase12\20260701T115744Z` | No route completion, no accuracy, no full ablation pass |
+| `rtdetr` | external_asset_blocked | `experiments\phase12\20260702T022636Z-1`, `experiments\phase12\20260702T044516Z`, `experiments\phase12\20260702T125105Z` | No no-fallback readiness, no runtime, no accuracy |
 
 ## Previous Walkthrough - RT-DETR-WEIGHTS-LOCAL
 

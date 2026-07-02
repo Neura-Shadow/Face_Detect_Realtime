@@ -3,10 +3,30 @@
 ## Status
 
 ```text
-Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Blocked - local RT-DETR weights are still missing.
+Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Completed - RT-DETR branch is formally frozen as external local-weight blocked and Phase 12C summary handoff is prepared.
 ```
 
 This phase follows the blocked RT-DETR unlock gate. ASSET-SETUP first prepared the CARLA Python 3.12 runtime setup path without executing install commands. ASSET-EXEC then explicitly executed the operator-approved dependency install into the target CARLA Python 3.12 runtime. WEIGHTS-LOCAL verifies the operator-provided weight path and runs smoke only when the local file exists.
+
+## ASSET-BLOCKER-FREEZE Result
+
+```text
+rt_detr_branch_frozen_external_asset_blocker=true
+rtdetr_dependency_ready=true
+ultralytics_import_ready_after=true
+ultralytics_version_after=8.4.84
+rtdetr_weights_configured=true
+rtdetr_weights_ready=false
+missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
+rtdetr_no_fallback_ready=false
+post_setup_smoke_executed=false
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase_without_weights=Phase 12C-SUM
+recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
+```
+
+WEIGHTS-LOCAL and WEIGHTS-LOCAL-RERUN both correctly stopped before smoke because local weights are missing. No no-fallback readiness is claimed, no RT-DETR rows are available, and the RT-DETR branch is frozen until the operator provides `D:\AIModels\rtdetr\rtdetr-l.pt`.
 
 ## Evidence
 
