@@ -30,14 +30,18 @@ DEFAULT_CARLA_ROOT = Path(r"D:\CARLA\packages\CARLA_0.9.16")
 DEFAULT_CARLA_PYTHON = r"D:\CARLA\envs\ma-vlna-carla312\python.exe"
 DEFAULT_RTDETR_UNLOCK_EVIDENCE_DIR = Path(r"experiments\phase12\20260702T022636Z-1")
 DEFAULT_RTDETR_ASSET_SETUP_EVIDENCE_DIR = Path(r"experiments\phase12\20260702T040554Z")
+DEFAULT_RTDETR_ASSET_EXEC_EVIDENCE_DIR = Path(r"experiments\phase12\20260702T044516Z")
 DEFAULT_LIGHTWEIGHT_EVIDENCE_DIR = Path(r"experiments\phase12\20260701T165325Z")
 DEFAULT_ASSET_DIR = Path(r"D:\AIModels\rtdetr")
 DEFAULT_ASSET_PATH = DEFAULT_ASSET_DIR / "rtdetr-l.pt"
 
 PHASE_SETUP = "Phase 12C-R1-RT-DETR-ASSET-SETUP"
 PHASE_EXEC = "Phase 12C-R1-RT-DETR-ASSET-EXEC"
+PHASE_WEIGHTS_LOCAL = "Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL"
 RUNTIME_SCOPE_SETUP = "rtdetr_dependency_asset_setup_only"
 RUNTIME_SCOPE_EXEC = "rtdetr_dependency_asset_setup_execution_only"
+RUNTIME_SCOPE_WEIGHTS_LOCAL = "rtdetr_local_weight_adoption_no_fallback_smoke_only"
+STATUS_PASSED = "passed"
 STATUS_PREPARED = "prepared"
 STATUS_COMMAND_READY = "command_ready"
 STATUS_PARTIAL = "partial"
@@ -70,6 +74,16 @@ STATUS_LINES_EXEC = {
         "not reach no-fallback readiness."
     ),
 }
+STATUS_LINES_WEIGHTS_LOCAL = {
+    STATUS_PASSED: (
+        "Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Passed - local RT-DETR weights "
+        "were adopted and EdgePerception no-fallback smoke passed."
+    ),
+    STATUS_BLOCKED: (
+        "Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Blocked - local RT-DETR weights "
+        "are still missing or no-fallback smoke failed."
+    ),
+}
 
 BOUNDARY_FIELDS = {
     "baseline_requirements_modified": False,
@@ -96,6 +110,7 @@ SUMMARY_COLUMNS = (
     "status",
     "status_line",
     "runtime_scope",
+    "rtdetr_asset_exec_evidence_dir",
     "rtdetr_asset_setup_evidence_dir",
     "rtdetr_unlock_evidence_dir",
     "lightweight_evidence_dir",
@@ -114,6 +129,10 @@ SUMMARY_COLUMNS = (
     "operator_explicit_install_required",
     "rtdetr_weights_configured",
     "rtdetr_weights_ready",
+    "rtdetr_weights_path",
+    "missing_weight_path",
+    "rtdetr_weights_size_bytes",
+    "rtdetr_weights_sha256",
     "rtdetr_model_hint",
     "rtdetr_device",
     "rtdetr_img_size",
@@ -192,19 +211,49 @@ def _is_execution_phase(args: argparse.Namespace) -> bool:
         args.execute_dependency_install
         or args.run_post_setup_smoke
         or args.run_rtdetr_rows_refresh
+        or args.refresh_rtdetr_rows_if_smoke_passed
     )
 
 
+def _is_weights_local_phase(args: argparse.Namespace) -> bool:
+    return bool(args.verify_local_weights)
+
+
 def _phase_name(args: argparse.Namespace) -> str:
+    if _is_weights_local_phase(args):
+        return PHASE_WEIGHTS_LOCAL
     return PHASE_EXEC if _is_execution_phase(args) else PHASE_SETUP
 
 
 def _runtime_scope(args: argparse.Namespace) -> str:
+    if _is_weights_local_phase(args):
+        return RUNTIME_SCOPE_WEIGHTS_LOCAL
     return RUNTIME_SCOPE_EXEC if _is_execution_phase(args) else RUNTIME_SCOPE_SETUP
 
 
 def _status_lines(args: argparse.Namespace) -> dict[str, str]:
+    if _is_weights_local_phase(args):
+        return STATUS_LINES_WEIGHTS_LOCAL
     return STATUS_LINES_EXEC if _is_execution_phase(args) else STATUS_LINES_SETUP
+
+
+def _status_line_for_summary(
+    *,
+    args: argparse.Namespace,
+    status: str,
+    weights_ready: bool,
+) -> str:
+    if _is_weights_local_phase(args) and status == STATUS_BLOCKED:
+        if not weights_ready:
+            return (
+                "Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Blocked - local RT-DETR "
+                "weights are still missing."
+            )
+        return (
+            "Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Blocked - RT-DETR local weights "
+            "exist, but no-fallback smoke failed."
+        )
+    return _status_lines(args)[status]
 
 
 def _next_run_dir(output_dir: Path, timestamp: str | None) -> Path:
@@ -412,11 +461,11 @@ def _asset_payload(args: argparse.Namespace) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "rtdetr_weights_configured": configured,
         "rtdetr_weights_ready": ready,
+        "rtdetr_weights_path": str(weights) if weights else None,
+        "missing_weight_path": str(weights) if configured and not ready and weights else None,
         "expected_asset_dir": str(_target_asset_dir(args)),
         "default_asset_contract_path": str(DEFAULT_ASSET_PATH),
     }
-    if weights:
-        payload["rtdetr_weights_path"] = str(weights)
     if ready and weights:
         stat = weights.stat()
         payload["rtdetr_weights_size_bytes"] = stat.st_size
@@ -519,7 +568,8 @@ def _run_rtdetr_rows_refresh(
     env: dict[str, str],
     no_fallback_ready: bool,
 ) -> tuple[CommandResult | None, dict[str, Any] | None]:
-    if not args.run_rtdetr_rows_refresh or not no_fallback_ready:
+    refresh_requested = args.run_rtdetr_rows_refresh or args.refresh_rtdetr_rows_if_smoke_passed
+    if not refresh_requested or not no_fallback_ready:
         return None, None
     rows_dir = run_dir / "rtdetr_rows_refresh"
     rows_dir.mkdir(exist_ok=True)
@@ -571,6 +621,19 @@ def _classify_status(
     no_fallback_verified: bool,
     fallback_used: bool | None,
 ) -> str:
+    if _is_weights_local_phase(args):
+        if (
+            target_python_exists
+            and dependency_after
+            and weights_ready
+            and smoke_executed
+            and smoke_command_passed
+            and fallback_used is False
+            and no_fallback_verified
+        ):
+            return STATUS_PASSED
+        return STATUS_BLOCKED
+
     if _is_execution_phase(args):
         if not target_python_exists:
             return STATUS_BLOCKED
@@ -618,11 +681,13 @@ def _recommended_next_phase(
     fallback_used: bool | None,
     no_fallback_verified: bool,
 ) -> str:
-    if status == STATUS_PREPARED or no_fallback_verified:
+    if status in {STATUS_PREPARED, STATUS_PASSED} or no_fallback_verified:
         return "R1-RT-DETR-UNLOCK-RERUN"
     if status == STATUS_PARTIAL:
         return "R1-RT-DETR-ASSET-SETUP"
     if smoke_executed and fallback_used is True:
+        return "R1-RT-DETR-ADAPTER-FIX"
+    if smoke_executed and not no_fallback_verified:
         return "R1-RT-DETR-ADAPTER-FIX"
     if not dependency_after or not weights_ready:
         return "R1-RT-DETR-ASSET-SETUP"
@@ -681,6 +746,14 @@ def _write_commands(path: Path, args: argparse.Namespace, run_dir: Path) -> None
             f"python scripts\\run_phase12c_rtdetr_asset_setup.py --output-dir experiments\\phase12 "
             f"--python-executable {args.python_executable} --carla-root {args.carla_root} "
             "--run-post-setup-smoke"
+        ),
+        "",
+        "# WEIGHTS-LOCAL local weight adoption gate",
+        (
+            f"python scripts\\run_phase12c_rtdetr_asset_setup.py --output-dir experiments\\phase12 "
+            f"--python-executable {args.python_executable} --carla-root {args.carla_root} "
+            "--verify-local-weights --run-post-setup-smoke --refresh-rtdetr-rows-if-smoke-passed "
+            "--rtdetr-unlock-evidence-dir experiments\\phase12\\20260702T022636Z-1"
         ),
         "",
         "# Optional RT-DETR-only Phase 12C scaffold refresh after no-fallback smoke passes",
@@ -788,6 +861,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--carla-root", type=Path, default=DEFAULT_CARLA_ROOT)
     parser.add_argument("--rtdetr-unlock-evidence-dir", type=Path, default=DEFAULT_RTDETR_UNLOCK_EVIDENCE_DIR)
     parser.add_argument("--rtdetr-asset-setup-evidence-dir", type=Path, default=DEFAULT_RTDETR_ASSET_SETUP_EVIDENCE_DIR)
+    parser.add_argument("--rtdetr-asset-exec-evidence-dir", type=Path, default=DEFAULT_RTDETR_ASSET_EXEC_EVIDENCE_DIR)
     parser.add_argument("--lightweight-evidence-dir", type=Path, default=DEFAULT_LIGHTWEIGHT_EVIDENCE_DIR)
     parser.add_argument("--rtdetr-weights", default=None)
     parser.add_argument("--rtdetr-model-hint", default=os.getenv("RTDETR_MODEL_HINT", "rtdetr-l.pt"))
@@ -797,8 +871,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--prepare-asset-dir", action="store_true")
     parser.add_argument("--execute-dependency-install", action="store_true")
+    parser.add_argument("--verify-local-weights", action="store_true")
     parser.add_argument("--run-post-setup-smoke", action="store_true")
     parser.add_argument("--run-rtdetr-rows-refresh", action="store_true")
+    parser.add_argument("--refresh-rtdetr-rows-if-smoke-passed", action="store_true")
     parser.add_argument("--install-timeout-sec", type=float, default=900.0)
     parser.add_argument("--probe-timeout-sec", type=float, default=60.0)
     parser.add_argument("--smoke-timeout-sec", type=float, default=240.0)
@@ -811,6 +887,7 @@ def main() -> int:
     args.output_dir = _resolve_repo_path(args.output_dir)
     args.rtdetr_unlock_evidence_dir = _resolve_repo_path(args.rtdetr_unlock_evidence_dir)
     args.rtdetr_asset_setup_evidence_dir = _resolve_repo_path(args.rtdetr_asset_setup_evidence_dir)
+    args.rtdetr_asset_exec_evidence_dir = _resolve_repo_path(args.rtdetr_asset_exec_evidence_dir)
     args.lightweight_evidence_dir = _resolve_repo_path(args.lightweight_evidence_dir)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     run_dir = _next_run_dir(args.output_dir, args.timestamp)
@@ -913,10 +990,15 @@ def main() -> int:
     summary: dict[str, Any] = {
         "phase": _phase_name(args),
         "status": status,
-        "status_line": _status_lines(args)[status],
+        "status_line": _status_line_for_summary(
+            args=args,
+            status=status,
+            weights_ready=asset["rtdetr_weights_ready"],
+        ),
         "dry_run": bool(args.dry_run),
         "runtime_scope": _runtime_scope(args),
         "run_dir": str(run_dir),
+        "rtdetr_asset_exec_evidence_dir": _display_path(args.rtdetr_asset_exec_evidence_dir),
         "rtdetr_asset_setup_evidence_dir": _display_path(args.rtdetr_asset_setup_evidence_dir),
         "rtdetr_unlock_evidence_dir": _display_path(args.rtdetr_unlock_evidence_dir),
         "lightweight_evidence_dir": _display_path(args.lightweight_evidence_dir),

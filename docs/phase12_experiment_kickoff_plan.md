@@ -1024,6 +1024,28 @@ recommended_next_phase=R1-RT-DETR-ASSET-SETUP
 
 The dependency setup step succeeded, but RT-DETR remains blocked by missing local weights. No weights were downloaded or committed, baseline requirements were not modified, no CARLA route runtime was started, and no RT-DETR runtime pass / accuracy / full Phase 12C ablation / benchmark result is claimed.
 
+## Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Addendum
+
+Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL produced blocked evidence at `experiments\phase12\20260702T071641Z`. This gate verifies only the local operator-provided weight path and no-fallback smoke readiness.
+
+```text
+status=blocked
+ultralytics_import_ready_after=true
+ultralytics_version_after=8.4.84
+rtdetr_weights_configured=true
+rtdetr_weights_ready=false
+rtdetr_weights_path=D:\AIModels\rtdetr\rtdetr-l.pt
+missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
+post_setup_smoke_executed=false
+edge_rtdetr_command_passed=null
+edge_rtdetr_fallback_used=null
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+The target runtime dependency is ready, but local RT-DETR weights remain missing. No weights were downloaded or committed, no smoke was run, no CARLA route runtime was started, and no RT-DETR no-fallback / route / accuracy / benchmark result is claimed.
+
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 Phase 12C-YOLOv9-R1 was rerun as the selected single-route runtime confirmation gate. Evidence `experiments\phase12\20260701T172906Z` records `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`. The gate is blocked by local CARLA reachability: `carla_server_reachable=false`, `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`.

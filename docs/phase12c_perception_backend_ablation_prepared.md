@@ -452,6 +452,31 @@ recommended_next_phase=R1-RT-DETR-ASSET-SETUP
 
 The target CARLA Python 3.12 runtime can now import `ultralytics`, but RT-DETR optional rows remain unavailable because local operator-provided weights are missing. The row refresh remains blocked and no CARLA route runtime was started.
 
+## Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Addendum
+
+The local RT-DETR weight adoption gate produced blocked evidence at `experiments\phase12\20260702T071641Z`.
+
+```text
+target_perception_backend=rtdetr
+runtime_scope=rtdetr_local_weight_adoption_no_fallback_smoke_only
+status=blocked
+ultralytics_import_ready_after=true
+ultralytics_version_after=8.4.84
+rtdetr_weights_configured=true
+rtdetr_weights_ready=false
+rtdetr_weights_path=D:\AIModels\rtdetr\rtdetr-l.pt
+missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
+post_setup_smoke_executed=false
+edge_rtdetr_command_passed=null
+edge_rtdetr_fallback_used=null
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+phase12c_rtdetr_backend_unavailable_count=5
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+RT-DETR optional rows remain unavailable because local weights are missing. The smoke and row refresh were correctly skipped, and no CARLA route runtime was started.
+
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 The latest selected YOLOv9 runtime confirmation gate is `experiments\phase12\20260701T172906Z`.

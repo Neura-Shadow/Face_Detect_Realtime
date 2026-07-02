@@ -147,3 +147,27 @@ recommended_next_phase=R1-RT-DETR-ASSET-SETUP
 ```
 
 ASSET-EXEC installed the dependency only because the operator explicitly requested it. It still does not download or commit weights, modify baseline requirements, start CARLA route runtime, verify RT-DETR accuracy, or claim RT-DETR no-fallback readiness.
+
+## Follow-Up - RT-DETR-WEIGHTS-LOCAL
+
+```text
+Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Blocked - local RT-DETR weights are still missing.
+```
+
+```text
+rtdetr_weights_local_evidence_dir=experiments\phase12\20260702T071641Z
+ultralytics_import_ready_after=true
+ultralytics_version_after=8.4.84
+rtdetr_weights_configured=true
+rtdetr_weights_ready=false
+rtdetr_weights_path=D:\AIModels\rtdetr\rtdetr-l.pt
+missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
+post_setup_smoke_executed=false
+edge_rtdetr_command_passed=null
+edge_rtdetr_fallback_used=null
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+WEIGHTS-LOCAL verifies only local operator-provided assets and no-fallback smoke readiness. Because the weight file is missing, the smoke and RT-DETR-only row refresh were not executed.

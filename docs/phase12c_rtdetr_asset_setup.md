@@ -1,22 +1,51 @@
-# Phase 12C-R1-RT-DETR-ASSET-SETUP / ASSET-EXEC - Dependency and Local Asset Gate
+# Phase 12C-R1-RT-DETR-ASSET-SETUP / ASSET-EXEC / WEIGHTS-LOCAL - Dependency and Local Asset Gate
 
 ## Status
 
 ```text
-Phase 12C-R1-RT-DETR-ASSET-EXEC Blocked - RT-DETR setup execution did not reach no-fallback readiness.
+Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Blocked - local RT-DETR weights are still missing.
 ```
 
-This phase follows the blocked RT-DETR unlock gate. ASSET-SETUP first prepared the CARLA Python 3.12 runtime setup path without executing install commands. ASSET-EXEC then explicitly executed the operator-approved dependency install into the target CARLA Python 3.12 runtime. Local RT-DETR weights remain an operator-provided external asset.
+This phase follows the blocked RT-DETR unlock gate. ASSET-SETUP first prepared the CARLA Python 3.12 runtime setup path without executing install commands. ASSET-EXEC then explicitly executed the operator-approved dependency install into the target CARLA Python 3.12 runtime. WEIGHTS-LOCAL verifies the operator-provided weight path and runs smoke only when the local file exists.
 
 ## Evidence
 
 ```text
+rtdetr_weights_local_evidence_dir=experiments\phase12\20260702T071641Z
 rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
 rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
 rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
 lightweight_evidence_dir=experiments\phase12\20260701T165325Z
 target_perception_backend=rtdetr
 ```
+
+## WEIGHTS-LOCAL Result
+
+```text
+phase=Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL
+status=blocked
+runtime_scope=rtdetr_local_weight_adoption_no_fallback_smoke_only
+ultralytics_import_ready_after=true
+ultralytics_version_after=8.4.84
+dependency_install_requested=false
+dependency_install_executed=false
+dependency_install_exit_code=null
+rtdetr_weights_configured=true
+rtdetr_weights_ready=false
+rtdetr_weights_path=D:\AIModels\rtdetr\rtdetr-l.pt
+missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
+rtdetr_weights_size_bytes=null
+rtdetr_weights_sha256=null
+post_setup_smoke_executed=false
+edge_rtdetr_command_passed=null
+edge_rtdetr_fallback_used=null
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+phase12c_rtdetr_backend_unavailable_count=5
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+The target runtime can import `ultralytics`, but the local operator-provided file `D:\AIModels\rtdetr\rtdetr-l.pt` is still missing. No post-setup smoke or RT-DETR-only rows refresh was executed.
 
 ## ASSET-EXEC Result
 
@@ -108,6 +137,18 @@ Post-setup EdgePerception smoke:
 
 ```powershell
 python scripts\run_phase12c_rtdetr_asset_setup.py --output-dir experiments\phase12 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --carla-root D:\CARLA\packages\CARLA_0.9.16 --run-post-setup-smoke
+```
+
+WEIGHTS-LOCAL local weight audit:
+
+```powershell
+python scripts\run_phase12c_rtdetr_asset_setup.py --output-dir experiments\phase12 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --carla-root D:\CARLA\packages\CARLA_0.9.16 --verify-local-weights --rtdetr-unlock-evidence-dir experiments\phase12\20260702T022636Z-1
+```
+
+WEIGHTS-LOCAL smoke and row-refresh gate:
+
+```powershell
+python scripts\run_phase12c_rtdetr_asset_setup.py --output-dir experiments\phase12 --python-executable D:\CARLA\envs\ma-vlna-carla312\python.exe --carla-root D:\CARLA\packages\CARLA_0.9.16 --verify-local-weights --run-post-setup-smoke --refresh-rtdetr-rows-if-smoke-passed --rtdetr-unlock-evidence-dir experiments\phase12\20260702T022636Z-1
 ```
 
 ## Boundary

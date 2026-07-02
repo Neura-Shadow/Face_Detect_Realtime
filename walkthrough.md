@@ -1,28 +1,29 @@
-# Walkthrough - Phase 12C-R1-RT-DETR-ASSET-EXEC
+# Walkthrough - Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL
 
 ## Latest Result
 
 ```text
-Phase 12C-R1-RT-DETR-ASSET-EXEC Blocked - RT-DETR setup execution did not reach no-fallback readiness.
+Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Blocked - local RT-DETR weights are still missing.
 ```
 
 ```text
+rtdetr_weights_local_evidence_dir=experiments\phase12\20260702T071641Z
 rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
 rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
 rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
 lightweight_evidence_dir=experiments\phase12\20260701T165325Z
 target_perception_backend=rtdetr
-runtime_scope=rtdetr_dependency_asset_setup_execution_only
+runtime_scope=rtdetr_local_weight_adoption_no_fallback_smoke_only
 status=blocked
-ultralytics_import_ready_before=false
 ultralytics_import_ready_after=true
 ultralytics_version_after=8.4.84
-dependency_install_requested=true
-dependency_install_executed=true
-dependency_install_exit_code=0
+dependency_install_requested=false
+dependency_install_executed=false
+dependency_install_exit_code=null
 rtdetr_weights_configured=true
 rtdetr_weights_ready=false
 rtdetr_weights_path=D:\AIModels\rtdetr\rtdetr-l.pt
+missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
 edge_rtdetr_command_passed=null
 edge_rtdetr_fallback_used=null
 edge_rtdetr_no_fallback_verified=false
@@ -36,7 +37,23 @@ rtdetr_accuracy_verified=false
 full_phase12c_perception_ablation_runtime_pass=false
 ```
 
-R1-LIGHTWEIGHT ended blocked because no operator-provided lightweight YOLOv9 weights were configured, so the branch moved to RT-DETR. R1-RT-DETR-UNLOCK confirmed the command path exists, then blocked because `ultralytics` and `RTDETR_WEIGHTS` were unavailable in the target runtime. R1-RT-DETR-ASSET-SETUP wrote the explicit setup commands. R1-RT-DETR-ASSET-EXEC then explicitly installed `ultralytics` into the CARLA Python 3.12 runtime, but stopped before smoke because the local RT-DETR weights remain missing.
+R1-LIGHTWEIGHT ended blocked because no operator-provided lightweight YOLOv9 weights were configured, so the branch moved to RT-DETR. R1-RT-DETR-UNLOCK confirmed the command path exists, then blocked because `ultralytics` and `RTDETR_WEIGHTS` were unavailable in the target runtime. R1-RT-DETR-ASSET-SETUP wrote the explicit setup commands. R1-RT-DETR-ASSET-EXEC installed `ultralytics` into the CARLA Python 3.12 runtime. R1-RT-DETR-WEIGHTS-LOCAL now confirms the remaining blocker is only the missing local weight file.
+
+## Previous Walkthrough - RT-DETR-ASSET-EXEC
+
+```text
+rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
+ultralytics_import_ready_after=true
+ultralytics_version_after=8.4.84
+dependency_install_requested=true
+dependency_install_executed=true
+dependency_install_exit_code=0
+rtdetr_weights_configured=true
+rtdetr_weights_ready=false
+post_setup_smoke_executed=false
+edge_rtdetr_no_fallback_verified=false
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
 
 ## Previous Walkthrough - RT-DETR-ASSET-SETUP
 
