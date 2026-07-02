@@ -263,4 +263,16 @@ R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701
 
 The latest selected runtime confirmation gate produced blocked evidence at `experiments\phase12\20260702T182842Z`. The external YOLOv9 source-root and weights remained ready, and `EdgePerception --test yolov9` stayed no-fallback: `edge_yolov9_fallback_used=false` and `edge_yolov9_no_fallback_verified=true`. The runtime blocker was `carla_server_reachable=false`, so no child route runtime was launched and `metrics_read_status=not_run`. The dry-run command evidence is `experiments\phase12\20260702T182831Z`.
 
+## Phase 12C-SUM Addendum
+
+```text
+Phase 12C-SUM Completed
+yolov9_route_begin_and_latency_profiled=true
+yolov9_route_completion_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
+```
+
+Phase 12C-SUM keeps this source adapter verification as a readiness claim only. It does not promote YOLOv9 to route completion, selected runtime pass, model accuracy, full ablation pass, Leaderboard, formal route benchmark, or infraction benchmark.
+
 This is not a full Phase 12C perception ablation runtime pass, not YOLOv9 accuracy evidence, not RT-DETR runtime verification, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.

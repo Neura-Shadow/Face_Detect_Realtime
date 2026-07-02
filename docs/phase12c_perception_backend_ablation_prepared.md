@@ -502,6 +502,21 @@ Phase 12C-SUM handoff:
 | `yolov9` | `route_begin_and_latency_profiled_but_not_route_completion` | `experiments\phase12\20260630T060621Z`; `experiments\phase12\20260701T045047Z`; `experiments\phase12\20260701T064944Z`; `experiments\phase12\20260701T103721Z`; `experiments\phase12\20260701T115744Z`; `experiments\phase12\20260701T165325Z` | No route completion, no model accuracy, no full ablation pass |
 | `rtdetr` | `external_asset_blocked` | `experiments\phase12\20260702T022636Z-1`; `experiments\phase12\20260702T040554Z`; `experiments\phase12\20260702T044516Z`; `experiments\phase12\20260702T125105Z` | No no-fallback readiness, no runtime, no accuracy |
 
+## Phase 12C-SUM Addendum
+
+```text
+Phase 12C-SUM Completed
+dummy_backend_runtime_confirmed=true
+yolov9_route_begin_and_latency_profiled=true
+yolov9_route_completion_verified=false
+rtdetr_external_asset_blocked=true
+rtdetr_no_fallback_ready=false
+full_phase12c_perception_ablation_runtime_pass=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
+```
+
+The summary artifact is `docs/phase12c_perception_backend_ablation_summary.md` with machine-readable state in `docs/phase12c_perception_backend_ablation_summary.json`. It is not a full backend ablation runtime pass; it only normalizes current evidence and handoff decisions.
+
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 The latest selected YOLOv9 runtime confirmation gate is `experiments\phase12\20260702T182842Z`; the dry-run command evidence is `experiments\phase12\20260702T182831Z`.

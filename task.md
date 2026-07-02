@@ -1,46 +1,54 @@
-# Current Task - Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE
+# Current Task - Phase 12C-SUM
 
 ## Latest Status
 
 ```text
-Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Completed - RT-DETR branch is formally frozen as external local-weight blocked and Phase 12C summary handoff is prepared.
+Phase 12C-SUM Completed - perception backend ablation summary and evidence handoff are prepared without claiming full Phase 12C runtime pass.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE is docs and summary only. It does not install dependencies, download RT-DETR weights, create fake weights, run post-setup smoke, refresh RT-DETR rows, start CARLA, or claim RT-DETR no-fallback readiness, runtime pass, route completion, accuracy, full Phase 12C ablation, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+Phase 12C-SUM is summary and evidence normalization only. It does not start CARLA, execute CARLA route runtime, run YOLOv9 route completion, run RT-DETR smoke, install dependencies, download weights, create fake weights, modify baseline requirements, or claim full Phase 12C perception ablation runtime pass.
 ```
 
 ## Latest Evidence
 
 ```text
-rtdetr_weights_local_rerun_evidence_dir=experiments\phase12\20260702T125105Z
-rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
-rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
-rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
-target_perception_backend=rtdetr
-runtime_scope=docs_summary_external_asset_blocker_freeze_only
-rt_detr_branch_frozen_external_asset_blocker=true
-rtdetr_dependency_ready=true
-ultralytics_import_ready_after=true
-ultralytics_version_after=8.4.84
-rtdetr_weights_configured=true
-rtdetr_weights_ready=false
-missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
+summary_doc=docs\phase12c_perception_backend_ablation_summary.md
+summary_json=docs\phase12c_perception_backend_ablation_summary.json
+runtime_scope=summary_and_evidence_handoff_only
+dummy_backend_runtime_confirmed=true
+yolov9_route_begin_and_latency_profiled=true
+yolov9_route_completion_verified=false
+rtdetr_external_asset_blocked=true
 rtdetr_no_fallback_ready=false
-post_setup_smoke_executed=false
-edge_rtdetr_no_fallback_verified=false
-phase12c_rtdetr_rows_available=false
-recommended_next_phase_without_weights=Phase 12C-SUM
-recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
+recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
+recommended_rtdetr_reentry_phase=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
+recommended_yolov9_lightweight_reentry_phase=R1-YOLOv9-LIGHTWEIGHT-RERUN
 carla_route_runtime_executed=false
-rtdetr_runtime_verified=false
-rtdetr_accuracy_verified=false
 full_phase12c_perception_ablation_runtime_pass=false
 ```
 
-ASSET-EXEC resolved the dependency side by installing `ultralytics 8.4.84` in the CARLA Python 3.12 runtime. WEIGHTS-LOCAL and WEIGHTS-LOCAL-RERUN both correctly stopped before smoke because `D:\AIModels\rtdetr\rtdetr-l.pt` is missing. The RT-DETR branch is frozen until the operator provides local weights; without weights, the project should move to `Phase 12C-SUM`.
+Backend summary: dummy is runtime-confirmed on 5 calibrated smoke rows; YOLOv9 has no-fallback source adapter readiness plus route-begin and latency evidence but no route completion; RT-DETR is frozen as an external local-weight blocker with dependency ready and local weights missing.
+
+## Previous Phase - RT-DETR-ASSET-BLOCKER-FREEZE
+
+```text
+Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Completed - RT-DETR branch is formally frozen as external local-weight blocked and Phase 12C summary handoff is prepared.
+```
+
+```text
+rtdetr_weights_local_rerun_evidence_dir=experiments\phase12\20260702T125105Z
+rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
+rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
+rt_detr_branch_frozen_external_asset_blocker=true
+rtdetr_dependency_ready=true
+rtdetr_weights_ready=false
+missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
+rtdetr_no_fallback_ready=false
+phase12c_rtdetr_rows_available=false
+```
 
 ## Previous Phase - RT-DETR-WEIGHTS-LOCAL
 

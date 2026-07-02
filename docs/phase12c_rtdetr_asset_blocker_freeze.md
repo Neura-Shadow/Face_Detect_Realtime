@@ -45,6 +45,17 @@ ASSET-EXEC installed the RT-DETR dependency side successfully in the CARLA Pytho
 
 The branch remains frozen until the operator provides local weights. When the weight file exists, the next technical branch is `R1-RT-DETR-WEIGHTS-LOCAL-RERUN`. Without weights, the project should move to `Phase 12C-SUM`.
 
+Phase 12C-SUM has now been prepared:
+
+```text
+Phase 12C-SUM Completed
+rtdetr_external_asset_blocked=true
+rtdetr_no_fallback_ready=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
+```
+
+Summary artifacts: `docs\phase12c_perception_backend_ablation_summary.md` and `docs\phase12c_perception_backend_ablation_summary.json`.
+
 ## Phase 12C-SUM Handoff
 
 | backend | status | key evidence | claim | boundary |

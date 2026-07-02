@@ -10,6 +10,8 @@ This phase moves beyond the YOLOv9 lightweight blocker into a separate RT-DETR o
 
 Latest freeze interpretation: ASSET-EXEC later resolved the dependency side (`ultralytics_import_ready_after=true`, `ultralytics_version_after=8.4.84`), but local weights remain missing at `D:\AIModels\rtdetr\rtdetr-l.pt`. Therefore `rtdetr_weights_ready=false`, `rtdetr_no_fallback_ready=false`, `edge_rtdetr_no_fallback_verified=false`, and `phase12c_rtdetr_rows_available=false`. The branch is frozen as `rt_detr_branch_frozen_external_asset_blocker=true`; without weights the next branch is `Phase 12C-SUM`, and if weights appear the next technical branch is `R1-RT-DETR-WEIGHTS-LOCAL-RERUN`.
 
+Phase 12C-SUM now records RT-DETR as `external_asset_blocked` and recommends `Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE` unless local weights become available.
+
 ## Evidence
 
 ```text

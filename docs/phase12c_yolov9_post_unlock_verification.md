@@ -269,4 +269,16 @@ R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701
 
 The latest R1 gate evidence is `experiments\phase12\20260702T182842Z`. Post-unlock readiness remained true: `post_unlock_verified=true`, `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, and `edge_yolov9_no_fallback_verified=true`. The selected runtime row stayed blocked because `carla_server_reachable=false`; consequently `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. The dry-run command evidence is `experiments\phase12\20260702T182831Z`.
 
+## Phase 12C-SUM Addendum
+
+```text
+Phase 12C-SUM Completed
+yolov9_route_begin_and_latency_profiled=true
+yolov9_route_completion_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
+```
+
+Phase 12C-SUM summarizes YOLOv9 as no-fallback source adapter verified, selected route loop entered, and latency bottleneck characterized. It does not claim selected route runtime pass, route completion, model accuracy, full Phase 12C ablation pass, Leaderboard, formal route benchmark, or infraction benchmark.
+
 This preserves the boundary that post-unlock verification is readiness evidence, not route completion, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.

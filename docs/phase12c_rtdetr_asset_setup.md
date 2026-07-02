@@ -28,6 +28,15 @@ recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
 
 WEIGHTS-LOCAL and WEIGHTS-LOCAL-RERUN both correctly stopped before smoke because local weights are missing. No no-fallback readiness is claimed, no RT-DETR rows are available, and the RT-DETR branch is frozen until the operator provides `D:\AIModels\rtdetr\rtdetr-l.pt`.
 
+Phase 12C-SUM now records this branch as:
+
+```text
+Phase 12C-SUM Completed
+rtdetr_external_asset_blocked=true
+rtdetr_no_fallback_ready=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
+```
+
 ## Evidence
 
 ```text

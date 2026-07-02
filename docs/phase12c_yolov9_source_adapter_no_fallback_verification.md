@@ -239,4 +239,16 @@ R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701
 
 The latest selected runtime confirmation gate produced blocked evidence at `experiments\phase12\20260702T182842Z`. The source adapter contract remained valid: `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`. The blocker was CARLA reachability: `carla_server_reachable=false`, so `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. The dry-run command evidence is `experiments\phase12\20260702T182831Z`.
 
+## Phase 12C-SUM Addendum
+
+```text
+Phase 12C-SUM Completed
+yolov9_route_begin_and_latency_profiled=true
+yolov9_route_completion_verified=false
+full_phase12c_perception_ablation_runtime_pass=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
+```
+
+Phase 12C-SUM records YOLOv9 as source-ready and route-begin / latency-profiled only. It does not claim YOLOv9 selected route runtime pass, route completion, model accuracy, full Phase 12C ablation pass, Leaderboard, formal route benchmark, or infraction benchmark.
+
 This keeps SRC-V as no-fallback readiness evidence. It is not a selected route pass, model accuracy verification, full Phase 12C ablation, RT-DETR runtime evidence, Leaderboard, formal route benchmark, or infraction benchmark evidence.

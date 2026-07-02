@@ -1,44 +1,44 @@
-# Walkthrough - Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE
+# Walkthrough - Phase 12C-SUM
 
 ## Latest Result
 
 ```text
-Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Completed - RT-DETR branch is formally frozen as external local-weight blocked and Phase 12C summary handoff is prepared.
+Phase 12C-SUM Completed - perception backend ablation summary and evidence handoff are prepared without claiming full Phase 12C runtime pass.
 ```
 
 ```text
-rtdetr_weights_local_rerun_evidence_dir=experiments\phase12\20260702T125105Z
-rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
-rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
-target_perception_backend=rtdetr
-runtime_scope=docs_summary_external_asset_blocker_freeze_only
-rt_detr_branch_frozen_external_asset_blocker=true
-rtdetr_dependency_ready=true
-ultralytics_import_ready_after=true
-ultralytics_version_after=8.4.84
-rtdetr_weights_ready=false
-missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
+summary_doc=docs\phase12c_perception_backend_ablation_summary.md
+summary_json=docs\phase12c_perception_backend_ablation_summary.json
+runtime_scope=summary_and_evidence_handoff_only
+dummy_backend_runtime_confirmed=true
+yolov9_route_begin_and_latency_profiled=true
+yolov9_route_completion_verified=false
+rtdetr_external_asset_blocked=true
 rtdetr_no_fallback_ready=false
-post_setup_smoke_executed=false
-edge_rtdetr_no_fallback_verified=false
-phase12c_rtdetr_rows_available=false
-recommended_next_phase_without_weights=Phase 12C-SUM
-recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
+recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
 carla_route_runtime_executed=false
-rtdetr_runtime_verified=false
-rtdetr_accuracy_verified=false
 full_phase12c_perception_ablation_runtime_pass=false
 ```
 
-The RT-DETR dependency side is ready after ASSET-EXEC, but local weights are still missing. The branch is frozen because repeating WEIGHTS-LOCAL without `D:\AIModels\rtdetr\rtdetr-l.pt` would only reproduce the same blocked evidence.
+Phase 12C-SUM consolidates the three perception backend lines without running new runtime work. Dummy is runtime-confirmed, YOLOv9 is source-ready and route-begin/latency-profiled but not route-complete, and RT-DETR is external-asset blocked.
 
-## Phase 12C-SUM Handoff
+## Backend Handoff
 
 | backend | status | evidence | boundary |
 | --- | --- | --- | --- |
-| `dummy` | runtime_confirmed | `experiments\phase12\20260628T173019Z` | Not infraction benchmark, not Leaderboard |
-| `yolov9` | route_begin_and_latency_profiled_but_not_route_completion | `experiments\phase12\20260630T060621Z`, `experiments\phase12\20260701T064944Z`, `experiments\phase12\20260701T103721Z`, `experiments\phase12\20260701T115744Z` | No route completion, no accuracy, no full ablation pass |
-| `rtdetr` | external_asset_blocked | `experiments\phase12\20260702T022636Z-1`, `experiments\phase12\20260702T044516Z`, `experiments\phase12\20260702T125105Z` | No no-fallback readiness, no runtime, no accuracy |
+| `dummy` | `runtime_confirmed` | `experiments\phase12\20260628T173019Z` | Not infraction benchmark, not Leaderboard, not formal route benchmark |
+| `yolov9` | `route_begin_and_latency_profiled_but_not_route_completion` | `experiments\phase12\20260630T060621Z`, `experiments\phase12\20260701T064944Z`, `experiments\phase12\20260701T103721Z`, `experiments\phase12\20260701T115744Z`, `experiments\phase12\20260702T182842Z` | No route completion, no selected runtime pass, no accuracy |
+| `rtdetr` | `external_asset_blocked` | `experiments\phase12\20260702T022636Z-1`, `experiments\phase12\20260702T044516Z`, `experiments\phase12\20260702T125105Z`, `docs\phase12c_rtdetr_asset_blocker_freeze.md` | No no-fallback readiness, no runtime, no accuracy |
+
+## Previous Walkthrough - RT-DETR-ASSET-BLOCKER-FREEZE
+
+```text
+rt_detr_branch_frozen_external_asset_blocker=true
+rtdetr_dependency_ready=true
+rtdetr_weights_ready=false
+recommended_next_phase_without_weights=Phase 12C-SUM
+recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
+```
 
 ## Previous Walkthrough - RT-DETR-WEIGHTS-LOCAL
 

@@ -90,6 +90,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-R1-RT-DETR-ASSET-EXEC explicit dependency install gate: **Blocked - `experiments\phase12\20260702T044516Z` explicitly installed `ultralytics` into the CARLA Python 3.12 runtime (`dependency_install_exit_code=0`, `ultralytics_import_ready_after=true`, version `8.4.84`), but local `RTDETR_WEIGHTS` is still missing; no post-setup smoke, route runtime, accuracy, or benchmark claim was executed**
   - Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL local weight adoption rerun gate: **Blocked - `experiments\phase12\20260702T125105Z` verified `ultralytics_import_ready_after=true` and `RTDETR_WEIGHTS` configured to `D:\AIModels\rtdetr\rtdetr-l.pt`, but the local file is still missing; no post-setup smoke, RT-DETR rows refresh, route runtime, accuracy, or benchmark claim was executed**
   - Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE: **Completed - RT-DETR branch is formally frozen as external local-weight blocked; `rtdetr_dependency_ready=true`, `rtdetr_weights_ready=false`, `rtdetr_no_fallback_ready=false`, `phase12c_rtdetr_rows_available=false`; without weights the next branch is `Phase 12C-SUM`, with weights the next technical branch is `R1-RT-DETR-WEIGHTS-LOCAL-RERUN`**
+  - Phase 12C-SUM perception backend ablation summary: **Completed - dummy runtime smoke confirmed, YOLOv9 route-begin/latency profiled without route completion, and RT-DETR frozen as external-asset blocked; `full_phase12c_perception_ablation_runtime_pass=false`, recommended next phase `Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE`**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -295,6 +296,7 @@ Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 > Phase 12C-R1-RT-DETR-UNLOCK optional backend readiness gate 請見 [docs/phase12c_rtdetr_unlock_verification.md](docs/phase12c_rtdetr_unlock_verification.md)
 > Phase 12C-R1-RT-DETR-ASSET-SETUP / ASSET-EXEC / WEIGHTS-LOCAL dependency/local asset gate 請見 [docs/phase12c_rtdetr_asset_setup.md](docs/phase12c_rtdetr_asset_setup.md)
 > Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE summary handoff 請見 [docs/phase12c_rtdetr_asset_blocker_freeze.md](docs/phase12c_rtdetr_asset_blocker_freeze.md)
+> Phase 12C-SUM perception backend ablation summary 請見 [docs/phase12c_perception_backend_ablation_summary.md](docs/phase12c_perception_backend_ablation_summary.md)
 
 ```powershell
 python scripts\run_phase12_experiment_plan.py --output-dir experiments\phase12
@@ -572,6 +574,21 @@ rtdetr_no_fallback_ready=false
 phase12c_rtdetr_rows_available=false
 recommended_next_phase_without_weights=Phase 12C-SUM
 recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
+```
+
+Phase 12C-SUM latest summary:
+
+```text
+Phase 12C-SUM Completed
+summary_doc=docs\phase12c_perception_backend_ablation_summary.md
+summary_json=docs\phase12c_perception_backend_ablation_summary.json
+dummy_backend_runtime_confirmed=true
+yolov9_route_begin_and_latency_profiled=true
+yolov9_route_completion_verified=false
+rtdetr_external_asset_blocked=true
+rtdetr_no_fallback_ready=false
+full_phase12c_perception_ablation_runtime_pass=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
 ```
 
 Phase 12C-YOLOv9-R1-DIAG timeout diagnosis（bounded instrumentation only；不宣稱 YOLOv9 runtime pass）：

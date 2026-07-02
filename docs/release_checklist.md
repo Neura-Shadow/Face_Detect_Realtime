@@ -1,5 +1,11 @@
 # MA-VLNA Release Checklist
 
+## Latest Phase 12C-SUM Addendum
+
+- [x] **Phase 12C-SUM Completed**: perception backend ablation summary and evidence handoff are prepared without claiming full Phase 12C runtime pass. The summary records `dummy_backend_runtime_confirmed=true`, `yolov9_route_begin_and_latency_profiled=true`, `yolov9_route_completion_verified=false`, `rtdetr_external_asset_blocked=true`, `rtdetr_no_fallback_ready=false`, `full_phase12c_perception_ablation_runtime_pass=false`, and `recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE`.
+
+Boundary: this is summary and evidence normalization only. It does not start CARLA, execute route runtime, run YOLOv9 route completion, run RT-DETR smoke, install dependencies, download weights, create fake weights, modify baseline requirements, or claim YOLOv9 selected route runtime pass, YOLOv9 route completion, YOLOv9 accuracy, RT-DETR readiness/runtime/accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
 ## Latest Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Addendum
 
 - [x] **Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE Completed**: RT-DETR branch is formally frozen as an external local-weight blocker and Phase 12C summary handoff is prepared. The summary records `rt_detr_branch_frozen_external_asset_blocker=true`, `rtdetr_dependency_ready=true`, `ultralytics_import_ready_after=true`, `ultralytics_version_after=8.4.84`, `rtdetr_weights_ready=false`, `missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt`, `rtdetr_no_fallback_ready=false`, `edge_rtdetr_no_fallback_verified=false`, `phase12c_rtdetr_rows_available=false`, `recommended_next_phase_without_weights=Phase 12C-SUM`, and `recommended_next_phase_if_weights_available=R1-RT-DETR-WEIGHTS-LOCAL-RERUN`.

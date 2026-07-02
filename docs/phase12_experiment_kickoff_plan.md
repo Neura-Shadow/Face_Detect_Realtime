@@ -1073,6 +1073,21 @@ Phase 12C-SUM handoff:
 | `yolov9` | `route_begin_and_latency_profiled_but_not_route_completion` | source adapter `experiments\phase12\20260630T060621Z`; setup `experiments\phase12\20260701T045047Z`; short route-begin `experiments\phase12\20260701T064944Z`; latency `experiments\phase12\20260701T103721Z`; latency opt `experiments\phase12\20260701T115744Z`; lightweight blocked `experiments\phase12\20260701T165325Z` | No-fallback source adapter verified, selected route loop entered, latency bottleneck characterized | No route completion, no model accuracy, no full ablation pass |
 | `rtdetr` | `external_asset_blocked` | unlock `experiments\phase12\20260702T022636Z-1`; asset setup `experiments\phase12\20260702T040554Z`; asset exec `experiments\phase12\20260702T044516Z`; weights-local rerun `experiments\phase12\20260702T125105Z` | Dependency installed, local weights missing | No no-fallback readiness, no runtime, no accuracy |
 
+## Phase 12C-SUM Addendum
+
+```text
+Phase 12C-SUM Completed
+dummy_backend_runtime_confirmed=true
+yolov9_route_begin_and_latency_profiled=true
+yolov9_route_completion_verified=false
+rtdetr_external_asset_blocked=true
+rtdetr_no_fallback_ready=false
+full_phase12c_perception_ablation_runtime_pass=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
+```
+
+Phase 12C-SUM normalizes existing evidence into `docs/phase12c_perception_backend_ablation_summary.md` and `docs/phase12c_perception_backend_ablation_summary.json`. It is summary-only: it does not start CARLA, execute route runtime, run YOLOv9 route completion, run RT-DETR smoke, install dependencies, download weights, create fake weights, modify baseline requirements, or upgrade blocked/partial statuses into runtime passes.
+
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 Phase 12C-YOLOv9-R1 was rerun as the selected single-route runtime confirmation gate. Evidence `experiments\phase12\20260702T182842Z` records `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`. The gate is blocked by local CARLA reachability: `carla_server_reachable=false`, `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. The dry-run command evidence is `experiments\phase12\20260702T182831Z`.
