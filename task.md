@@ -1,32 +1,36 @@
-# Current Task - Phase 12C-R1-RT-DETR-ASSET-SETUP
+# Current Task - Phase 12C-R1-RT-DETR-ASSET-EXEC
 
 ## Latest Status
 
 ```text
-Phase 12C-R1-RT-DETR-ASSET-SETUP Command-Ready - explicit RT-DETR setup commands and asset contract are written, but setup was not executed.
+Phase 12C-R1-RT-DETR-ASSET-EXEC Blocked - RT-DETR setup execution did not reach no-fallback readiness.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-R1-RT-DETR-ASSET-SETUP is dependency and local asset setup only. It does not silently install dependencies, does not download RT-DETR weights, does not start CARLA route runtime, does not claim RT-DETR route runtime pass, does not claim RT-DETR accuracy, and does not claim full Phase 12C perception ablation runtime pass, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+Phase 12C-R1-RT-DETR-ASSET-EXEC is explicit dependency installation and local asset checking only. It does not download RT-DETR weights, does not start CARLA route runtime, does not claim RT-DETR route runtime pass, does not claim RT-DETR accuracy, and does not claim full Phase 12C perception ablation runtime pass, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
 ```
 
 ## Latest Evidence
 
 ```text
+rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
 rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
 rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
 lightweight_evidence_dir=experiments\phase12\20260701T165325Z
 target_perception_backend=rtdetr
-runtime_scope=rtdetr_dependency_asset_setup_only
-status=command_ready
+runtime_scope=rtdetr_dependency_asset_setup_execution_only
+status=blocked
 ultralytics_import_ready_before=false
-ultralytics_import_ready_after=false
-dependency_install_requested=false
-dependency_install_executed=false
-rtdetr_weights_configured=false
+ultralytics_import_ready_after=true
+ultralytics_version_after=8.4.84
+dependency_install_requested=true
+dependency_install_executed=true
+dependency_install_exit_code=0
+rtdetr_weights_configured=true
 rtdetr_weights_ready=false
+rtdetr_weights_path=D:\AIModels\rtdetr\rtdetr-l.pt
 rtdetr_model_hint=rtdetr-l.pt
 rtdetr_device=auto
 edge_rtdetr_command_passed=null
@@ -34,10 +38,28 @@ edge_rtdetr_fallback_used=null
 edge_rtdetr_no_fallback_verified=false
 post_setup_smoke_executed=false
 phase12c_rtdetr_rows_available=false
+phase12c_rtdetr_backend_unavailable_count=5
 recommended_next_phase=R1-RT-DETR-ASSET-SETUP
 ```
 
-The setup wrapper wrote auditable commands for dependency install, asset directory preparation, local weights configuration, post-setup smoke, and optional RT-DETR-only row refresh. No install was executed because `--execute-dependency-install` was not provided, and no weights were downloaded or committed.
+The explicit dependency install ran only against `D:\CARLA\envs\ma-vlna-carla312\python.exe` and succeeded. The target runtime now imports `ultralytics`, but the local operator-provided weight file `D:\AIModels\rtdetr\rtdetr-l.pt` is still missing, so post-setup EdgePerception smoke was not executed and no no-fallback readiness is claimed.
+
+## Previous Phase - RT-DETR-ASSET-SETUP
+
+```text
+Phase 12C-R1-RT-DETR-ASSET-SETUP Command-Ready - explicit RT-DETR setup commands and asset contract are written, but setup was not executed.
+```
+
+```text
+rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
+dependency_install_requested=false
+dependency_install_executed=false
+rtdetr_weights_configured=false
+rtdetr_weights_ready=false
+post_setup_smoke_executed=false
+edge_rtdetr_no_fallback_verified=false
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
 
 ## Previous Phase - RT-DETR-UNLOCK
 

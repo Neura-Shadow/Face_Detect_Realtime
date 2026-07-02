@@ -425,6 +425,33 @@ recommended_next_phase=R1-RT-DETR-ASSET-SETUP
 
 The setup gate writes operator commands for dependency installation, asset directory preparation, local RT-DETR weights, post-setup EdgePerception smoke, and optional RT-DETR-only row refresh. It does not install dependencies or download weights unless the operator runs an explicit setup command, and it does not start CARLA route runtime.
 
+## Phase 12C-R1-RT-DETR-ASSET-EXEC Addendum
+
+The explicit RT-DETR dependency setup gate produced blocked evidence at `experiments\phase12\20260702T044516Z`.
+
+```text
+target_perception_backend=rtdetr
+runtime_scope=rtdetr_dependency_asset_setup_execution_only
+status=blocked
+ultralytics_import_ready_before=false
+ultralytics_import_ready_after=true
+ultralytics_version_after=8.4.84
+dependency_install_requested=true
+dependency_install_executed=true
+dependency_install_exit_code=0
+rtdetr_weights_configured=true
+rtdetr_weights_ready=false
+post_setup_smoke_executed=false
+edge_rtdetr_command_passed=null
+edge_rtdetr_fallback_used=null
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+phase12c_rtdetr_backend_unavailable_count=5
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+The target CARLA Python 3.12 runtime can now import `ultralytics`, but RT-DETR optional rows remain unavailable because local operator-provided weights are missing. The row refresh remains blocked and no CARLA route runtime was started.
+
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
 The latest selected YOLOv9 runtime confirmation gate is `experiments\phase12\20260701T172906Z`.

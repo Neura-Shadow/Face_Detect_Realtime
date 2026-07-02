@@ -29,16 +29,20 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "experiments" / "phase12"
 DEFAULT_CARLA_ROOT = Path(r"D:\CARLA\packages\CARLA_0.9.16")
 DEFAULT_CARLA_PYTHON = r"D:\CARLA\envs\ma-vlna-carla312\python.exe"
 DEFAULT_RTDETR_UNLOCK_EVIDENCE_DIR = Path(r"experiments\phase12\20260702T022636Z-1")
+DEFAULT_RTDETR_ASSET_SETUP_EVIDENCE_DIR = Path(r"experiments\phase12\20260702T040554Z")
 DEFAULT_LIGHTWEIGHT_EVIDENCE_DIR = Path(r"experiments\phase12\20260701T165325Z")
 DEFAULT_ASSET_DIR = Path(r"D:\AIModels\rtdetr")
 DEFAULT_ASSET_PATH = DEFAULT_ASSET_DIR / "rtdetr-l.pt"
 
-PHASE = "Phase 12C-R1-RT-DETR-ASSET-SETUP"
-RUNTIME_SCOPE = "rtdetr_dependency_asset_setup_only"
+PHASE_SETUP = "Phase 12C-R1-RT-DETR-ASSET-SETUP"
+PHASE_EXEC = "Phase 12C-R1-RT-DETR-ASSET-EXEC"
+RUNTIME_SCOPE_SETUP = "rtdetr_dependency_asset_setup_only"
+RUNTIME_SCOPE_EXEC = "rtdetr_dependency_asset_setup_execution_only"
 STATUS_PREPARED = "prepared"
 STATUS_COMMAND_READY = "command_ready"
+STATUS_PARTIAL = "partial"
 STATUS_BLOCKED = "blocked"
-STATUS_LINES = {
+STATUS_LINES_SETUP = {
     STATUS_PREPARED: (
         "Phase 12C-R1-RT-DETR-ASSET-SETUP Prepared - RT-DETR dependency and "
         "local asset setup are ready for no-fallback unlock verification."
@@ -50,6 +54,20 @@ STATUS_LINES = {
     STATUS_BLOCKED: (
         "Phase 12C-R1-RT-DETR-ASSET-SETUP Blocked - RT-DETR dependency or "
         "local model assets remain unavailable."
+    ),
+}
+STATUS_LINES_EXEC = {
+    STATUS_PREPARED: (
+        "Phase 12C-R1-RT-DETR-ASSET-EXEC Prepared - RT-DETR dependency, local "
+        "weights, and post-setup no-fallback smoke are ready for unlock rerun."
+    ),
+    STATUS_PARTIAL: (
+        "Phase 12C-R1-RT-DETR-ASSET-EXEC Partial - RT-DETR dependency setup "
+        "completed, but local weights or no-fallback smoke are not fully verified."
+    ),
+    STATUS_BLOCKED: (
+        "Phase 12C-R1-RT-DETR-ASSET-EXEC Blocked - RT-DETR setup execution did "
+        "not reach no-fallback readiness."
     ),
 }
 
@@ -78,6 +96,7 @@ SUMMARY_COLUMNS = (
     "status",
     "status_line",
     "runtime_scope",
+    "rtdetr_asset_setup_evidence_dir",
     "rtdetr_unlock_evidence_dir",
     "lightweight_evidence_dir",
     "target_perception_backend",
@@ -166,6 +185,26 @@ def _display_path(path: Path) -> str:
         return str(path.relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
+
+
+def _is_execution_phase(args: argparse.Namespace) -> bool:
+    return bool(
+        args.execute_dependency_install
+        or args.run_post_setup_smoke
+        or args.run_rtdetr_rows_refresh
+    )
+
+
+def _phase_name(args: argparse.Namespace) -> str:
+    return PHASE_EXEC if _is_execution_phase(args) else PHASE_SETUP
+
+
+def _runtime_scope(args: argparse.Namespace) -> str:
+    return RUNTIME_SCOPE_EXEC if _is_execution_phase(args) else RUNTIME_SCOPE_SETUP
+
+
+def _status_lines(args: argparse.Namespace) -> dict[str, str]:
+    return STATUS_LINES_EXEC if _is_execution_phase(args) else STATUS_LINES_SETUP
 
 
 def _next_run_dir(output_dir: Path, timestamp: str | None) -> Path:
@@ -523,12 +562,36 @@ def _classify_status(
     *,
     args: argparse.Namespace,
     target_python_exists: bool,
+    dependency_install_executed: bool,
+    dependency_install_exit_code: int | None,
     dependency_after: bool,
     weights_ready: bool,
     smoke_executed: bool,
+    smoke_command_passed: bool | None,
     no_fallback_verified: bool,
     fallback_used: bool | None,
 ) -> str:
+    if _is_execution_phase(args):
+        if not target_python_exists:
+            return STATUS_BLOCKED
+        if args.execute_dependency_install and not dependency_install_executed:
+            return STATUS_BLOCKED
+        if args.execute_dependency_install and dependency_install_exit_code != 0:
+            return STATUS_BLOCKED
+        if not dependency_after:
+            return STATUS_BLOCKED
+        if weights_ready and smoke_executed and smoke_command_passed and no_fallback_verified:
+            return STATUS_PREPARED
+        if not weights_ready:
+            return STATUS_BLOCKED
+        if args.run_post_setup_smoke and smoke_executed and (
+            smoke_command_passed is False or fallback_used is True or not no_fallback_verified
+        ):
+            return STATUS_BLOCKED
+        if args.execute_dependency_install and dependency_after:
+            return STATUS_PARTIAL
+        return STATUS_BLOCKED
+
     if dependency_after and weights_ready and smoke_executed and no_fallback_verified:
         return STATUS_PREPARED
     if args.dry_run and not args.execute_dependency_install and not smoke_executed:
@@ -557,6 +620,8 @@ def _recommended_next_phase(
 ) -> str:
     if status == STATUS_PREPARED or no_fallback_verified:
         return "R1-RT-DETR-UNLOCK-RERUN"
+    if status == STATUS_PARTIAL:
+        return "R1-RT-DETR-ASSET-SETUP"
     if smoke_executed and fallback_used is True:
         return "R1-RT-DETR-ADAPTER-FIX"
     if not dependency_after or not weights_ready:
@@ -572,7 +637,7 @@ def _write_commands(path: Path, args: argparse.Namespace, run_dir: Path) -> None
         else f"{args.python_executable} -m pip install ultralytics"
     )
     lines = [
-        "# Phase 12C-R1-RT-DETR-ASSET-SETUP commands",
+        "# Phase 12C-R1-RT-DETR-ASSET-SETUP / ASSET-EXEC commands",
         "# These commands do not start CARLA route runtime and do not download weights automatically.",
         "",
         "# Dry-run / command scaffold",
@@ -631,7 +696,7 @@ def _write_commands(path: Path, args: argparse.Namespace, run_dir: Path) -> None
 
 
 def _write_readme(path: Path, summary: dict[str, Any]) -> None:
-    body = f"""# Phase 12C-R1-RT-DETR-ASSET-SETUP
+    body = f"""# {summary['phase']}
 
 Status:
 
@@ -665,7 +730,7 @@ recommended_next_phase={summary['recommended_next_phase']}
 
 def _manifest_payload(args: argparse.Namespace, run_dir: Path, summary: dict[str, Any]) -> dict[str, Any]:
     return {
-        "phase": PHASE,
+        "phase": summary["phase"],
         "status": summary["status"],
         "status_line": summary["status_line"],
         "created_at_utc": _utc_now().isoformat(),
@@ -695,7 +760,7 @@ def _manifest_payload(args: argparse.Namespace, run_dir: Path, summary: dict[str
 def _environment_payload(args: argparse.Namespace, run_dir: Path) -> dict[str, Any]:
     configured_weights = _configured_weights(args)
     return {
-        "phase": PHASE,
+        "phase": _phase_name(args),
         "run_dir": str(run_dir),
         "platform": platform.platform(),
         "base_python_executable": sys.executable,
@@ -715,13 +780,14 @@ def _environment_payload(args: argparse.Namespace, run_dir: Path) -> dict[str, A
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=PHASE)
+    parser = argparse.ArgumentParser(description=PHASE_SETUP)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--timestamp", default=None)
     parser.add_argument("--python-executable", default=DEFAULT_CARLA_PYTHON)
     parser.add_argument("--base-python", default=sys.executable)
     parser.add_argument("--carla-root", type=Path, default=DEFAULT_CARLA_ROOT)
     parser.add_argument("--rtdetr-unlock-evidence-dir", type=Path, default=DEFAULT_RTDETR_UNLOCK_EVIDENCE_DIR)
+    parser.add_argument("--rtdetr-asset-setup-evidence-dir", type=Path, default=DEFAULT_RTDETR_ASSET_SETUP_EVIDENCE_DIR)
     parser.add_argument("--lightweight-evidence-dir", type=Path, default=DEFAULT_LIGHTWEIGHT_EVIDENCE_DIR)
     parser.add_argument("--rtdetr-weights", default=None)
     parser.add_argument("--rtdetr-model-hint", default=os.getenv("RTDETR_MODEL_HINT", "rtdetr-l.pt"))
@@ -744,6 +810,7 @@ def main() -> int:
     args = build_parser().parse_args()
     args.output_dir = _resolve_repo_path(args.output_dir)
     args.rtdetr_unlock_evidence_dir = _resolve_repo_path(args.rtdetr_unlock_evidence_dir)
+    args.rtdetr_asset_setup_evidence_dir = _resolve_repo_path(args.rtdetr_asset_setup_evidence_dir)
     args.lightweight_evidence_dir = _resolve_repo_path(args.lightweight_evidence_dir)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     run_dir = _next_run_dir(args.output_dir, args.timestamp)
@@ -825,9 +892,12 @@ def main() -> int:
     status = _classify_status(
         args=args,
         target_python_exists=target_python_exists,
+        dependency_install_executed=dependency_install_executed,
+        dependency_install_exit_code=install_result.exit_code if install_result else None,
         dependency_after=after_probe.ready,
         weights_ready=asset["rtdetr_weights_ready"],
         smoke_executed=post_setup_smoke_executed,
+        smoke_command_passed=smoke_passed,
         no_fallback_verified=no_fallback_verified,
         fallback_used=fallback_used,
     )
@@ -841,12 +911,13 @@ def main() -> int:
     )
 
     summary: dict[str, Any] = {
-        "phase": PHASE,
+        "phase": _phase_name(args),
         "status": status,
-        "status_line": STATUS_LINES[status],
+        "status_line": _status_lines(args)[status],
         "dry_run": bool(args.dry_run),
-        "runtime_scope": RUNTIME_SCOPE,
+        "runtime_scope": _runtime_scope(args),
         "run_dir": str(run_dir),
+        "rtdetr_asset_setup_evidence_dir": _display_path(args.rtdetr_asset_setup_evidence_dir),
         "rtdetr_unlock_evidence_dir": _display_path(args.rtdetr_unlock_evidence_dir),
         "lightweight_evidence_dir": _display_path(args.lightweight_evidence_dir),
         "target_perception_backend": "rtdetr",

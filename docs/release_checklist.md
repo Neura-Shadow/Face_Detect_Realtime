@@ -1,5 +1,11 @@
 # MA-VLNA Release Checklist
 
+## Latest Phase 12C-R1-RT-DETR-ASSET-EXEC Addendum
+
+- [x] **Phase 12C-R1-RT-DETR-ASSET-EXEC Explicit Install Blocked**: `experiments\phase12\20260702T044516Z` records an operator-approved dependency install into the CARLA Python 3.12 runtime. `dependency_install_requested=true`, `dependency_install_executed=true`, `dependency_install_exit_code=0`, `ultralytics_import_ready_before=false`, `ultralytics_import_ready_after=true`, and `ultralytics_version_after=8.4.84`. The gate remains blocked because `rtdetr_weights_configured=true` but `rtdetr_weights_ready=false` for `D:\AIModels\rtdetr\rtdetr-l.pt`; therefore `post_setup_smoke_executed=false`, `edge_rtdetr_command_passed=null`, `edge_rtdetr_fallback_used=null`, `edge_rtdetr_no_fallback_verified=false`, `phase12c_rtdetr_rows_available=false`, and `recommended_next_phase=R1-RT-DETR-ASSET-SETUP`.
+
+Boundary: this is dependency setup and local asset checking only. No RT-DETR weights were downloaded or committed, baseline requirements were not modified, CARLA route runtime was not started, and this does not claim RT-DETR runtime pass, RT-DETR accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
 ## Latest Phase 12C-R1-RT-DETR-ASSET-SETUP Addendum
 
 - [x] **Phase 12C-R1-RT-DETR-ASSET-SETUP Command-Ready**: `experiments\phase12\20260702T040554Z` writes explicit RT-DETR dependency install, asset-directory, local-weight, post-setup smoke, and RT-DETR-only row-refresh commands. Current evidence records `ultralytics_import_ready_before=false`, `ultralytics_import_ready_after=false`, `dependency_install_requested=false`, `dependency_install_executed=false`, `rtdetr_weights_configured=false`, `rtdetr_weights_ready=false`, `edge_rtdetr_command_passed=null`, `edge_rtdetr_fallback_used=null`, `edge_rtdetr_no_fallback_verified=false`, `phase12c_rtdetr_rows_available=false`, and `recommended_next_phase=R1-RT-DETR-ASSET-SETUP`.
