@@ -1026,7 +1026,7 @@ The dependency setup step succeeded, but RT-DETR remains blocked by missing loca
 
 ## Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Addendum
 
-Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL produced blocked evidence at `experiments\phase12\20260702T071641Z`. This gate verifies only the local operator-provided weight path and no-fallback smoke readiness.
+Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL-RERUN produced blocked evidence at `experiments\phase12\20260702T125105Z`. This gate verifies only the local operator-provided weight path and no-fallback smoke readiness.
 
 ```text
 status=blocked

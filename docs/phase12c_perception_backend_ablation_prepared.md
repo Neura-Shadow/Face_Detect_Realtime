@@ -454,7 +454,7 @@ The target CARLA Python 3.12 runtime can now import `ultralytics`, but RT-DETR o
 
 ## Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Addendum
 
-The local RT-DETR weight adoption gate produced blocked evidence at `experiments\phase12\20260702T071641Z`.
+The local RT-DETR weight adoption rerun gate produced blocked evidence at `experiments\phase12\20260702T125105Z`.
 
 ```text
 target_perception_backend=rtdetr

@@ -88,7 +88,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-R1-RT-DETR-UNLOCK optional backend readiness gate: **Blocked - `experiments\phase12\20260702T022636Z-1` verified the RT-DETR command path is registered, but `ultralytics_import_ready=false` and `rtdetr_weights_ready=false`; RT-DETR rows remain unavailable and `recommended_next_phase=R1-RT-DETR-ASSET-SETUP`**
   - Phase 12C-R1-RT-DETR-ASSET-SETUP dependency and local asset gate: **Command-Ready - `experiments\phase12\20260702T040554Z` wrote explicit install/setup/smoke commands and the local RT-DETR asset contract; no dependency install, weight download, post-setup smoke, CARLA route runtime, or benchmark claim was executed**
   - Phase 12C-R1-RT-DETR-ASSET-EXEC explicit dependency install gate: **Blocked - `experiments\phase12\20260702T044516Z` explicitly installed `ultralytics` into the CARLA Python 3.12 runtime (`dependency_install_exit_code=0`, `ultralytics_import_ready_after=true`, version `8.4.84`), but local `RTDETR_WEIGHTS` is still missing; no post-setup smoke, route runtime, accuracy, or benchmark claim was executed**
-  - Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL local weight adoption gate: **Blocked - `experiments\phase12\20260702T071641Z` verified `ultralytics_import_ready_after=true` and `RTDETR_WEIGHTS` configured to `D:\AIModels\rtdetr\rtdetr-l.pt`, but the local file is still missing; no post-setup smoke, RT-DETR rows refresh, route runtime, accuracy, or benchmark claim was executed**
+  - Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL local weight adoption rerun gate: **Blocked - `experiments\phase12\20260702T125105Z` verified `ultralytics_import_ready_after=true` and `RTDETR_WEIGHTS` configured to `D:\AIModels\rtdetr\rtdetr-l.pt`, but the local file is still missing; no post-setup smoke, RT-DETR rows refresh, route runtime, accuracy, or benchmark claim was executed**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -525,7 +525,7 @@ python scripts\run_phase12c_rtdetr_asset_setup.py --output-dir experiments\phase
 Latest Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL evidence:
 
 ```text
-rtdetr_weights_local_evidence_dir=experiments\phase12\20260702T071641Z
+rtdetr_weights_local_evidence_dir=experiments\phase12\20260702T125105Z
 rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
 rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
 rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1

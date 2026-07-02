@@ -155,7 +155,7 @@ Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Blocked - local RT-DETR weights are still mis
 ```
 
 ```text
-rtdetr_weights_local_evidence_dir=experiments\phase12\20260702T071641Z
+rtdetr_weights_local_evidence_dir=experiments\phase12\20260702T125105Z
 ultralytics_import_ready_after=true
 ultralytics_version_after=8.4.84
 rtdetr_weights_configured=true

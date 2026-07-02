@@ -15,7 +15,7 @@ Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL is local asset verification and no-fallback s
 ## Latest Evidence
 
 ```text
-rtdetr_weights_local_evidence_dir=experiments\phase12\20260702T071641Z
+rtdetr_weights_local_evidence_dir=experiments\phase12\20260702T125105Z
 rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
 rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
 rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
