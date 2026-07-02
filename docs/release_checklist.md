@@ -1,5 +1,11 @@
 # MA-VLNA Release Checklist
 
+## Latest Phase 12C-YOLOv9-R1 Formal Gate Addendum
+
+- [x] **Phase 12C-YOLOv9-R1 Selected Runtime Confirmation Blocked**: `experiments\phase12\20260702T182842Z` records `source_adapter_verified=true`, `post_unlock_verified=true`, `edge_yolov9_command_passed=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`, but `carla_server_reachable=false`. Therefore `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. The dry-run evidence is `experiments\phase12\20260702T182831Z`.
+
+Boundary: this is selected single-route gate evidence only. It is not full Phase 12C perception ablation runtime pass, not YOLOv9 model accuracy evidence, not RT-DETR runtime verification, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
+
 ## Latest Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Addendum
 
 - [x] **Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL-RERUN Local Weight Adoption Blocked**: `experiments\phase12\20260702T125105Z` records `ultralytics_import_ready_after=true`, `ultralytics_version_after=8.4.84`, and `RTDETR_WEIGHTS` configured to `D:\AIModels\rtdetr\rtdetr-l.pt`, but the local file is still missing. Therefore `rtdetr_weights_ready=false`, `missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt`, `post_setup_smoke_executed=false`, `edge_rtdetr_command_passed=null`, `edge_rtdetr_fallback_used=null`, `edge_rtdetr_no_fallback_verified=false`, `phase12c_rtdetr_rows_available=false`, and `recommended_next_phase=R1-RT-DETR-ASSET-SETUP`.
@@ -26,7 +32,7 @@ Boundary: this is RT-DETR unlock / no-fallback readiness only. It does not start
 
 ## Latest Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
-- [x] **Phase 12C-YOLOv9-R1 Selected Runtime Confirmation Blocked**: `experiments\phase12\20260701T172906Z` records `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`, but `carla_server_reachable=false`. Therefore `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`.
+- [x] **Phase 12C-YOLOv9-R1 Selected Runtime Confirmation Blocked**: `experiments\phase12\20260702T182842Z` records `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`, but `carla_server_reachable=false`. Therefore `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. The dry-run evidence is `experiments\phase12\20260702T182831Z`.
 
 Boundary: this is selected single-route gate evidence only. It is not full Phase 12C perception ablation runtime pass, not YOLOv9 model accuracy evidence, not RT-DETR runtime verification, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
 

@@ -77,7 +77,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-YOLOv9-V YOLOv9 post-unlock verification: **Passed — external_source strict verifier passed at `experiments\phase12\20260630T061015Z`; no-fallback backend readiness is verified in CARLA Python 3.12**
   - Phase 12C-YOLOv9-SRC official YOLOv9 source adapter: **Prepared — external `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` contract, source adapter, and no-fallback verification gate are implemented**
   - Phase 12C-YOLOv9-SRC-V source adapter no-fallback verification: **Passed — official YOLOv9 source adapter verified with no fallback in the CARLA Python 3.12 runtime at `experiments\phase12\20260630T060621Z`**
-  - Phase 12C-YOLOv9-R1 selected YOLOv9 runtime row: **Blocked - latest formal gate at `experiments\phase12\20260701T172906Z` verified YOLOv9 no-fallback readiness, but `127.0.0.1:2000` was not reachable; no child route runtime or route metrics were executed**
+  - Phase 12C-YOLOv9-R1 selected YOLOv9 runtime row: **Blocked - latest formal gate at `experiments\phase12\20260702T182842Z` verified YOLOv9 no-fallback readiness, but `127.0.0.1:2000` was not reachable; no child route runtime or route metrics were executed**
 
   - Phase 12C-YOLOv9-R1-DIAG timeout diagnosis: **Diagnostic Completed - bounded 300-step diagnostic classified the selected-row blocker as `map_load_or_spawn_stall` at `experiments\phase12\20260630T150500Z`; no runtime pass claimed**
   - Phase 12C-YOLOv9-R1-SETUP setup recovery probe: **Probe Pass - selected setup reached Town03, ego spawn, RGB first frame, GRP route generation, 20 warm-up ticks, and cleanup at `experiments\phase12\20260701T045047Z`; no YOLOv9 runtime pass claimed**
@@ -449,9 +449,9 @@ D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_yolov9_runtime_co
 Latest Phase 12C-YOLOv9-R1 evidence:
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260701T172906Z
-dry_run_evidence_dir=experiments\phase12\20260701T172854Z
-previous_runtime_evidence_dir=experiments\phase12\20260630T134322Z
+runtime_evidence_dir=experiments\phase12\20260702T182842Z
+dry_run_evidence_dir=experiments\phase12\20260702T182831Z
+previous_runtime_evidence_dir=experiments\phase12\20260701T172906Z
 carla_server_reachable=false
 route_id=route_01
 controller_mode=grp_follower

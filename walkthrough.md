@@ -1,43 +1,59 @@
-# Walkthrough - Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL
+# Walkthrough - Phase 12C-YOLOv9-R1 Runtime Confirmation
 
 ## Latest Result
 
 ```text
-Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL Blocked - local RT-DETR weights are still missing.
+Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
 ```
 
 ```text
-rtdetr_weights_local_evidence_dir=experiments\phase12\20260702T125105Z
-rtdetr_asset_exec_evidence_dir=experiments\phase12\20260702T044516Z
-rtdetr_asset_setup_evidence_dir=experiments\phase12\20260702T040554Z
-rtdetr_unlock_evidence_dir=experiments\phase12\20260702T022636Z-1
-lightweight_evidence_dir=experiments\phase12\20260701T165325Z
-target_perception_backend=rtdetr
-runtime_scope=rtdetr_local_weight_adoption_no_fallback_smoke_only
+runtime_evidence_dir=experiments\phase12\20260702T182842Z
+dry_run_evidence_dir=experiments\phase12\20260702T182831Z
+previous_runtime_evidence_dir=experiments\phase12\20260701T172906Z
+route_id=route_01
+controller_mode=grp_follower
+perception_backend=yolov9
+runtime_scope=selected_single_route
 status=blocked
-ultralytics_import_ready_after=true
-ultralytics_version_after=8.4.84
-dependency_install_requested=false
-dependency_install_executed=false
-dependency_install_exit_code=null
-rtdetr_weights_configured=true
-rtdetr_weights_ready=false
-rtdetr_weights_path=D:\AIModels\rtdetr\rtdetr-l.pt
-missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
-edge_rtdetr_command_passed=null
-edge_rtdetr_fallback_used=null
-edge_rtdetr_no_fallback_verified=false
-post_setup_smoke_executed=false
-phase12c_rtdetr_rows_available=false
-phase12c_rtdetr_backend_unavailable_count=5
-recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+source_adapter_verified=true
+post_unlock_verified=true
+phase12c_yolov9_rows_available=true
+backend_unavailable_count=0
+edge_yolov9_command_passed=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+carla_server_reachable=false
 carla_route_runtime_executed=false
-rtdetr_runtime_verified=false
-rtdetr_accuracy_verified=false
+runtime_confirmation_executed=false
+executed_row_count=0
+passed_count=0
+blocked_count=1
+goal_reached=null
+distance_to_goal_m=null
+route_progress_pct=null
+grp_route_progress_pct=null
+collision_count=null
+lane_invasion_count=null
+metrics_read_status=not_run
+yolo_runtime_row_verified=false
 full_phase12c_perception_ablation_runtime_pass=false
 ```
 
-R1-LIGHTWEIGHT ended blocked because no operator-provided lightweight YOLOv9 weights were configured, so the branch moved to RT-DETR. R1-RT-DETR-UNLOCK confirmed the command path exists, then blocked because `ultralytics` and `RTDETR_WEIGHTS` were unavailable in the target runtime. R1-RT-DETR-ASSET-SETUP wrote the explicit setup commands. R1-RT-DETR-ASSET-EXEC installed `ultralytics` into the CARLA Python 3.12 runtime. R1-RT-DETR-WEIGHTS-LOCAL now confirms the remaining blocker is only the missing local weight file.
+The selected row remains blocked before child route runtime because the local CARLA server is not reachable at `127.0.0.1:2000`. YOLOv9 source adapter readiness remains verified with no fallback; this is not route completion, YOLOv9 accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
+## Previous Walkthrough - RT-DETR-WEIGHTS-LOCAL
+
+```text
+rtdetr_weights_local_evidence_dir=experiments\phase12\20260702T125105Z
+rtdetr_weights_configured=true
+rtdetr_weights_ready=false
+missing_weight_path=D:\AIModels\rtdetr\rtdetr-l.pt
+edge_rtdetr_no_fallback_verified=false
+phase12c_rtdetr_rows_available=false
+recommended_next_phase=R1-RT-DETR-ASSET-SETUP
+```
+
+R1-LIGHTWEIGHT ended blocked because no operator-provided lightweight YOLOv9 weights were configured, so the branch moved to RT-DETR. R1-RT-DETR-UNLOCK confirmed the command path exists, then blocked because `ultralytics` and `RTDETR_WEIGHTS` were unavailable in the target runtime. R1-RT-DETR-ASSET-SETUP wrote the explicit setup commands. R1-RT-DETR-ASSET-EXEC installed `ultralytics` into the CARLA Python 3.12 runtime. R1-RT-DETR-WEIGHTS-LOCAL confirms that the RT-DETR blocker is the missing local weight file.
 
 ## Previous Walkthrough - RT-DETR-ASSET-EXEC
 

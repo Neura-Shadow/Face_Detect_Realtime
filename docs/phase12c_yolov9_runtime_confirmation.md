@@ -9,9 +9,9 @@ Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row d
 The latest formal gate was executed with the required YOLOv9 source and weights configured. The wrapper verified the external source adapter and `EdgePerception --test yolov9` no-fallback path, but did not launch the child route runtime because the CARLA server was not reachable at `127.0.0.1:2000`.
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260701T172906Z
-dry_run_evidence_dir=experiments\phase12\20260701T172854Z
-previous_runtime_evidence_dir=experiments\phase12\20260630T134322Z
+runtime_evidence_dir=experiments\phase12\20260702T182842Z
+dry_run_evidence_dir=experiments\phase12\20260702T182831Z
+previous_runtime_evidence_dir=experiments\phase12\20260701T172906Z
 route_id=route_01
 controller_mode=grp_follower
 perception_backend=yolov9

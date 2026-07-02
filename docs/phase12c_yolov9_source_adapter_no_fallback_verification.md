@@ -12,7 +12,7 @@ Phase distinction:
 
 - Phase 12C-YOLOv9-SRC prepared the official external source adapter and no-fallback gate.
 - Phase 12C-YOLOv9-SRC-V verified official source adapter no-fallback readiness in CARLA Python 3.12.
-- Phase 12C-YOLOv9-R1-RERUN reached CARLA and launched the selected route runtime, but the child timed out before route metrics or goal-reach evidence were produced; full YOLOv9 runtime pass remains unverified.
+- Phase 12C-YOLOv9-R1 formal gate `experiments\phase12\20260702T182842Z` verified no-fallback readiness again, but local CARLA reachability failed before child route runtime; full YOLOv9 runtime pass remains unverified.
 
 ## Evidence
 
@@ -237,6 +237,6 @@ R1-YOLOv9-LIGHTWEIGHT produced blocked evidence at `experiments\phase12\20260701
 
 ## Follow-Up: R1 Formal Runtime Gate Rerun
 
-The latest selected runtime confirmation gate produced blocked evidence at `experiments\phase12\20260701T172906Z`. The source adapter contract remained valid: `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`. The blocker was CARLA reachability: `carla_server_reachable=false`, so `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`.
+The latest selected runtime confirmation gate produced blocked evidence at `experiments\phase12\20260702T182842Z`. The source adapter contract remained valid: `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`. The blocker was CARLA reachability: `carla_server_reachable=false`, so `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. The dry-run command evidence is `experiments\phase12\20260702T182831Z`.
 
 This keeps SRC-V as no-fallback readiness evidence. It is not a selected route pass, model accuracy verification, full Phase 12C ablation, RT-DETR runtime evidence, Leaderboard, formal route benchmark, or infraction benchmark evidence.

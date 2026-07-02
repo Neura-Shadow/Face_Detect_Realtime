@@ -92,6 +92,8 @@ leaderboard_route_criteria_evaluated=false
 
 ## YOLOv9 Runtime Timeout Diagnosis
 
+Latest Phase 12C-YOLOv9-R1 formal gate evidence `experiments\phase12\20260702T182842Z` keeps YOLOv9 optional rows available / command-ready (`source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, `backend_unavailable_count=0`) but blocks before child route runtime because `carla_server_reachable=false`. Therefore `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`.
+
 Phase 12C-YOLOv9-R1-DIAG has now added selected-row timeout instrumentation after the R1-RERUN blocked evidence.
 
 ```text
@@ -479,7 +481,7 @@ RT-DETR optional rows remain unavailable because local weights are missing. The 
 
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
-The latest selected YOLOv9 runtime confirmation gate is `experiments\phase12\20260701T172906Z`.
+The latest selected YOLOv9 runtime confirmation gate is `experiments\phase12\20260702T182842Z`; the dry-run command evidence is `experiments\phase12\20260702T182831Z`.
 
 ```text
 route_id=route_01
