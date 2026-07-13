@@ -77,7 +77,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-YOLOv9-V YOLOv9 post-unlock verification: **Passed — external_source strict verifier passed at `experiments\phase12\20260630T061015Z`; no-fallback backend readiness is verified in CARLA Python 3.12**
   - Phase 12C-YOLOv9-SRC official YOLOv9 source adapter: **Prepared — external `YOLOV9_ROOT` / `YOLOV9_WEIGHTS` contract, source adapter, and no-fallback verification gate are implemented**
   - Phase 12C-YOLOv9-SRC-V source adapter no-fallback verification: **Passed — official YOLOv9 source adapter verified with no fallback in the CARLA Python 3.12 runtime at `experiments\phase12\20260630T060621Z`**
-  - Phase 12C-YOLOv9-R1 selected YOLOv9 runtime row: **Blocked - latest formal gate at `experiments\phase12\20260702T182842Z` verified YOLOv9 no-fallback readiness, but `127.0.0.1:2000` was not reachable; no child route runtime or route metrics were executed**
+  - Phase 12C-YOLOv9-R1 selected YOLOv9 runtime row: **Blocked - latest formal gate at `experiments\phase12\20260713T190904Z` verified YOLOv9 no-fallback readiness and launched the real CARLA child path, but Town03_Opt map load exceeded the 60-second setup timeout before route ticks; no route completion is claimed**
 
   - Phase 12C-YOLOv9-R1-DIAG timeout diagnosis: **Diagnostic Completed - bounded 300-step diagnostic classified the selected-row blocker as `map_load_or_spawn_stall` at `experiments\phase12\20260630T150500Z`; no runtime pass claimed**
   - Phase 12C-YOLOv9-R1-SETUP setup recovery probe: **Probe Pass - selected setup reached Town03, ego spawn, RGB first frame, GRP route generation, 20 warm-up ticks, and cleanup at `experiments\phase12\20260701T045047Z`; no YOLOv9 runtime pass claimed**
@@ -455,10 +455,10 @@ D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase12c_yolov9_runtime_co
 Latest Phase 12C-YOLOv9-R1 evidence:
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260702T182842Z
-dry_run_evidence_dir=experiments\phase12\20260702T182831Z
-previous_runtime_evidence_dir=experiments\phase12\20260701T172906Z
-carla_server_reachable=false
+runtime_evidence_dir=experiments\phase12\20260713T190904Z
+dry_run_evidence_dir=experiments\phase12\20260713T190811Z
+previous_runtime_evidence_dir=experiments\phase12\20260702T182842Z
+carla_server_reachable=true
 route_id=route_01
 controller_mode=grp_follower
 perception_backend=yolov9
@@ -467,16 +467,19 @@ edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
 phase12c_yolov9_rows_available=true
 backend_unavailable_count=0
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
-goal_reached=null
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
+goal_reached=false
 distance_to_goal_m=null
 route_progress_pct=null
 collision_count=null
 lane_invasion_count=null
-metrics_read_status=not_run
+metrics_read_status=loaded
+child_exit_code=1
+child_row_result=grp_blocked
+steps_completed=0
 yolo_runtime_row_verified=false
-blocked_reason=CARLA server is not reachable
+blocked_reason=Town03_Opt load exceeded the 60000ms CARLA client timeout before setup completed
 ```
 
 Phase 12C-R1-RT-DETR-UNLOCK optional backend readiness gate（不啟動 CARLA、不宣稱 RT-DETR runtime pass）：

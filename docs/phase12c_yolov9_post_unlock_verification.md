@@ -282,3 +282,7 @@ recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
 Phase 12C-SUM summarizes YOLOv9 as no-fallback source adapter verified, selected route loop entered, and latency bottleneck characterized. It does not claim selected route runtime pass, route completion, model accuracy, full Phase 12C ablation pass, Leaderboard, formal route benchmark, or infraction benchmark.
 
 This preserves the boundary that post-unlock verification is readiness evidence, not route completion, model accuracy, full Phase 12C ablation, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
+## Latest R1 Formal Runtime Rerun
+
+Evidence `experiments\phase12\20260713T190904Z` kept `post_unlock_verified=true`, `source_adapter_verified=true`, and YOLOv9 no-fallback readiness true while CARLA was reachable. The selected child route path started but blocked during Town03_Opt setup before route ticks. Consequently `runtime_confirmation_executed=true`, `carla_route_runtime_executed=true`, `goal_reached=false`, and `yolo_runtime_row_verified=false`.

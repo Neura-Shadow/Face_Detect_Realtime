@@ -1,38 +1,43 @@
-# Current Task - Phase 12D-VLM-TRIGGER-SCAFFOLD
+# Current Task - Phase 12C-YOLOv9-R1 Formal Runtime Rerun
 
 ## Latest Status
 
 ```text
-Phase 12D-VLM-TRIGGER-SCAFFOLD Prepared - VLM trigger/no-VLM ablation matrix, command wiring, and evidence schema are implemented without running CARLA or external VLM calls.
+Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12D fixes `grp_follower + dummy + Town03 + five calibrated routes` and varies only VLM mode. Dummy is the stable control-path baseline, not a perception-quality claim. No CARLA runtime, external VLM request, VLM accuracy test, route benchmark, Leaderboard, or infraction benchmark was executed.
+This targeted rerun covers only `route_01 + grp_follower + yolov9`. It does not claim full Phase 12C perception ablation runtime pass, YOLOv9 model accuracy, RT-DETR runtime verification, CARLA Leaderboard, a formal route benchmark, or an infraction benchmark.
 ```
 
 ## Latest Evidence
 
 ```text
-scaffold=docs\phase12d_vlm_trigger_ablation_prepared.md
-dry_run_evidence_dir=experiments\phase12\20260713T174823Z
-row_count=20
-route_count=5
-vlm_mode_count=4
+runtime_evidence_dir=experiments\phase12\20260713T190904Z
+dry_run_evidence_dir=experiments\phase12\20260713T190811Z
+route_id=route_01
 controller_mode=grp_follower
-perception_backend=dummy
-local_modes_available=true
-openai_compatible_optional_available=false
-provider_unavailable_count=5
-runtime_executed=false
-external_vlm_request_executed=false
-full_phase12d_runtime_pass=false
+perception_backend=yolov9
+source_adapter_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+carla_server_reachable=true
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
+child_row_result=grp_blocked
+steps_completed=0
+goal_reached=false
+yolo_runtime_row_verified=false
 full_phase12c_perception_ablation_runtime_pass=false
-recommended_next_phase=Phase 12D-VLM-TRIGGER-WIRING
 ```
 
-The generated evidence is local and ignored. All runtime aggregation metrics remain `null`; absent OpenAI-compatible configuration is represented as `provider_unavailable`, not scaffold failure.
+The child reached the real CARLA path but `load_world("Town03_Opt")` exceeded the 60-second setup timeout before ego spawn or route ticks. Generated evidence remains local and ignored, and the CARLA server was stopped after the gate.
+
+## Previous Phase - Phase 12D-VLM-TRIGGER-SCAFFOLD
+
+Phase 12D-VLM-TRIGGER-SCAFFOLD remains prepared at commit `8d3b74cc`: the 20-row VLM-mode matrix is source-ready without claiming CARLA runtime or external VLM execution.
 
 ## Previous Phase - Phase 12C-SUM
 

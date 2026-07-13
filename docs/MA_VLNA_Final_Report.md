@@ -1,6 +1,10 @@
 # MA-VLNA — Memory-Augmented Vision-Language Navigation Agent
 ## Final Technical Report
 
+### Phase 12C-YOLOv9-R1 Latest Formal Rerun
+
+The latest selected-row gate at `experiments\phase12\20260713T190904Z` reconfirmed the official YOLOv9 source adapter with no fallback and reached a real CARLA 0.9.16 server. The existing Phase 12B -> Phase 11M child path executed, but Town03_Opt load exceeded the 60-second setup timeout before ego spawn or route ticks (`child_row_result=grp_blocked`, `steps_completed=0`, `goal_reached=false`, `yolo_runtime_row_verified=false`). This remains selected single-route blocked evidence only, not full Phase 12C ablation, YOLOv9 accuracy, RT-DETR runtime, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
 ### 1. 專案概述 (Project Overview)
 MA-VLNA (Memory-Augmented Vision-Language Navigation Agent) 是一個結合邊緣端感知 (Edge Perception)、場景記憶 (Scene Memory)、與大型視覺語言模型 (Vision-Language Model, VLM) 的高階自動駕駛代理系統。
 本專案的設計理念在於解決傳統自駕系統在面對「未見過 (Out-of-Distribution)」或「長尾 (Long-tail)」罕見場景時的推理能力瓶頸。透過引入 VLM 作為高階推理大腦，並搭配快速的本地邊緣感知與安全守門員機制，MA-VLNA 達成了一個能在邊緣設備上快速反應，並在遇到複雜場景時自動呼叫雲端 VLM 進行深度推理的混合式架構。

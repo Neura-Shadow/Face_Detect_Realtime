@@ -276,3 +276,7 @@ recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
 Phase 12C-SUM keeps this source adapter verification as a readiness claim only. It does not promote YOLOv9 to route completion, selected runtime pass, model accuracy, full ablation pass, Leaderboard, formal route benchmark, or infraction benchmark.
 
 This is not a full Phase 12C perception ablation runtime pass, not YOLOv9 accuracy evidence, not RT-DETR runtime verification, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
+
+## Latest R1 Formal Runtime Rerun
+
+Evidence `experiments\phase12\20260713T190904Z` reconfirmed the external source/weight contract and no-fallback EdgePerception probe, then launched the selected real CARLA child path. Town03_Opt load exceeded the 60-second setup timeout before route ticks, so `child_row_result=grp_blocked` and `yolo_runtime_row_verified=false`. This does not change the source-adapter readiness claim into route completion or model accuracy evidence.

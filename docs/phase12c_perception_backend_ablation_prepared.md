@@ -519,7 +519,7 @@ The summary artifact is `docs/phase12c_perception_backend_ablation_summary.md` w
 
 ## Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
-The latest selected YOLOv9 runtime confirmation gate is `experiments\phase12\20260702T182842Z`; the dry-run command evidence is `experiments\phase12\20260702T182831Z`.
+The latest selected YOLOv9 runtime confirmation gate is `experiments\phase12\20260713T190904Z`; the dry-run command evidence is `experiments\phase12\20260713T190811Z`.
 
 ```text
 route_id=route_01
@@ -530,12 +530,15 @@ edge_yolov9_fallback_used=false
 edge_yolov9_no_fallback_verified=true
 phase12c_yolov9_rows_available=true
 backend_unavailable_count=0
-carla_server_reachable=false
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
-metrics_read_status=not_run
+carla_server_reachable=true
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
+child_row_result=grp_blocked
+steps_completed=0
+goal_reached=false
+metrics_read_status=loaded
 yolo_runtime_row_verified=false
-blocked_reason=CARLA server is not reachable
+blocked_reason=Town03_Opt load exceeded the 60000ms CARLA client timeout before setup completed
 ```
 
-The scaffold remains command-ready for YOLOv9 optional rows, but this gate did not execute the selected child route runtime because CARLA TCP reachability failed. It is not a full Phase 12C perception ablation runtime pass and does not make accuracy, RT-DETR, Leaderboard, formal route benchmark, or infraction benchmark claims.
+The scaffold remains command-ready for YOLOv9 optional rows. This gate reached the selected real child path, but did not reach route ticks or completion. It is not a full Phase 12C perception ablation runtime pass and does not make accuracy, RT-DETR, Leaderboard, formal route benchmark, or infraction benchmark claims.

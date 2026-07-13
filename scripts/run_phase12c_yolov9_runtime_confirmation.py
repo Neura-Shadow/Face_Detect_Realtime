@@ -441,6 +441,34 @@ def _int_or_none(value: Any) -> int | None:
     return int(number) if number is not None else None
 
 
+def _derive_blocked_reason(
+    *,
+    args: argparse.Namespace,
+    preflight_reason: str | None,
+    child_result: CommandResult | None,
+    child_row: dict[str, Any],
+    metrics_read_status: str,
+    verified: bool,
+) -> str | None:
+    """將 preflight 或 child gate 失敗正規化為可稽核的 blocker。"""
+    if args.dry_run or verified:
+        return None
+    if preflight_reason:
+        return preflight_reason
+    if child_result is None:
+        return "runtime child did not execute"
+    if child_result.exit_code == 124:
+        return "runtime child timed out"
+    if metrics_read_status != "loaded":
+        return "runtime child metrics are missing"
+    child_row_result = child_row.get("result")
+    if child_row_result:
+        return f"runtime child gate result: {child_row_result}"
+    if child_result.exit_code != 0:
+        return f"runtime child exited with code {child_result.exit_code}"
+    return "selected runtime smoke gate was not satisfied"
+
+
 def _build_summary(
     *,
     args: argparse.Namespace,
@@ -472,6 +500,14 @@ def _build_summary(
         and child_row.get("result") in {"passed", "passed_without_structured_metrics"}
         and child_row.get("fixed_route_goal_reached") is True
     )
+    effective_blocked_reason = _derive_blocked_reason(
+        args=args,
+        preflight_reason=blocked_reason,
+        child_result=child_result,
+        child_row=child_row,
+        metrics_read_status=metrics_read_status,
+        verified=yolo_runtime_row_verified,
+    )
     status = STATUS_DRY_RUN if args.dry_run else STATUS_PASS if yolo_runtime_row_verified else STATUS_BLOCKED
     row_count = 1
     executed_row_count = int(bool(child_result and not args.dry_run))
@@ -481,7 +517,7 @@ def _build_summary(
     return {
         "phase": PHASE,
         "status": status,
-        "blocked_reason": blocked_reason,
+        "blocked_reason": effective_blocked_reason,
         "dry_run": args.dry_run,
         "run_dir": str(run_dir),
         "route_id": args.route_id,

@@ -20,7 +20,7 @@ Boundary: this is docs and summary only. No dependency install, weight download,
 
 ## Latest Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
-- [x] **Phase 12C-YOLOv9-R1 Selected Runtime Confirmation Blocked**: `experiments\phase12\20260702T182842Z` records `source_adapter_verified=true`, `post_unlock_verified=true`, `edge_yolov9_command_passed=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`, but `carla_server_reachable=false`. Therefore `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. The dry-run evidence is `experiments\phase12\20260702T182831Z`.
+- [x] **Phase 12C-YOLOv9-R1 Selected Runtime Confirmation Blocked**: `experiments\phase12\20260713T190904Z` records `source_adapter_verified=true`, `post_unlock_verified=true`, `edge_yolov9_command_passed=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, `backend_unavailable_count=0`, and `carla_server_reachable=true`. The real child path executed, but Town03_Opt load exceeded the 60-second setup timeout; therefore `runtime_confirmation_executed=true`, `carla_route_runtime_executed=true`, `child_row_result=grp_blocked`, `steps_completed=0`, `metrics_read_status=loaded`, and `yolo_runtime_row_verified=false`. The dry-run evidence is `experiments\phase12\20260713T190811Z`.
 
 Boundary: this is selected single-route gate evidence only. It is not full Phase 12C perception ablation runtime pass, not YOLOv9 model accuracy evidence, not RT-DETR runtime verification, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
 
@@ -50,7 +50,7 @@ Boundary: this is RT-DETR unlock / no-fallback readiness only. It does not start
 
 ## Latest Phase 12C-YOLOv9-R1 Formal Gate Addendum
 
-- [x] **Phase 12C-YOLOv9-R1 Selected Runtime Confirmation Blocked**: `experiments\phase12\20260702T182842Z` records `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`, but `carla_server_reachable=false`. Therefore `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. The dry-run evidence is `experiments\phase12\20260702T182831Z`.
+- [x] **Phase 12C-YOLOv9-R1 Selected Runtime Confirmation Blocked**: `experiments\phase12\20260713T190904Z` records YOLOv9 source readiness and no fallback with `carla_server_reachable=true`. The child route path executed but Town03_Opt load exceeded the 60-second setup timeout, so `child_row_result=grp_blocked`, `steps_completed=0`, `goal_reached=false`, and `yolo_runtime_row_verified=false`. The dry-run evidence is `experiments\phase12\20260713T190811Z`.
 
 Boundary: this is selected single-route gate evidence only. It is not full Phase 12C perception ablation runtime pass, not YOLOv9 model accuracy evidence, not RT-DETR runtime verification, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
 

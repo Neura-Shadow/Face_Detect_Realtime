@@ -252,3 +252,7 @@ recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
 Phase 12C-SUM records YOLOv9 as source-ready and route-begin / latency-profiled only. It does not claim YOLOv9 selected route runtime pass, route completion, model accuracy, full Phase 12C ablation pass, Leaderboard, formal route benchmark, or infraction benchmark.
 
 This keeps SRC-V as no-fallback readiness evidence. It is not a selected route pass, model accuracy verification, full Phase 12C ablation, RT-DETR runtime evidence, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
+## Latest R1 Formal Runtime Rerun
+
+Evidence `experiments\phase12\20260713T190904Z` reconfirmed `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, and `edge_yolov9_no_fallback_verified=true` against a reachable CARLA server. The selected child path executed but blocked before route ticks when Town03_Opt load exceeded the 60-second setup timeout. Therefore `yolo_runtime_row_verified=false`; SRC-V remains readiness evidence only.

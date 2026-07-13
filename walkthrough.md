@@ -1,28 +1,38 @@
-# Walkthrough - Phase 12D-VLM-TRIGGER-SCAFFOLD
+# Walkthrough - Phase 12C-YOLOv9-R1 Formal Runtime Rerun
 
 ## Latest Result
 
 ```text
-Phase 12D-VLM-TRIGGER-SCAFFOLD Prepared - VLM trigger/no-VLM ablation matrix, command wiring, and evidence schema are implemented without running CARLA or external VLM calls.
+Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
 ```
 
 ```text
-scaffold_doc=docs\phase12d_vlm_trigger_ablation_prepared.md
-dry_run_evidence_dir=experiments\phase12\20260713T174823Z
-row_count=20
-route_count=5
-vlm_mode_count=4
+runtime_evidence_dir=experiments\phase12\20260713T190904Z
+dry_run_evidence_dir=experiments\phase12\20260713T190811Z
+route_id=route_01
 controller_mode=grp_follower
-perception_backend=dummy
-provider_unavailable_count=5
-runtime_executed=false
-external_vlm_request_executed=false
-full_phase12d_runtime_pass=false
+perception_backend=yolov9
+source_adapter_verified=true
+edge_yolov9_fallback_used=false
+edge_yolov9_no_fallback_verified=true
+carla_server_reachable=true
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
+child_exit_code=1
+child_row_result=grp_blocked
+steps_completed=0
+goal_reached=false
+yolo_runtime_row_verified=false
 full_phase12c_perception_ablation_runtime_pass=false
-recommended_next_phase=Phase 12D-VLM-TRIGGER-WIRING
 ```
 
-The parent expands five calibrated routes across four VLM modes. Disabled and LocalStub rows are available; OpenAI-compatible rows are optional and currently `provider_unavailable` because `VLM_MODEL` is not configured. Every runtime metric is `null`, and no child process or API request ran.
+The parent verified official YOLOv9 source/weights and the no-fallback EdgePerception probe, reached CARLA, and launched the Phase 12B -> Phase 11M child. The child blocked while loading Town03_Opt after 60 seconds, before ego spawn and route ticks. CARLA was stopped and port 2000 was closed after evidence capture.
+
+This is one selected runtime row only. It is not full Phase 12C ablation, YOLOv9 accuracy, RT-DETR runtime, Leaderboard, formal route benchmark, or infraction benchmark evidence.
+
+## Previous Walkthrough - Phase 12D-VLM-TRIGGER-SCAFFOLD
+
+The 20-row VLM trigger scaffold remains prepared and source-only at commit `8d3b74cc`; this targeted R1 rerun does not change its runtime claims.
 
 ## VLM Matrix
 
@@ -44,7 +54,7 @@ Phase 12C-SUM remains the perception evidence handoff: dummy runtime-confirmed, 
 | backend | status | evidence | boundary |
 | --- | --- | --- | --- |
 | `dummy` | `runtime_confirmed` | `experiments\phase12\20260628T173019Z` | Not infraction benchmark, not Leaderboard, not formal route benchmark |
-| `yolov9` | `route_begin_and_latency_profiled_but_not_route_completion` | `experiments\phase12\20260630T060621Z`, `experiments\phase12\20260701T064944Z`, `experiments\phase12\20260701T103721Z`, `experiments\phase12\20260701T115744Z`, `experiments\phase12\20260702T182842Z` | No route completion, no selected runtime pass, no accuracy |
+| `yolov9` | `route_begin_and_latency_profiled_but_not_route_completion` | `experiments\phase12\20260630T060621Z`, `experiments\phase12\20260701T064944Z`, `experiments\phase12\20260701T103721Z`, `experiments\phase12\20260701T115744Z`, `experiments\phase12\20260713T190904Z` | No route completion, no selected runtime pass, no accuracy |
 | `rtdetr` | `external_asset_blocked` | `experiments\phase12\20260702T022636Z-1`, `experiments\phase12\20260702T044516Z`, `experiments\phase12\20260702T125105Z`, `docs\phase12c_rtdetr_asset_blocker_freeze.md` | No no-fallback readiness, no runtime, no accuracy |
 
 ## Previous Walkthrough - RT-DETR-ASSET-BLOCKER-FREEZE

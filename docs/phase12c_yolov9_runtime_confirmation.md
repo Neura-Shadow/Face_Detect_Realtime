@@ -6,12 +6,12 @@
 Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.
 ```
 
-The latest formal gate was executed with the required YOLOv9 source and weights configured. The wrapper verified the external source adapter and `EdgePerception --test yolov9` no-fallback path, but did not launch the child route runtime because the CARLA server was not reachable at `127.0.0.1:2000`.
+The latest formal gate was executed with the required YOLOv9 source and weights configured and a reachable CARLA 0.9.16 server. The wrapper verified the external source adapter and `EdgePerception --test yolov9` no-fallback path, then launched the existing Phase 12B -> Phase 11M child route path. The selected row remained blocked because `client.load_world("Town03_Opt")` exceeded the adapter's 60-second setup timeout before ego spawn or route ticks.
 
 ```text
-runtime_evidence_dir=experiments\phase12\20260702T182842Z
-dry_run_evidence_dir=experiments\phase12\20260702T182831Z
-previous_runtime_evidence_dir=experiments\phase12\20260701T172906Z
+runtime_evidence_dir=experiments\phase12\20260713T190904Z
+dry_run_evidence_dir=experiments\phase12\20260713T190811Z
+previous_runtime_evidence_dir=experiments\phase12\20260702T182842Z
 route_id=route_01
 controller_mode=grp_follower
 perception_backend=yolov9
@@ -27,24 +27,27 @@ YOLOV9_ROOT_configured=true
 YOLOV9_WEIGHTS_configured=true
 yolov9_source_root_ready=true
 yolov9_weights_ready=true
-carla_server_reachable=false
-runtime_confirmation_executed=false
-carla_route_runtime_executed=false
-executed_row_count=0
+carla_server_reachable=true
+runtime_confirmation_executed=true
+carla_route_runtime_executed=true
+executed_row_count=1
 passed_count=0
 blocked_count=1
-goal_reached=null
+goal_reached=false
 distance_to_goal_m=null
 route_progress_pct=null
 grp_route_progress_pct=null
 collision_count=null
 lane_invasion_count=null
-metrics_read_status=not_run
+metrics_read_status=loaded
+child_exit_code=1
+child_row_result=grp_blocked
+steps_completed=0
 yolo_runtime_row_verified=false
-blocked_reason=CARLA server is not reachable
+blocked_reason=Town03_Opt load exceeded the 60000ms CARLA client timeout before setup completed
 ```
 
-This is a selected single-route runtime confirmation blocker only. It is not a full Phase 12C perception ablation runtime pass, not YOLOv9 model accuracy evidence, not RT-DETR validation, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
+The CARLA server was stopped after the gate and `127.0.0.1:2000` was confirmed closed. This is a selected single-route runtime confirmation blocker only. It is not a full Phase 12C perception ablation runtime pass, not YOLOv9 model accuracy evidence, not RT-DETR validation, not CARLA Leaderboard, not a formal route benchmark, and not an infraction benchmark.
 
 ## Status
 
