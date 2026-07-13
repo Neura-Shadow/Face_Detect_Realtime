@@ -179,9 +179,11 @@ def _build_config(args: argparse.Namespace) -> AgentConfig:
     if args.yolov9_device:
         perception_updates["yolov9_device"] = args.yolov9_device
     perception_cfg = dataclasses.replace(config.perception, **perception_updates)
+    vlm_cfg = config.vlm
+    if args.vlm_provider:
+        vlm_cfg = dataclasses.replace(config.vlm, provider=args.vlm_provider)
     trigger_cfg = dataclasses.replace(
         config.trigger,
-        cooldown_sec=0.0 if args.enable_vlm else config.trigger.cooldown_sec,
         force_interval_frames=args.force_vlm_every,
     )
     telemetry_cfg = dataclasses.replace(
@@ -200,6 +202,7 @@ def _build_config(args: argparse.Namespace) -> AgentConfig:
         main_loop_hz=args.loop_hz,
         carla=carla_cfg,
         perception=perception_cfg,
+        vlm=vlm_cfg,
         trigger=trigger_cfg,
         telemetry=telemetry_cfg,
         supabase=supabase_cfg,
@@ -659,6 +662,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--yolov9-profile", choices=["baseline", "lightweight"], default="baseline")
     parser.add_argument("--yolov9-weights", default=None)
     parser.add_argument("--enable-vlm", action="store_true")
+    parser.add_argument("--vlm-provider", default=None, choices=["local_stub", "openai_compatible", "gemma"])
     parser.add_argument("--force-vlm-every", type=int, default=0)
     parser.add_argument("--publish-telemetry", action="store_true")
     parser.add_argument("--require-server", action="store_true")

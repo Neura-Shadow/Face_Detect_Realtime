@@ -1,5 +1,11 @@
 # MA-VLNA Release Checklist
 
+## Latest Phase 12D-VLM-TRIGGER-SCAFFOLD Addendum
+
+- [x] **Phase 12D-VLM-TRIGGER-SCAFFOLD Prepared**: a 20-row `5 calibrated routes x 4 VLM modes` dry-run matrix, Phase 11M provider command wiring, and null runtime evidence schema are implemented. The fixed baseline is `grp_follower + dummy + Town03`; disabled and LocalStub modes are available, while incomplete OpenAI-compatible configuration is recorded as `provider_unavailable`.
+
+Boundary: dummy is selected only as the stable control-path baseline, and the experiment isolates VLM mode rather than perception quality. No CARLA runtime, child command, external VLM request, secret serialization, VLM accuracy evaluation, route benchmark, Leaderboard evaluation, or infraction benchmark was executed. Generated evidence remains ignored under `experiments\phase12`.
+
 ## Latest Phase 12C-SUM Addendum
 
 - [x] **Phase 12C-SUM Completed**: perception backend ablation summary and evidence handoff are prepared without claiming full Phase 12C runtime pass. The summary records `dummy_backend_runtime_confirmed=true`, `yolov9_route_begin_and_latency_profiled=true`, `yolov9_route_completion_verified=false`, `rtdetr_external_asset_blocked=true`, `rtdetr_no_fallback_ready=false`, `full_phase12c_perception_ablation_runtime_pass=false`, and `recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE`.

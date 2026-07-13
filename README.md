@@ -91,6 +91,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-R1-RT-DETR-WEIGHTS-LOCAL local weight adoption rerun gate: **Blocked - `experiments\phase12\20260702T125105Z` verified `ultralytics_import_ready_after=true` and `RTDETR_WEIGHTS` configured to `D:\AIModels\rtdetr\rtdetr-l.pt`, but the local file is still missing; no post-setup smoke, RT-DETR rows refresh, route runtime, accuracy, or benchmark claim was executed**
   - Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE: **Completed - RT-DETR branch is formally frozen as external local-weight blocked; `rtdetr_dependency_ready=true`, `rtdetr_weights_ready=false`, `rtdetr_no_fallback_ready=false`, `phase12c_rtdetr_rows_available=false`; without weights the next branch is `Phase 12C-SUM`, with weights the next technical branch is `R1-RT-DETR-WEIGHTS-LOCAL-RERUN`**
   - Phase 12C-SUM perception backend ablation summary: **Completed - dummy runtime smoke confirmed, YOLOv9 route-begin/latency profiled without route completion, and RT-DETR frozen as external-asset blocked; `full_phase12c_perception_ablation_runtime_pass=false`, recommended next phase `Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE`**
+  - Phase 12D-VLM-TRIGGER-SCAFFOLD: **Prepared - 20-row `5 calibrated routes x 4 VLM modes` dry-run matrix, provider command wiring, and null runtime schema implemented; no CARLA or external VLM call executed**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
@@ -297,6 +298,7 @@ Phase 12 scaffold（不啟動 CARLA、不跑大型實驗）：
 > Phase 12C-R1-RT-DETR-ASSET-SETUP / ASSET-EXEC / WEIGHTS-LOCAL dependency/local asset gate 請見 [docs/phase12c_rtdetr_asset_setup.md](docs/phase12c_rtdetr_asset_setup.md)
 > Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE summary handoff 請見 [docs/phase12c_rtdetr_asset_blocker_freeze.md](docs/phase12c_rtdetr_asset_blocker_freeze.md)
 > Phase 12C-SUM perception backend ablation summary 請見 [docs/phase12c_perception_backend_ablation_summary.md](docs/phase12c_perception_backend_ablation_summary.md)
+> Phase 12D-VLM-TRIGGER-SCAFFOLD 請見 [docs/phase12d_vlm_trigger_ablation_prepared.md](docs/phase12d_vlm_trigger_ablation_prepared.md)
 
 ```powershell
 python scripts\run_phase12_experiment_plan.py --output-dir experiments\phase12
@@ -590,6 +592,29 @@ rtdetr_no_fallback_ready=false
 full_phase12c_perception_ablation_runtime_pass=false
 recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
 ```
+
+Phase 12D-VLM-TRIGGER-SCAFFOLD dry run（只寫 20-row matrix 與 null runtime schema，不啟動 CARLA、不呼叫外部 VLM）：
+
+```powershell
+python scripts\run_phase12d_vlm_trigger_ablation.py --dry-run --output-dir experiments\phase12
+```
+
+```text
+Phase 12D-VLM-TRIGGER-SCAFFOLD Prepared
+dry_run_evidence_dir=experiments\phase12\20260713T174823Z
+row_count=20
+route_count=5
+vlm_mode_count=4
+controller_mode=grp_follower
+perception_backend=dummy
+provider_unavailable_count=5
+runtime_executed=false
+external_vlm_request_executed=false
+full_phase12d_runtime_pass=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-WIRING
+```
+
+Dummy 僅作為穩定 control-path baseline；本階段只隔離 VLM mode。OpenAI-compatible provider 維持 optional 且不提交 secrets。本階段不是 VLM accuracy、perception quality、route benchmark、Leaderboard 或 infraction benchmark evidence。
 
 Phase 12C-YOLOv9-R1-DIAG timeout diagnosis（bounded instrumentation only；不宣稱 YOLOv9 runtime pass）：
 

@@ -89,6 +89,7 @@ def main() -> int:
                 "scripts/run_phase12c_yolov9_r1_lightweight_probe.py",
                 "scripts/run_phase12c_rtdetr_unlock_verification.py",
                 "scripts/run_phase12c_rtdetr_asset_setup.py",
+                "scripts/run_phase12d_vlm_trigger_ablation.py",
             ],
             "expected": [],
         },

@@ -1093,3 +1093,27 @@ Phase 12C-SUM normalizes existing evidence into `docs/phase12c_perception_backen
 Phase 12C-YOLOv9-R1 was rerun as the selected single-route runtime confirmation gate. Evidence `experiments\phase12\20260702T182842Z` records `source_adapter_verified=true`, `edge_yolov9_fallback_used=false`, `edge_yolov9_no_fallback_verified=true`, `phase12c_yolov9_rows_available=true`, and `backend_unavailable_count=0`. The gate is blocked by local CARLA reachability: `carla_server_reachable=false`, `runtime_confirmation_executed=false`, `carla_route_runtime_executed=false`, `metrics_read_status=not_run`, and `yolo_runtime_row_verified=false`. The dry-run command evidence is `experiments\phase12\20260702T182831Z`.
 
 This is the selected YOLOv9 runtime confirmation boundary only. It does not claim full Phase 12C perception ablation runtime pass, YOLOv9 model accuracy, RT-DETR runtime verification, CARLA Leaderboard, formal route benchmark, or infraction benchmark.
+
+## Phase 12D-VLM-TRIGGER-SCAFFOLD Addendum
+
+```text
+Phase 12D-VLM-TRIGGER-SCAFFOLD Prepared
+row_count=20
+route_count=5
+vlm_mode_count=4
+controller_mode=grp_follower
+perception_backend=dummy
+carla_server_started=false
+runtime_executed=false
+external_vlm_request_executed=false
+full_phase12d_runtime_pass=false
+full_phase12c_perception_ablation_runtime_pass=false
+route_benchmark_verified=false
+infraction_benchmark_verified=false
+leaderboard_evaluated=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-WIRING
+```
+
+Phase 12D fixes the calibrated Phase 12A-C route/controller/perception path and varies only `vlm_disabled`, `local_stub_event_triggered`, `local_stub_forced_every_20`, and `openai_compatible_optional`. Dummy is selected solely as the stable control-path baseline; this is not a perception-quality comparison. The OpenAI-compatible rows use the existing `VLM_API_BASE`, `VLM_MODEL`, and `VLM_API_KEY` contract, remain optional, and become `provider_unavailable` when configuration is absent. No secret values are written.
+
+The scaffold writes `manifest.json`, `summary.csv`, `summary.json`, `commands.txt`, and `README.md` under ignored local experiment storage. Every runtime aggregation metric remains `null`. No CARLA child command or external API request ran, so this phase is not VLM accuracy, route benchmark, Leaderboard, or infraction benchmark evidence.

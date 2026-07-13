@@ -1,26 +1,43 @@
-# Walkthrough - Phase 12C-SUM
+# Walkthrough - Phase 12D-VLM-TRIGGER-SCAFFOLD
 
 ## Latest Result
 
 ```text
-Phase 12C-SUM Completed - perception backend ablation summary and evidence handoff are prepared without claiming full Phase 12C runtime pass.
+Phase 12D-VLM-TRIGGER-SCAFFOLD Prepared - VLM trigger/no-VLM ablation matrix, command wiring, and evidence schema are implemented without running CARLA or external VLM calls.
 ```
 
 ```text
-summary_doc=docs\phase12c_perception_backend_ablation_summary.md
-summary_json=docs\phase12c_perception_backend_ablation_summary.json
-runtime_scope=summary_and_evidence_handoff_only
-dummy_backend_runtime_confirmed=true
-yolov9_route_begin_and_latency_profiled=true
-yolov9_route_completion_verified=false
-rtdetr_external_asset_blocked=true
-rtdetr_no_fallback_ready=false
-recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
-carla_route_runtime_executed=false
+scaffold_doc=docs\phase12d_vlm_trigger_ablation_prepared.md
+dry_run_evidence_dir=experiments\phase12\20260713T174823Z
+row_count=20
+route_count=5
+vlm_mode_count=4
+controller_mode=grp_follower
+perception_backend=dummy
+provider_unavailable_count=5
+runtime_executed=false
+external_vlm_request_executed=false
+full_phase12d_runtime_pass=false
 full_phase12c_perception_ablation_runtime_pass=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-WIRING
 ```
 
-Phase 12C-SUM consolidates the three perception backend lines without running new runtime work. Dummy is runtime-confirmed, YOLOv9 is source-ready and route-begin/latency-profiled but not route-complete, and RT-DETR is external-asset blocked.
+The parent expands five calibrated routes across four VLM modes. Disabled and LocalStub rows are available; OpenAI-compatible rows are optional and currently `provider_unavailable` because `VLM_MODEL` is not configured. Every runtime metric is `null`, and no child process or API request ran.
+
+## VLM Matrix
+
+| mode | rows | provider | result |
+| --- | ---: | --- | --- |
+| `vlm_disabled` | 5 | `none` | `dry_run` |
+| `local_stub_event_triggered` | 5 | `local_stub` | `dry_run` |
+| `local_stub_forced_every_20` | 5 | `local_stub` | `dry_run` |
+| `openai_compatible_optional` | 5 | `openai_compatible` | `provider_unavailable` locally |
+
+Dummy is used only as the stable control-path baseline. This scaffold isolates VLM mode and is not perception quality, VLM accuracy, route benchmark, Leaderboard, or infraction benchmark evidence.
+
+## Previous Walkthrough - Phase 12C-SUM
+
+Phase 12C-SUM remains the perception evidence handoff: dummy runtime-confirmed, YOLOv9 route-begin/latency-profiled without completion, and RT-DETR external-asset blocked.
 
 ## Backend Handoff
 

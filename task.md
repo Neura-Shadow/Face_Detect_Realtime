@@ -1,36 +1,42 @@
-# Current Task - Phase 12C-SUM
+# Current Task - Phase 12D-VLM-TRIGGER-SCAFFOLD
 
 ## Latest Status
 
 ```text
-Phase 12C-SUM Completed - perception backend ablation summary and evidence handoff are prepared without claiming full Phase 12C runtime pass.
+Phase 12D-VLM-TRIGGER-SCAFFOLD Prepared - VLM trigger/no-VLM ablation matrix, command wiring, and evidence schema are implemented without running CARLA or external VLM calls.
 ```
 
 Maintained boundary:
 
 ```text
-Phase 12C-SUM is summary and evidence normalization only. It does not start CARLA, execute CARLA route runtime, run YOLOv9 route completion, run RT-DETR smoke, install dependencies, download weights, create fake weights, modify baseline requirements, or claim full Phase 12C perception ablation runtime pass.
+Phase 12D fixes `grp_follower + dummy + Town03 + five calibrated routes` and varies only VLM mode. Dummy is the stable control-path baseline, not a perception-quality claim. No CARLA runtime, external VLM request, VLM accuracy test, route benchmark, Leaderboard, or infraction benchmark was executed.
 ```
 
 ## Latest Evidence
 
 ```text
-summary_doc=docs\phase12c_perception_backend_ablation_summary.md
-summary_json=docs\phase12c_perception_backend_ablation_summary.json
-runtime_scope=summary_and_evidence_handoff_only
-dummy_backend_runtime_confirmed=true
-yolov9_route_begin_and_latency_profiled=true
-yolov9_route_completion_verified=false
-rtdetr_external_asset_blocked=true
-rtdetr_no_fallback_ready=false
-recommended_next_phase=Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE
-recommended_rtdetr_reentry_phase=R1-RT-DETR-WEIGHTS-LOCAL-RERUN
-recommended_yolov9_lightweight_reentry_phase=R1-YOLOv9-LIGHTWEIGHT-RERUN
-carla_route_runtime_executed=false
+scaffold=docs\phase12d_vlm_trigger_ablation_prepared.md
+dry_run_evidence_dir=experiments\phase12\20260713T174823Z
+row_count=20
+route_count=5
+vlm_mode_count=4
+controller_mode=grp_follower
+perception_backend=dummy
+local_modes_available=true
+openai_compatible_optional_available=false
+provider_unavailable_count=5
+runtime_executed=false
+external_vlm_request_executed=false
+full_phase12d_runtime_pass=false
 full_phase12c_perception_ablation_runtime_pass=false
+recommended_next_phase=Phase 12D-VLM-TRIGGER-WIRING
 ```
 
-Backend summary: dummy is runtime-confirmed on 5 calibrated smoke rows; YOLOv9 has no-fallback source adapter readiness plus route-begin and latency evidence but no route completion; RT-DETR is frozen as an external local-weight blocker with dependency ready and local weights missing.
+The generated evidence is local and ignored. All runtime aggregation metrics remain `null`; absent OpenAI-compatible configuration is represented as `provider_unavailable`, not scaffold failure.
+
+## Previous Phase - Phase 12C-SUM
+
+Phase 12C-SUM remains the authoritative perception handoff: dummy runtime smoke is confirmed, YOLOv9 has route-begin/latency evidence without route completion, and RT-DETR is frozen as an external local-weight blocker. It does not claim full Phase 12C perception ablation runtime pass.
 
 ## Previous Phase - RT-DETR-ASSET-BLOCKER-FREEZE
 

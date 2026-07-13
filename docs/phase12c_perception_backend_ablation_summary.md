@@ -78,12 +78,22 @@ leaderboard_evaluated=false
 
 | condition | recommended next phase |
 | --- | --- |
-| No RT-DETR local weights and no lightweight YOLOv9 weights | `Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE` |
+| No RT-DETR local weights and no lightweight YOLOv9 weights | `Phase 12D-VLM-TRIGGER-SCAFFOLD` (now prepared) |
 | RT-DETR local weights appear at `D:\AIModels\rtdetr\rtdetr-l.pt` | `R1-RT-DETR-WEIGHTS-LOCAL-RERUN` |
 | YOLOv9 lightweight weights appear | `R1-YOLOv9-LIGHTWEIGHT-RERUN` |
 | A route-completion attempt is requested before a faster backend is available | Scope it explicitly as slow diagnostic only |
 
 Do not recommend route completion until either a lightweight/fast backend is available, or route runtime is explicitly scoped as slow diagnostic only.
+
+## Phase 12D Handoff
+
+Phase 12D-VLM-TRIGGER-SCAFFOLD is now prepared. It fixes `grp_follower + dummy`
+over the five calibrated routes and varies only four VLM modes. Dummy is the
+stable control-path baseline, not a perception-quality selection. The 20-row
+dry-run schema keeps all runtime metrics `null`; no CARLA runtime or external
+VLM request was executed. OpenAI-compatible mode is optional, uses the existing
+configuration names, and commits no secrets. The next implementation line is
+`Phase 12D-VLM-TRIGGER-WIRING`.
 
 ## Boundary Statement
 
