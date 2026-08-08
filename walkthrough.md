@@ -1,6 +1,22 @@
-# Walkthrough - Phase 12C-YOLOv9-R1 Formal Runtime Rerun
+# Walkthrough - Phase 13A-EMBEDDED-CONTRACT-SIL
 
 ## Latest Result
+
+```text
+Phase 13A-EMBEDDED-CONTRACT-SIL Pass — command protocol, Safety MCU state machine, range-shift rejection, stale-command rejection, and host SIL tests passed.
+```
+
+The authoritative evidence is `experiments\phase13\20260808T065044Z`. The run exercised the host software path from a synthetic camera frame through Dummy EdgePerception, the input/activation range monitor, the existing MA-VLNA SafetyGate, the embedded command bridge, and the Safety MCU emulator.
+
+The protocol is version 1, fixed at 64 little-endian bytes with CRC-32 over the first 60 bytes. The Python SIL matrix passed 28/28 tests. Portable CMake/GCC/CTest validation passed 1/1 for the no-allocation bounded parser and explicit `BOOT -> STANDBY -> READY -> ACTIVE/DEGRADED/FAILSAFE` state machine.
+
+Fault injection verified CRC, stale validity, duplicate and out-of-order sequence, expired lease, protocol mismatch, control range, heartbeat timeout, NaN/Inf, normalization mismatch, activation percentile shift, quantization saturation, output range, and three-sample recovery behavior. Metrics ended at `crc=1`, `stale=1`, `sequence=2`, `lease=1`, `range=3`, `false_accept=0`, and `false_reject=0`.
+
+This is host SIL evidence only. No real MCU, HIL, actuator, CARLA benchmark, model-accuracy, or OTA/security pass is claimed. See [docs/phase13a_embedded_contract_sil.md](docs/phase13a_embedded_contract_sil.md).
+
+## Previous Walkthrough - Phase 12C-YOLOv9-R1 Formal Runtime Rerun
+
+## Previous Result
 
 ```text
 Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.

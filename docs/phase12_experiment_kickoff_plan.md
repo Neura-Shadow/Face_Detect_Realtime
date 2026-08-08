@@ -1117,3 +1117,28 @@ recommended_next_phase=Phase 12D-VLM-TRIGGER-WIRING
 Phase 12D fixes the calibrated Phase 12A-C route/controller/perception path and varies only `vlm_disabled`, `local_stub_event_triggered`, `local_stub_forced_every_20`, and `openai_compatible_optional`. Dummy is selected solely as the stable control-path baseline; this is not a perception-quality comparison. The OpenAI-compatible rows use the existing `VLM_API_BASE`, `VLM_MODEL`, and `VLM_API_KEY` contract, remain optional, and become `provider_unavailable` when configuration is absent. No secret values are written.
 
 The scaffold writes `manifest.json`, `summary.csv`, `summary.json`, `commands.txt`, and `README.md` under ignored local experiment storage. Every runtime aggregation metric remains `null`. No CARLA child command or external API request ran, so this phase is not VLM accuracy, route benchmark, Leaderboard, or infraction benchmark evidence.
+
+## Phase 13A Embedded Contract SIL Handoff
+
+Phase 13A adds a separate embedded safety-contract verification line without
+changing Phase 12D scaffold or experiment results.
+
+```text
+Phase 13A-EMBEDDED-CONTRACT-SIL Pass
+protocol_version=1
+packet_size_bytes=64
+host_sil_tests=28/28
+portable_c_ctest=1/1 passed
+evidence_dir=experiments\phase13\20260808T065044Z
+```
+
+The host vertical slice connects Dummy EdgePerception, the existing SafetyGate,
+a new range-shift authority monitor, a bounded binary command bridge, and a
+Safety MCU software emulator. The portable C reference uses no dynamic
+allocation and validates the same CRC, time, sequence, lease, control, range,
+heartbeat, and FSM contract.
+
+This handoff is host SIL only. It does not promote Phase 12D to runtime pass and
+does not claim real MCU, HIL, actuator control, CARLA benchmark, model accuracy,
+or OTA/security validation. Phase 13 generated evidence remains local and
+ignored.

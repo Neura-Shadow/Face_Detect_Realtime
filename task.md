@@ -1,6 +1,35 @@
-# Current Task - Phase 12C-YOLOv9-R1 Formal Runtime Rerun
+# Current Task - Phase 13A-EMBEDDED-CONTRACT-SIL
 
 ## Latest Status
+
+```text
+Phase 13A-EMBEDDED-CONTRACT-SIL Pass — command protocol, Safety MCU state machine, range-shift rejection, stale-command rejection, and host SIL tests passed.
+```
+
+```text
+evidence_dir=experiments\phase13\20260808T065044Z
+protocol_version=1
+packet_size_bytes=64
+fsm_test_result=passed
+range_shift_tests_passed=true
+sil_tests=28/28
+portable_c_build_test_status=passed
+crc_reject_count=1
+stale_reject_count=1
+sequence_reject_count=2
+lease_reject_count=1
+range_reject_count=3
+false_accept_count=0
+false_reject_count=0
+```
+
+The verified host path is `EdgePerception -> RangeShiftMonitor -> SafetyGate -> EmbeddedCommandBridge -> bounded binary packet -> Safety MCU emulator`. Portable C parser/FSM tests also passed through CMake/CTest. Generated evidence remains ignored.
+
+Boundary: this is host software-in-the-loop evidence. It does not claim real MCU firmware, HIL, actuator control, CARLA benchmark, model accuracy, or OTA/security validation.
+
+## Previous Task - Phase 12C-YOLOv9-R1 Formal Runtime Rerun
+
+## Previous Status
 
 ```text
 Phase 12C-YOLOv9-R1 Runtime Confirmation Blocked - selected YOLOv9 backend row did not complete or did not satisfy the selected runtime smoke gate.

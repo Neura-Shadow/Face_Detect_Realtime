@@ -1,6 +1,13 @@
 # MA-VLNA Release Checklist
 
-## Latest Phase 12D-VLM-TRIGGER-SCAFFOLD Addendum
+## Latest Phase 13A-EMBEDDED-CONTRACT-SIL Addendum
+
+- [x] **Phase 13A-EMBEDDED-CONTRACT-SIL Pass**: protocol v1 fixes a 64-byte little-endian packed packet with CRC, sequence, validity, lease, bounded controls, confidence, range state, age, and flags. Host SIL passed 28/28 tests; portable CMake/GCC/CTest parser/FSM validation passed 1/1. Evidence: `experiments\phase13\20260808T065044Z`.
+- [x] **Range authority gate**: NaN/Inf, normalization, color order, input range, activation percentile, quantization saturation, output range, and stale result failures remove ACTIVE AI authority. The bridge emits SAFE_STOP and recovery requires three consecutive valid samples.
+- [x] **MCU fault gates**: CRC, stale validity, duplicate/out-of-order sequence, expired lease, protocol mismatch, out-of-range controls, heartbeat timeout, DEGRADED, FAILSAFE, and explicit recovery are tested. `false_accept_count=0`, `false_reject_count=0`.
+- [x] **Boundary preserved**: generated evidence is ignored. No real MCU, HIL, actuator, CARLA benchmark, model accuracy, or OTA/security pass is claimed.
+
+## Previous Phase 12D-VLM-TRIGGER-SCAFFOLD Addendum
 
 - [x] **Phase 12D-VLM-TRIGGER-SCAFFOLD Prepared**: a 20-row `5 calibrated routes x 4 VLM modes` dry-run matrix, Phase 11M provider command wiring, and null runtime evidence schema are implemented. The fixed baseline is `grp_follower + dummy + Town03`; disabled and LocalStub modes are available, while incomplete OpenAI-compatible configuration is recorded as `provider_unavailable`.
 

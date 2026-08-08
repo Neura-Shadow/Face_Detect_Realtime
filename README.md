@@ -92,8 +92,12 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-R1-RT-DETR-ASSET-BLOCKER-FREEZE: **Completed - RT-DETR branch is formally frozen as external local-weight blocked; `rtdetr_dependency_ready=true`, `rtdetr_weights_ready=false`, `rtdetr_no_fallback_ready=false`, `phase12c_rtdetr_rows_available=false`; without weights the next branch is `Phase 12C-SUM`, with weights the next technical branch is `R1-RT-DETR-WEIGHTS-LOCAL-RERUN`**
   - Phase 12C-SUM perception backend ablation summary: **Completed - dummy runtime smoke confirmed, YOLOv9 route-begin/latency profiled without route completion, and RT-DETR frozen as external-asset blocked; `full_phase12c_perception_ablation_runtime_pass=false`, recommended next phase `Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE`**
   - Phase 12D-VLM-TRIGGER-SCAFFOLD: **Prepared - 20-row `5 calibrated routes x 4 VLM modes` dry-run matrix, provider command wiring, and null runtime schema implemented; no CARLA or external VLM call executed**
+- **Phase 13**:
+  - Phase 13A-EMBEDDED-CONTRACT-SIL: **Passed - protocol v1 fixed 64-byte little-endian packet, range-shift authority gate, Safety MCU emulator, portable C parser/FSM, 28/28 host SIL tests, and CTest 1/1 passed**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
+
+Phase 13 begins embedded safety-contract verification. Phase 13A is host SIL only; it does not claim a real MCU, HIL, actuator, model-accuracy, OTA/security, or benchmark pass. See [docs/phase13a_embedded_contract_sil.md](docs/phase13a_embedded_contract_sil.md).
 
 ---
 

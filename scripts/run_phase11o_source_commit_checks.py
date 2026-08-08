@@ -24,6 +24,7 @@ ALLOWED_STAGE_ROOTS = {
     "backend",
     "config",
     "docs",
+    "embedded",
     "frontend",
     "migrations",
     "scripts",
@@ -75,6 +76,7 @@ REQUIRED_GITIGNORE_LINES = (
     "*.pyc",
     "*.log",
     "node_modules/",
+    "experiments/phase13/*/",
 )
 
 

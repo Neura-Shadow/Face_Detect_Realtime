@@ -1,0 +1,63 @@
+{
+  "contract_name": "ma_vlna_embedded_command",
+  "protocol_version": 1,
+  "packet_size_bytes": 64,
+  "byte_order": "little_endian",
+  "packing": "packed_no_implicit_padding",
+  "crc": {
+    "algorithm": "CRC-32/ISO-HDLC",
+    "polynomial": "0x04C11DB7",
+    "reflected_polynomial": "0xEDB88320",
+    "initial_value": "0xFFFFFFFF",
+    "xor_out": "0xFFFFFFFF",
+    "coverage_bytes": [0, 59],
+    "crc_offset": 60
+  },
+  "control_scaling": {
+    "steering": "signed_q15_-32767_to_32767_maps_-1_to_1",
+    "throttle": "unsigned_q15_0_to_32767_maps_0_to_1",
+    "brake": "unsigned_q15_0_to_32767_maps_0_to_1",
+    "ai_confidence": "unsigned_q15_0_to_32767_maps_0_to_1"
+  },
+  "fields": [
+    {"name": "protocol_version", "offset": 0, "size": 2, "type": "uint16"},
+    {"name": "message_type", "offset": 2, "size": 2, "type": "uint16"},
+    {"name": "sequence", "offset": 4, "size": 4, "type": "uint32"},
+    {"name": "source_timestamp_us", "offset": 8, "size": 8, "type": "uint64"},
+    {"name": "issued_timestamp_us", "offset": 16, "size": 8, "type": "uint64"},
+    {"name": "valid_until_us", "offset": 24, "size": 8, "type": "uint64"},
+    {"name": "command_lease_id", "offset": 32, "size": 4, "type": "uint32"},
+    {"name": "control_mode", "offset": 36, "size": 1, "type": "uint8"},
+    {"name": "range_shift_state", "offset": 37, "size": 1, "type": "uint8"},
+    {"name": "steering", "offset": 38, "size": 2, "type": "int16_q15"},
+    {"name": "throttle", "offset": 40, "size": 2, "type": "uint16_q15"},
+    {"name": "brake", "offset": 42, "size": 2, "type": "uint16_q15"},
+    {"name": "ai_confidence", "offset": 44, "size": 2, "type": "uint16_q15"},
+    {"name": "reserved_u16", "offset": 46, "size": 2, "type": "uint16", "must_equal": 0},
+    {"name": "result_age_ms", "offset": 48, "size": 4, "type": "uint32"},
+    {"name": "flags", "offset": 52, "size": 4, "type": "uint32"},
+    {"name": "reserved_u32", "offset": 56, "size": 4, "type": "uint32", "must_equal": 0},
+    {"name": "crc32", "offset": 60, "size": 4, "type": "uint32"}
+  ],
+  "message_types": {"command": 1, "heartbeat": 2},
+  "control_modes": {"hold": 0, "manual": 1, "ai_active": 2, "safe_stop": 3},
+  "range_shift_states": {
+    "valid": 0,
+    "input_range_shift": 1,
+    "normalization_mismatch": 2,
+    "color_order_mismatch": 3,
+    "nan_or_inf": 4,
+    "activation_range_shift": 5,
+    "quantization_saturation": 6,
+    "output_range_invalid": 7,
+    "recovery_pending": 8
+  },
+  "safety_boundaries": {
+    "maximum_rx_buffer_bytes": 64,
+    "maximum_result_age_ms": 150,
+    "dynamic_allocation_allowed": false,
+    "active_ai_requires_valid_range_state": true,
+    "duplicate_or_out_of_order_sequence_rejected": true,
+    "expired_validity_or_lease_rejected": true
+  }
+}

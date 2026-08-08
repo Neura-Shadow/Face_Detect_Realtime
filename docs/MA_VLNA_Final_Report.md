@@ -1,6 +1,10 @@
 # MA-VLNA — Memory-Augmented Vision-Language Navigation Agent
 ## Final Technical Report
 
+### Phase 13A-EMBEDDED-CONTRACT-SIL Latest Addendum
+
+Protocol version 1 fixes a 64-byte little-endian packed host-to-Safety-MCU command with CRC-32, monotonic sequence, validity window, independent command lease, bounded controls, AI confidence, range state, result age, and flags. `RangeShiftMonitor` fail-closes input, normalization, color-order, NaN/Inf, activation, quantization saturation, output-range, and result-age faults; ACTIVE AI authority resumes only after three consecutive valid samples. The host SIL evidence at `experiments\phase13\20260808T065044Z` passed 28/28 tests, while the portable no-allocation C parser/FSM passed CMake/CTest 1/1. This is not real MCU firmware, HIL, actuator, CARLA benchmark, model-accuracy, or OTA/security evidence.
+
 ### Phase 12C-YOLOv9-R1 Latest Formal Rerun
 
 The latest selected-row gate at `experiments\phase12\20260713T190904Z` reconfirmed the official YOLOv9 source adapter with no fallback and reached a real CARLA 0.9.16 server. The existing Phase 12B -> Phase 11M child path executed, but Town03_Opt load exceeded the 60-second setup timeout before ego spawn or route ticks (`child_row_result=grp_blocked`, `steps_completed=0`, `goal_reached=false`, `yolo_runtime_row_verified=false`). This remains selected single-route blocked evidence only, not full Phase 12C ablation, YOLOv9 accuracy, RT-DETR runtime, Leaderboard, formal route benchmark, or infraction benchmark evidence.

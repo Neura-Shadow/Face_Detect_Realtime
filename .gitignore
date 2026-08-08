@@ -12,3 +12,5 @@ node_modules/
 experiments/phase12/*/runs/
 experiments/phase12/*/raw_outputs/
 experiments/phase12/*/
+experiments/phase13/*/
+.phase13a-cmake-check-*/
