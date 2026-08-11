@@ -172,7 +172,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--command-ack-cycles", type=int, default=200)
     parser.add_argument("--camera-width", type=int, default=320)
     parser.add_argument("--camera-height", type=int, default=180)
-    parser.add_argument("--clock-samples", type=int, default=20)
+    parser.add_argument("--clock-samples", type=int, default=40)
     parser.add_argument("--heartbeat-timeout-ms", type=int, default=3000)
     parser.add_argument("--command-validity-ms", type=int, default=500)
     parser.add_argument("--diagnostic-throttle", type=float, default=0.20)

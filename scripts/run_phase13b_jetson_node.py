@@ -285,6 +285,7 @@ class JetsonNode:
 
         self.commands_sent = 0
         self.commands_skipped = 0
+        self.ack_resync_drops = 0
         self.command_classifications = {}  # type: Dict[str, int]
         self.ack_timeouts = 0
         self.ai_active_command_count = 0
@@ -784,6 +785,9 @@ class JetsonNode:
                 }
 
             control_mode = int(packet.control_mode)
+            # Discard any ACK left over from a previously timed-out command so
+            # the ACK received below unambiguously belongs to this command.
+            self.ack_resync_drops += self.ack_receiver.drain()
             send_us = monotonic_us()
             self.command_sender.send_command(wire)
             self.commands_sent += 1
@@ -871,18 +875,19 @@ class JetsonNode:
         started = monotonic_us()
         accepted = 0
         classifications = {}  # type: Dict[str, int]
+        clock_degraded = self.clock.clock_sync_degraded
         for index in range(int(cycles)):
             record = self._send_command(
                 frame_id=-1,
                 frame_receive_us=monotonic_us(),
                 frame_age_ms=None,
                 range_result=valid,
-                gate_approved=True,
+                gate_approved=not clock_degraded,
                 steering=0.0,
-                throttle=float(self.args.diagnostic_throttle),
-                brake=0.0,
+                throttle=0.0 if clock_degraded else float(self.args.diagnostic_throttle),
+                brake=1.0 if clock_degraded else 0.0,
                 result_age_ms=float(self.args.nominal_result_age_ms),
-                clock_degraded=False,
+                clock_degraded=clock_degraded,
                 perception_backend="dummy",
                 simulation_timestamp_us=0,
                 pc_monotonic_us=0,
@@ -900,6 +905,7 @@ class JetsonNode:
             "stress_classifications": classifications,
             "stress_duration_ms": round((monotonic_us() - started) / 1000.0, 3),
             "stress_valid_acks": self.ack_receiver.valid_acks,
+            "stress_clock_degraded": clock_degraded,
         }
         self.emit("command_ack_stress_completed", **payload)
         return payload
@@ -920,6 +926,7 @@ class JetsonNode:
             "ai_active_command_count": self.ai_active_command_count,
             "safe_stop_command_count": self.safe_stop_command_count,
             "ack_timeout_count": self.ack_timeouts,
+            "ack_resync_drops": self.ack_resync_drops,
             "diagnostic_throttle_target": float(self.args.diagnostic_throttle),
             "diagnostic_throttle_applied_mean": _mean(self.diagnostic_throttle_applied),
             "diagnostic_throttle_applied_max": max(self.diagnostic_throttle_applied)
@@ -1036,6 +1043,9 @@ class JetsonNode:
         try:
             conn, addr = listener.accept()
             conn.settimeout(float(self.args.control_timeout_sec))
+            # Nagle would batch the clock-probe response and inflate the
+            # measured network delay, which feeds clock_uncertainty_us.
+            conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             self.emit("control_channel_connected", peer_host=addr[0], peer_port=addr[1])
             exit_code = self._control_loop(conn, addr[0])
         except socket.timeout:

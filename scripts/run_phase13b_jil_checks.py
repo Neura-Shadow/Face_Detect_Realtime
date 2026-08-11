@@ -71,6 +71,10 @@ DEFAULT_CONTROL_PORT = 13513
 DEFAULT_COMMAND_PORT = 13511
 DEFAULT_ACK_PORT = 13512
 DEFAULT_HEARTBEAT_TIMEOUT_MS = 5000
+#: Collect more probes than the mandated minimum of 20 so the minimum-RTT
+#: estimator has a better chance of catching an un-queued round trip.
+DEFAULT_CLOCK_SAMPLES = 40
+DEFAULT_CLOCK_WARMUP_PROBES = 5
 DEFAULT_CAMERA_WIDTH = 640
 DEFAULT_CAMERA_HEIGHT = 360
 
@@ -252,7 +256,8 @@ class JilSessionDriver:
         heartbeat_timeout_ms: int = DEFAULT_HEARTBEAT_TIMEOUT_MS,
         command_validity_ms: int = 500,
         max_clock_uncertainty_us: int = DEFAULT_MAX_UNCERTAINTY_US,
-        clock_samples: int = DEFAULT_SAMPLE_COUNT,
+        clock_samples: int = DEFAULT_CLOCK_SAMPLES,
+        clock_warmup_probes: int = DEFAULT_CLOCK_WARMUP_PROBES,
         camera_width: int = DEFAULT_CAMERA_WIDTH,
         camera_height: int = DEFAULT_CAMERA_HEIGHT,
         jpeg_quality: int = 85,
@@ -268,7 +273,8 @@ class JilSessionDriver:
         self.heartbeat_timeout_us = int(heartbeat_timeout_ms) * 1000
         self.command_validity_ms = int(command_validity_ms)
         self.max_clock_uncertainty_us = int(max_clock_uncertainty_us)
-        self.clock_samples = int(clock_samples)
+        self.clock_samples = max(DEFAULT_SAMPLE_COUNT, int(clock_samples))
+        self.clock_warmup_probes = max(0, int(clock_warmup_probes))
         self.camera_width = int(camera_width)
         self.camera_height = int(camera_height)
         self.pin_source_host = bool(pin_source_host)
@@ -413,6 +419,12 @@ class JilSessionDriver:
         return hello
 
     def synchronise_clocks(self) -> Dict[str, Any]:
+        # Warm-up probes are discarded: the first round trips on a freshly
+        # established TCP connection pay connection-setup and interpreter
+        # warm-up costs that are not representative of the link.
+        for index in range(self.clock_warmup_probes):
+            self.control.request("clock_probe", sample_index=-1 - index)
+
         samples = []  # type: List[ClockSyncSample]
         for index in range(self.clock_samples):
             t1 = monotonic_us()
@@ -429,7 +441,7 @@ class JilSessionDriver:
         result = estimate_clock_offset(
             samples,
             max_uncertainty_us=self.max_clock_uncertainty_us,
-            min_sample_count=self.clock_samples,
+            min_sample_count=min(self.clock_samples, DEFAULT_SAMPLE_COUNT),
         )
         self.clock_result = result
         payload = result.to_dict()
@@ -1146,7 +1158,10 @@ def build_arg_parser(description: str) -> argparse.ArgumentParser:
     parser.add_argument("--heartbeat-timeout-ms", type=int, default=DEFAULT_HEARTBEAT_TIMEOUT_MS)
     parser.add_argument("--command-validity-ms", type=int, default=500)
     parser.add_argument("--diagnostic-throttle", type=float, default=0.20)
-    parser.add_argument("--clock-samples", type=int, default=DEFAULT_SAMPLE_COUNT)
+    parser.add_argument("--clock-samples", type=int, default=DEFAULT_CLOCK_SAMPLES)
+    parser.add_argument(
+        "--clock-warmup-probes", type=int, default=DEFAULT_CLOCK_WARMUP_PROBES
+    )
     parser.add_argument("--max-clock-uncertainty-us", type=int, default=DEFAULT_MAX_UNCERTAINTY_US)
     parser.add_argument("--camera-width", type=int, default=DEFAULT_CAMERA_WIDTH)
     parser.add_argument("--camera-height", type=int, default=DEFAULT_CAMERA_HEIGHT)
@@ -1186,6 +1201,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         command_validity_ms=args.command_validity_ms,
         max_clock_uncertainty_us=args.max_clock_uncertainty_us,
         clock_samples=args.clock_samples,
+        clock_warmup_probes=args.clock_warmup_probes,
         camera_width=args.camera_width,
         camera_height=args.camera_height,
         jpeg_quality=args.jpeg_quality,

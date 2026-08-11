@@ -368,6 +368,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         command_validity_ms=args.command_validity_ms,
         max_clock_uncertainty_us=args.max_clock_uncertainty_us,
         clock_samples=args.clock_samples,
+        clock_warmup_probes=args.clock_warmup_probes,
         camera_width=args.camera_width,
         camera_height=args.camera_height,
         jpeg_quality=args.jpeg_quality,
