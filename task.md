@@ -346,3 +346,138 @@ leaderboard_route_criteria_evaluated=false
 ## Next Safe Step
 
 The recommended next phase is `R1-LATENCY-OPT`, focused on YOLOv9 forward-path latency reduction or stronger diagnostic cadence isolation. A route-completion attempt remains premature from this evidence.
+
+---
+
+# Phase 13B-JETSON-IN-THE-LOOP-BRIDGE
+
+## Scope
+
+Connect the simulated CARLA world on the Windows simulation PC to the **real**
+Jetson Orin NX compute node, and close the loop back into CARLA through the
+portable C Virtual Safety MCU.
+
+```text
+validation_type=processor_in_the_loop
+transport_medium=usb_gadget_ethernet
+```
+
+Physical: Jetson Linux, CPU/GPU/RAM, process and thread scheduling, network
+stack, CUDA/TensorRT installation, thermal and resource telemetry, the USB cable
+and the USB-gadget network transport.
+
+Simulated: CARLA camera, environment, vehicle, Safety MCU, actuator and vehicle
+physics.
+
+Perception is `DummyPerceptionBackend`. TensorRT deployment is Phase 13C.
+
+## Contracts
+
+```text
+frame_header_magic=JILF
+frame_header_size_bytes=56
+frame_codec=JPEG
+frame_declared_decoded_pixel_format=BGR8
+frame_payload_crc=CRC-32/ISO-HDLC over the encoded payload only
+
+command_protocol_version=1
+command_packet_size_bytes=64
+command_crc_coverage_bytes=60
+command_datagram_rule=one UDP datagram carries exactly one unchanged Phase 13A packet
+
+ack_magic=JILA
+ack_packet_size_bytes=48
+ack_crc_coverage_bytes=44
+
+buffer_pool_size=3
+mailbox_depth=1
+max_payload_bytes=4194304
+```
+
+Ports (all CLI-configurable): Jetson frame TCP 13510, Jetson control/clock/
+metrics TCP 13513, Jetson ACK UDP 13512, PC command UDP 13511.
+
+## Gates
+
+- **Gate A** — local loopback, no CARLA and no Jetson. Permits only `Prepared`.
+- **Gate B** — real Jetson transport: >=300 frames through the production TCP
+  path plus >=1000 command/ACK cycles with >=990 valid ACKs. Command/ACK-only
+  execution is not sufficient for Transport Pass.
+- **Gate C** — CARLA closed loop: >=300 camera frames and at least one
+  C-accepted non-SAFE_STOP diagnostic control applied to CARLA.
+
+## Commands
+
+Gate A (PC only):
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase13b_loopback_checks.py
+```
+
+Jetson node:
+
+```bash
+cd /home/myjetsonnx/Face_Detect_Realtime
+git fetch origin
+git checkout codex/phase-11o-source-commit-boundary
+git pull --ff-only origin codex/phase-11o-source-commit-boundary
+source /home/myjetsonnx/venvs/ma-vlna/bin/activate
+python scripts/run_phase13b_jetson_node.py --run-id <RUN_ID> --bind-host 0.0.0.0 \
+  --frame-port 13510 --control-port 13513 --pc-host 192.168.55.100 \
+  --command-port 13511 --ack-port 13512 --require-real-jetson \
+  --run-phase13a-preflight --output-dir experiments/phase13
+```
+
+Gate B:
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase13b_jil_checks.py `
+  --run-id <RUN_ID> --jetson-host 192.168.55.1 --frame-port 13510 `
+  --control-port 13513 --command-port 13511 --ack-port 13512 `
+  --synthetic-frames 300 --command-ack-cycles 1000 --require-real-jetson `
+  --output-dir experiments\phase13
+```
+
+Gate C:
+
+```powershell
+$env:CARLA_ROOT = "D:\CARLA\packages\CARLA_0.9.16"
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase13b_simulation_host.py `
+  --run-id <RUN_ID> --carla-host 127.0.0.1 --carla-port 2000 `
+  --jetson-host 192.168.55.1 --frame-port 13510 --control-port 13513 `
+  --command-port 13511 --ack-port 13512 --mode lockstep --frames 300 `
+  --fixed-delta-seconds 0.05 --camera-width 640 --camera-height 360 `
+  --camera-fps 10 --map-load-mode reuse_or_load --setup-timeout-sec 180 `
+  --warmup-ticks 20 --require-server --require-jetson --output-dir experiments\phase13
+```
+
+Firewall commands are generated but never executed. Windows ICS and the Jetson
+firewall are never modified.
+
+## Boundary Fields
+
+```text
+validation_type=processor_in_the_loop
+physical_actuator_control_executed=false
+physical_camera_verified=false
+real_mcu_verified=false
+real_s32k344_verified=false
+full_hil_verified=false
+real_can_uart_timing_verified=false
+tensorrt_inference_verified=false
+model_accuracy_verified=false
+route_benchmark_verified=false
+infraction_benchmark_verified=false
+leaderboard_evaluated=false
+physical_vehicle_deployment=false
+input_range_checked=true
+activation_range_checked=false
+quantization_saturation_checked=false
+range_validation_scope=input_only_dummy_backend
+power_measurement_available=false
+```
+
+## Next Safe Step
+
+`Phase 13C` — TensorRT deployment on the real Jetson, using the Phase 13B
+bridge as the transport and safety substrate.

@@ -295,3 +295,113 @@ class RangeShiftMonitor:
             if value is None or not math.isfinite(float(value)) or not low <= float(value) <= high:
                 return False
         return True
+
+
+# ════════════════════════════════════════════════════════════════
+# Phase 13B input-only validation profile
+# ════════════════════════════════════════════════════════════════
+
+#: Phase 13B runs a DummyPerceptionBackend, so no real model activation tensors
+#: exist. Activation-range and quantization-saturation evidence must therefore
+#: never be claimed. This scope string is written verbatim into run evidence.
+PHASE13B_RANGE_VALIDATION_SCOPE = "input_only_dummy_backend"
+
+
+def build_phase13b_input_contract(
+    *,
+    channel_mean_bounds: tuple[tuple[float, float], ...] = (
+        (0.02, 0.98),
+        (0.02, 0.98),
+        (0.02, 0.98),
+    ),
+    channel_std_bounds: tuple[tuple[float, float], ...] = (
+        (0.005, 0.60),
+        (0.005, 0.60),
+        (0.005, 0.60),
+    ),
+    max_result_age_ms: int = 150,
+    recovery_valid_samples: int = 3,
+) -> RangeContract:
+    """Build the Phase 13B input-only range contract.
+
+    This is a *separate* contract instance for the Phase 13B Jetson-in-the-loop
+    bridge. The default :class:`RangeContract` used by the full Phase 13A
+    pipeline is untouched: this profile only widens the per-channel mean/std
+    envelope so that unmodified CARLA RGB camera frames (which legitimately
+    span dark and bright scenes) are not rejected as an input shift, while
+    still catching an all-black, saturated, wrong-order or NaN frame.
+
+    It is a transport/plumbing contract for a dummy backend, not a model
+    calibration, and it never implies activation or quantization evidence.
+    """
+
+    return RangeContract(
+        channel_mean_bounds=channel_mean_bounds,
+        channel_std_bounds=channel_std_bounds,
+        max_result_age_ms=max_result_age_ms,
+        recovery_valid_samples=recovery_valid_samples,
+    )
+
+
+class InputOnlyRangeProfile:
+    """Phase 13B input-only wrapper around the existing :class:`RangeShiftMonitor`.
+
+    It feeds the monitor raw + normalized inputs and control outputs only; it
+    never supplies fabricated activations or quantized activations, so the
+    ACTIVATION_RANGE_SHIFT and QUANTIZATION_SATURATION paths simply cannot fire.
+    """
+
+    def __init__(self, contract: RangeContract | None = None) -> None:
+        self.contract = contract or build_phase13b_input_contract()
+        self.monitor = RangeShiftMonitor(self.contract)
+        self.evaluation_count = 0
+
+    @staticmethod
+    def normalize_bgr_frame(bgr_frame: np.ndarray) -> np.ndarray:
+        """BGR8 HWC uint8 -> RGB NCHW float32 in [0, 1] (contract layout)."""
+
+        rgb = np.asarray(bgr_frame)[:, :, ::-1]
+        scaled = rgb.astype(np.float32) / 255.0
+        return np.transpose(scaled, (2, 0, 1))[None, ...]
+
+    def evaluate_frame(
+        self,
+        *,
+        bgr_frame: np.ndarray,
+        outputs: Mapping[str, float],
+        result_age_ms: float,
+        source_pixel_format: str = "BGR8",
+        model_color_order: str = "RGB",
+    ) -> RangeShiftResult:
+        """Run the input-only checks for one decoded Jetson frame."""
+
+        self.evaluation_count += 1
+        raw_input = np.asarray(bgr_frame)
+        return self.monitor.evaluate(
+            raw_input=raw_input,
+            normalized_input=self.normalize_bgr_frame(raw_input),
+            source_pixel_format=source_pixel_format,
+            model_color_order=model_color_order,
+            input_layout=self.contract.input_layout,
+            activations=None,
+            quantized_activations=None,
+            outputs=outputs,
+            result_age_ms=result_age_ms,
+        )
+
+    def evidence(self) -> dict[str, Any]:
+        """Phase 13B required range-validation evidence fields."""
+
+        return {
+            "input_range_checked": True,
+            "activation_range_checked": False,
+            "quantization_saturation_checked": False,
+            "range_validation_scope": PHASE13B_RANGE_VALIDATION_SCOPE,
+            "range_evaluation_count": self.evaluation_count,
+            "range_shift_detection_count": self.monitor.range_shift_detection_count,
+            "range_failure_counts": self.monitor.failure_counts,
+            "range_contract": self.contract.to_dict(),
+            "activation_evidence_claimed": False,
+            "quantization_evidence_claimed": False,
+            "tensorrt_tensor_evidence_claimed": False,
+        }

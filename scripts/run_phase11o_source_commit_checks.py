@@ -23,12 +23,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 ALLOWED_STAGE_ROOTS = {
     "backend",
     "config",
+    "deployment",
     "docs",
     "embedded",
     "frontend",
     "migrations",
     "scripts",
     "shared",
+    "simulation",
     "workers",
 }
 ALLOWED_ROOT_FILES = {

@@ -93,8 +93,53 @@ def main() -> int:
                 "workers/core/range_shift_monitor.py",
                 "workers/core/embedded_command_bridge.py",
                 "scripts/run_phase13a_embedded_contract_sil.py",
+                "workers/core/jil_protocol.py",
+                "workers/core/frame_transport.py",
+                "workers/core/latest_frame_mailbox.py",
+                "workers/core/udp_command_transport.py",
+                "workers/core/clock_sync.py",
+                "workers/core/jetson_resource_monitor.py",
+                "simulation/__init__.py",
+                "simulation/carla_frame_publisher.py",
+                "simulation/virtual_safety_mcu_server.py",
+                "simulation/carla_virtual_actuator_bridge.py",
+                "scripts/run_phase13b_jetson_node.py",
+                "scripts/run_phase13b_simulation_host.py",
+                "scripts/run_phase13b_loopback_checks.py",
+                "scripts/run_phase13b_jil_checks.py",
+                "scripts/run_phase13b_orchestrator.py",
             ],
             "expected": [],
+        },
+        {
+            "name": "Phase 13B protocol/mailbox/clock/FFI 單元測試",
+            "cmd": [
+                sys.executable,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "scripts/tests",
+                "-p",
+                "test_phase13b_*.py",
+            ],
+            "expected": [],
+        },
+        {
+            "name": "Phase 13B contract smoke (frame 56B / ACK 48B / command 64B unchanged)",
+            "cmd": [
+                sys.executable,
+                "-c",
+                (
+                    "from workers.core.jil_protocol import FRAME_HEADER_SIZE, ACK_PACKET_SIZE; "
+                    "from workers.core.embedded_command_bridge import PACKET_SIZE, CRC_OFFSET; "
+                    "assert FRAME_HEADER_SIZE == 56; "
+                    "assert ACK_PACKET_SIZE == 48; "
+                    "assert PACKET_SIZE == 64 and CRC_OFFSET == 60; "
+                    "print('phase13b contract smoke passed')"
+                ),
+            ],
+            "expected": ["phase13b contract smoke passed"],
         },
         {
             "name": "CARLA control mapping self-test",

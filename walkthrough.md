@@ -354,3 +354,117 @@ Forbidden claims:
 - CARLA Leaderboard passed;
 - formal route benchmark passed;
 - infraction benchmark passed.
+
+---
+
+# Phase 13B-JETSON-IN-THE-LOOP-BRIDGE Walkthrough
+
+## What this phase does
+
+The simulated CARLA camera runs on the Windows PC. The perception, range
+validation, planning gate and command generation run on the **real** Jetson
+Orin NX. The safety decision runs in the portable C Virtual Safety MCU on the
+PC. The accepted control is applied to the simulated CARLA vehicle.
+
+```text
+CARLA RGB camera (BGRA)
+  -> explicit BGRA-to-BGR -> JPEG encode -> TCP 13510
+    -> real Jetson FrameReceiver -> FixedBufferPool(3) -> LatestFrameMailbox(1)
+      -> JPEG decode to BGR8 -> input-only RangeShift -> DummyPerceptionBackend
+        -> diagnostic PlannerAction -> SafetyGate -> existing control mapper
+          -> EmbeddedCommandBridge -> unchanged Phase 13A 64-byte packet
+            -> UDP 13511 -> C Virtual Safety MCU (ctypes over the C ABI)
+              -> 48-byte JILA ACK -> UDP 13512 -> Jetson ACK validation
+              -> VirtualActuatorBridge -> carla.VehicleControl -> next tick
+```
+
+## Why the C library is loaded instead of reimplemented
+
+Phase 13A froze the command contract and proved a portable C parser and FSM.
+Phase 13B keeps that C code as the **runtime source of truth** and exposes it
+through a narrow, fixed-layout C ABI (`safety_mcu_ffi.h`) loaded with `ctypes`.
+Nothing about the Phase 13A layout, CRC coverage, sequence, lease, RangeShift
+policy or FSM semantics changes. The Python `SafetyMCUEmulator` survives only as
+a unit-test oracle, cross-checked against the C decisions.
+
+## Why the mailbox depth is exactly 1
+
+A camera at 10 FPS and a Jetson pipeline with variable latency will drift. A
+queue would hide that drift as growing latency. A depth-1 mailbox makes the
+drift visible as a drop count instead: the newest frame always wins, the older
+buffer is released deterministically, and `max_mailbox_depth == 1` is a pass
+requirement.
+
+## Why the clock conversion has a guard band
+
+The PC and the Jetson have independent monotonic clocks. The frozen Phase 13A
+parser rejects any command whose `issued_timestamp_us` lies in the receiver's
+future. The Jetson therefore converts into the PC domain and subtracts the
+measured `clock_uncertainty_us`. That can only make a command *older*, never
+fresher, so it cannot mask a stale command — it only prevents conversion error
+from pushing a valid command past the receiver's clock.
+
+When `clock_uncertainty_us > 5000`, one-way latency is reported as `null`,
+`AI_ACTIVE` is forbidden, `SAFE_STOP` is emitted and `clock_sync_degraded=true`.
+RTT metrics stay valid.
+
+## Why the camera emits one frame every two ticks
+
+```text
+fixed_delta_seconds = 0.05  ->  simulator frequency = 20 Hz
+camera_fps = 10             ->  sensor_tick = 0.10 s
+```
+
+Under the default formal profile the RGB sensor fires on every second tick.
+The lockstep loop never assumes a frame per tick: on an intermediate tick it
+holds the last C-accepted control only while its validity window is open, and
+otherwise applies SAFE_STOP.
+
+## Why the range profile is input-only
+
+Phase 13B uses `DummyPerceptionBackend`, so no real activation tensors exist.
+Fabricating activation-range or quantization-saturation evidence would be a lie,
+so `InputOnlyRangeProfile` supplies no activations at all and records
+`activation_range_checked=false`, `quantization_saturation_checked=false`,
+`range_validation_scope=input_only_dummy_backend`.
+
+The Phase 13A recovery rule still applies: after any range failure, three
+consecutive valid samples are required before `AI_ACTIVE` resumes. The first two
+frames of every run are `RECOVERY_PENDING` -> `SAFE_STOP` by design.
+
+## Gate ladder and honest status
+
+- **Gate A** (local loopback) alone permits only `Prepared`.
+- **Gate B** requires the real Jetson frame path *and* the command/ACK path.
+  Command/ACK-only execution is explicitly not enough for `Transport Pass`.
+- **Gate C** requires a C-accepted non-SAFE_STOP control actually applied into
+  CARLA before `Pass` may be claimed.
+
+`Prepared` and `Transport Pass` are never inflated into `Pass`.
+
+## Boundary
+
+Allowed claims (only with supporting evidence):
+
+- real Jetson frame processing executed;
+- real Jetson Linux, network and resource behaviour measured;
+- unchanged Phase 13A packets traversed the network;
+- the C Virtual Safety MCU validated commands;
+- accepted commands controlled only the virtual CARLA actuator;
+- Jetson-in-the-loop closed loop verified.
+
+Forbidden claims:
+
+- full HIL;
+- real MCU validation;
+- real S32K344 validation;
+- physical actuator control;
+- physical camera validation;
+- real CAN/UART timing;
+- TensorRT model deployment or inference benchmark;
+- perception accuracy;
+- navigation quality;
+- route completion benchmark;
+- CARLA Leaderboard;
+- infraction benchmark;
+- physical vehicle deployment.

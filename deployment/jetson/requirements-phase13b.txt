@@ -1,0 +1,37 @@
+# Phase 13B Jetson runtime dependency contract (documentation only).
+#
+# DO NOT run `pip install -r` against this file on the Jetson. Phase 13B never
+# installs Jetson dependencies automatically. Every entry below is either part
+# of JetPack 5.1.3 or already present in /home/myjetsonnx/venvs/ma-vlna.
+#
+# Verified Jetson baseline (reComputer J4012 / Orin NX 16 GB, JetPack 5.1.3,
+# L4T R35.5.0, kernel 5.10.192-tegra, Python 3.8.10, aarch64):
+#
+#   python      3.8.10
+#   numpy       1.17.4          (venv)
+#   opencv      4.5.4  (cv2)    JetPack system package — JPEG decode path
+#   python-dotenv               (venv)
+#   PyYAML      5.3.1           (venv)
+#   pydantic    2.10.6          (venv)
+#   eval-type-backport 0.4.0    (venv, required by pydantic on Python 3.8)
+#   tensorrt    8.5.2.2         JetPack system package (NOT used by Phase 13B)
+#   cuda        11.4.315        JetPack system package (NOT used by Phase 13B)
+#
+# Standard library only, no third-party package required:
+#   ctypes, socket, struct, zlib, threading, subprocess, json, csv
+#
+# Explicitly NOT installed and NOT permitted to be pip-installed on the Jetson:
+#   opencv-python              (would shadow the JetPack cv2 build)
+#   torch / torchvision        (generic wheels are not Jetson builds)
+#   tensorrt / nvidia-*        (JetPack owns these)
+#   psutil                     (optional; Phase 13B falls back to /proc)
+#
+# If any line above cannot be satisfied at runtime, Phase 13B records the
+# blocker `jetson_dependency_missing` (or `jpeg_codec_unavailable` for cv2)
+# and refuses to claim a Gate B pass. It never installs anything to recover.
+
+numpy>=1.17.4
+PyYAML>=5.3.1
+python-dotenv
+pydantic==2.10.6
+eval-type-backport==0.4.0

@@ -1,0 +1,62 @@
+# Phase 13B Jetson-in-the-loop node — systemd unit EXAMPLE.
+#
+# THIS FILE IS AN EXAMPLE ONLY. Phase 13B never installs, copies, enables or
+# starts it. Claude Code does not write to /etc/systemd/system, does not run
+# `systemctl enable`, and does not run `systemctl start`.
+#
+# An operator who wants it as a service does this manually, on their own
+# judgement, after reviewing the unit:
+#
+#   sudo cp deployment/jetson/systemd/ma-vlna-jil.service.example \
+#           /etc/systemd/system/ma-vlna-jil.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now ma-vlna-jil.service
+#
+# For a normal Phase 13B run the node is started per-run over non-interactive
+# SSH with a run-specific PID and log path under /tmp, and stopped by that exact
+# PID. That is the supported path; this unit exists only for long-lived rigs.
+
+[Unit]
+Description=MA-VLNA Phase 13B Jetson-in-the-loop node (processor-in-the-loop)
+Documentation=file:///home/myjetsonnx/Face_Detect_Realtime/docs/phase13b_jetson_in_the_loop_bridge.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=myjetsonnx
+Group=myjetsonnx
+WorkingDirectory=/home/myjetsonnx/Face_Detect_Realtime
+
+# Copy deployment/jetson/phase13b.env.example somewhere outside the repository
+# and point this at it. The file must not contain passwords or keys.
+EnvironmentFile=-/home/myjetsonnx/ma-vlna-phase13b.env
+
+ExecStart=/home/myjetsonnx/venvs/ma-vlna/bin/python \
+    scripts/run_phase13b_jetson_node.py \
+    --bind-host 0.0.0.0 \
+    --frame-port 13510 \
+    --control-port 13513 \
+    --command-port 13511 \
+    --ack-port 13512 \
+    --require-real-jetson \
+    --output-dir experiments/phase13
+
+Restart=no
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+# The node is read-only with respect to system configuration: it never changes
+# nvpmodel, clocks, the thermal policy, the kernel or JetPack, and it never
+# installs packages.
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=false
+PrivateTmp=false
+
+StandardOutput=append:/tmp/ma-vlna-phase13b-service.log
+StandardError=append:/tmp/ma-vlna-phase13b-service.log
+
+[Install]
+WantedBy=multi-user.target

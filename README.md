@@ -93,11 +93,15 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
   - Phase 12C-SUM perception backend ablation summary: **Completed - dummy runtime smoke confirmed, YOLOv9 route-begin/latency profiled without route completion, and RT-DETR frozen as external-asset blocked; `full_phase12c_perception_ablation_runtime_pass=false`, recommended next phase `Phase 12D-VLM-TRIGGER-SCAFFOLD_OR_FINAL_REPORT_FREEZE`**
   - Phase 12D-VLM-TRIGGER-SCAFFOLD: **Prepared - 20-row `5 calibrated routes x 4 VLM modes` dry-run matrix, provider command wiring, and null runtime schema implemented; no CARLA or external VLM call executed**
 - **Phase 13**:
-  - Phase 13A-EMBEDDED-CONTRACT-SIL: **Passed - protocol v1 fixed 64-byte little-endian packet, range-shift authority gate, Safety MCU emulator, portable C parser/FSM, 28/28 host SIL tests, and CTest 1/1 passed**
+  - Phase 13A-EMBEDDED-CONTRACT-SIL: **Passed - protocol v1 fixed 64-byte little-endian packet, range-shift authority gate, Safety MCU emulator, portable C parser/FSM, 28/28 host SIL tests, and the portable C CTest suite passed** (Phase 13A contributed 1 CTest; Phase 13B adds an FFI ABI test, so the suite is now 2)
+  - Phase 13A Jetson ARM64 revalidation: **Passed - real Jetson Orin NX (aarch64, JetPack 5.1.3, Python 3.8.10) reproduced 28/28 Python SIL and 1/1 native ARM64 CTest**
+  - Phase 13B-JETSON-IN-THE-LOOP-BRIDGE: **Prepared - JILF 56-byte frame header, JILA 48-byte ACK/status packet, fixed buffer pool + depth-1 latest-frame mailbox, NTP-style clock sync, narrow C ABI over the unchanged Phase 13A Safety MCU, and a 28-case fault matrix implemented; Gate A local loopback passed**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 
 Phase 13 begins embedded safety-contract verification. Phase 13A is host SIL only; it does not claim a real MCU, HIL, actuator, model-accuracy, OTA/security, or benchmark pass. See [docs/phase13a_embedded_contract_sil.md](docs/phase13a_embedded_contract_sil.md).
+
+Phase 13B connects the simulated CARLA world to the **real** Jetson Orin NX compute node and closes the loop back into CARLA through the portable C Virtual Safety MCU. `validation_type = processor_in_the_loop`: only the Jetson compute node and the USB-gadget Ethernet link are physical; the camera, environment, vehicle, Safety MCU, actuator and vehicle physics are simulated. Perception is `DummyPerceptionBackend` — TensorRT deployment belongs to Phase 13C. It does not claim full HIL, a real MCU or S32K344, real CAN/UART timing, a physical camera or actuator, TensorRT inference, perception accuracy, navigation quality, route completion, a CARLA Leaderboard result, an infraction benchmark, or physical vehicle deployment. See [docs/phase13b_jetson_in_the_loop_bridge.md](docs/phase13b_jetson_in_the_loop_bridge.md).
 
 ---
 
