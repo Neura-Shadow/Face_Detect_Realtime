@@ -612,7 +612,7 @@ def main(argv: list[str] | None = None) -> int:
     _write_json(run_dir / "manifest.json", manifest)
     _write_json(run_dir / "summary.json", summary)
     (run_dir / "events.jsonl").write_text("".join(json.dumps(event, ensure_ascii=False) + "\n" for event in events), encoding="utf-8")
-    (run_dir / "commands.txt").write_text(_commands_text([str(Path(__file__).relative_to(REPO_ROOT)), *actual_argv], c_results), encoding="utf-8")
+    (run_dir / "commands.txt").write_text(_commands_text([str(Path(__file__).resolve().relative_to(REPO_ROOT)), *actual_argv], c_results), encoding="utf-8")
     (run_dir / "README.md").write_text(_readme(run_dir, status, c_status), encoding="utf-8")
 
     print(status)

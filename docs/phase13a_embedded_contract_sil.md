@@ -139,6 +139,44 @@ Evidence files are `manifest.json`, `summary.json`, `events.jsonl`,
 `commands.txt`, and `README.md`. Generated evidence remains local and ignored
 under `experiments/phase13/*/`.
 
+## Real Jetson Orin NX ARM64 Revalidation
+
+Phase 13A was revalidated on the real Jetson processor environment below:
+
+| Property | Observed value |
+|---|---|
+| Processor / architecture | Jetson Orin NX / ARM aarch64 |
+| JetPack | `5.1.3` |
+| L4T | `R35.5.0` |
+| Operating system | Ubuntu `20.04.6` |
+| Python | `3.8.10` |
+| CUDA | `11.4.315` |
+| TensorRT | `8.5.2.2` |
+
+Observed validation results:
+
+```text
+Phase 13A Python SIL=28/28 PASS
+protocol_version=1
+packet_size_bytes=64
+false_accept_count=0
+false_reject_count=0
+native_arm64_cmake_build=PASS
+native_arm64_ctest=1/1 PASS
+phase13a_safety_mcu_tests_architecture=ARM aarch64
+direct_portable_c_protocol_fsm_execution=PASS
+direct_test_exit_code=0
+```
+
+Both relative and absolute runner invocation paths are covered by
+`scripts/tests/test_phase13a_script_invocation.py`. The runner resolves its own
+path before making it repository-relative, which preserves Python 3.8 path
+behavior without changing the protocol or safety policy.
+
+This is real Jetson processor/ARM64 validation only. It confirms host Python
+SIL and native ARM64 execution of the portable C parser/FSM reference; it is not
+hardware-in-the-loop or target Safety MCU evidence.
+
 ## Strict Boundary
 
 This Pass means the versioned host command contract, Python encoder/emulator,
@@ -148,6 +186,10 @@ does not claim:
 - real Safety MCU firmware or target-board pass;
 - hardware-in-the-loop pass;
 - actuator command or vehicle control;
+- physical camera validation;
+- CAN/UART timing validation;
+- TensorRT inference benchmark;
 - CARLA or route benchmark;
 - model accuracy or range-calibration quality;
+- vehicle deployment;
 - OTA, secure boot, cryptographic authentication, or cybersecurity pass.
