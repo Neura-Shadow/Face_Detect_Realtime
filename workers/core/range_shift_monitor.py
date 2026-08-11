@@ -270,7 +270,7 @@ class RangeShiftMonitor:
     @staticmethod
     def _within_channel_bounds(values: Sequence[float], bounds: Sequence[tuple[float, float]]) -> bool:
         return len(values) == len(bounds) and all(
-            low <= value <= high for value, (low, high) in zip(values, bounds, strict=True)
+            low <= value <= high for value, (low, high) in zip(values, bounds)
         )
 
     @staticmethod
