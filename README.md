@@ -95,7 +95,7 @@ MA-VLNA 是一個**可運行、可擴充、可回放、可驗證、可展示**�
 - **Phase 13**:
   - Phase 13A-EMBEDDED-CONTRACT-SIL: **Passed - protocol v1 fixed 64-byte little-endian packet, range-shift authority gate, Safety MCU emulator, portable C parser/FSM, 28/28 host SIL tests, and the portable C CTest suite passed** (Phase 13A contributed 1 CTest; Phase 13B adds an FFI ABI test, so the suite is now 2)
   - Phase 13A Jetson ARM64 revalidation: **Passed - real Jetson Orin NX (aarch64, JetPack 5.1.3, Python 3.8.10) reproduced 28/28 Python SIL and 1/1 native ARM64 CTest**
-  - Phase 13B-JETSON-IN-THE-LOOP-BRIDGE: **Prepared - JILF 56-byte frame header, JILA 48-byte ACK/status packet, fixed buffer pool + depth-1 latest-frame mailbox, NTP-style clock sync, narrow C ABI over the unchanged Phase 13A Safety MCU, and a 28-case fault matrix implemented; Gate A local loopback passed**
+  - Phase 13B-JETSON-IN-THE-LOOP-BRIDGE: **Pass - real Jetson Orin NX processed 300 simulated CARLA camera frames, emitted unchanged Phase 13A 64-byte command packets over USB-gadget Ethernet, received C Virtual Safety MCU ACK/REJECT responses, and closed the loop into CARLA virtual actuation (598 C-accepted active controls, 12 SAFE_STOPs, `max_mailbox_depth=1`, clock uncertainty 477 us, fault matrix 28/28, `false_accept_count=0`, `false_reject_count=0`)**
 
 Phase 12 begins experiment planning and controlled experiment scaffolding. Phase 11 remains the CARLA runtime verification and evidence-pack foundation.
 

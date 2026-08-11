@@ -468,3 +468,42 @@ Forbidden claims:
 - CARLA Leaderboard;
 - infraction benchmark;
 - physical vehicle deployment.
+
+## Runtime result — 2026-08-11
+
+`Phase 13B-JETSON-IN-THE-LOOP-BRIDGE Pass` at
+`runtime_git_sha=a05e22f60848d6cc25dc17866e322b9f638ee6db` on both the PC and
+the Jetson.
+
+Gate B moved 300 synthetic frames and 1319 unchanged Phase 13A packets with
+1314 valid ACKs. Gate C ran 600 Town03 ticks that produced exactly 300 camera
+frames — the documented one-frame-per-two-ticks relationship, confirmed in
+practice — with zero command timeouts, 598 C-accepted active diagnostic
+controls applied to the simulated vehicle and 12 SAFE_STOPs. The 28-case fault
+matrix passed on both gates with zero false accepts and zero false rejects.
+
+### What the real hardware caught that the loopback could not
+
+Gate A passed cleanly three times while two real defects sat in the code.
+
+**The ACK stream could desynchronise.** On loopback an ACK never arrives late,
+so the receive queue is always empty when the next command is sent. Over the
+real link two ACKs exceeded their 500 ms timeout; each leftover datagram then
+shifted the whole stream by one, so every later command read the *previous*
+command's ACK. It surfaced as fault case F06 (wrong lease) reporting
+`STALE_REJECT` — which was in fact F05's ACK. A queue-drain immediately before
+each send makes the correspondence unambiguous.
+
+**The PC clock was too coarse to measure the link.** Clock uncertainty came out
+at 7497 us and then 7999 us against a 5000 us budget, with only 2 of 40 probes
+surviving validation, while ICMP round trip over the same cable is 0-1 ms. On
+Windows before Python 3.13, `time.monotonic()` is backed by `GetTickCount64()`
+with a 15.625 ms granularity — three times coarser than the entire budget — so
+every four-timestamp probe quantised to a round trip of either 0 us or
+15625 us. On loopback the offset is genuinely zero, so the quantisation
+cancelled and nothing looked wrong. Switching to `time.perf_counter_ns`
+(100 ns on Windows, 1 ns on the Jetson) brought the measurement to 392 us and
+477 us with 40 of 40 valid probes.
+
+Both were fixed at source, pushed, pulled on the Jetson at the exact new SHA,
+and the affected gate was re-run. Neither fix touched a wire contract.

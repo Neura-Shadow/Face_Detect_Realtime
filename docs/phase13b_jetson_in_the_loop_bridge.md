@@ -687,3 +687,129 @@ leaderboard_evaluated = false
 
 `goal_reached` and `route_completion` are **not** required: Phase 13B measures
 the bridge, not navigation quality.
+
+---
+
+## 18. Runtime results — executed 2026-08-11
+
+`runtime_pc_git_sha = runtime_jetson_git_sha = a05e22f60848d6cc25dc17866e322b9f638ee6db`
+(`runtime_git_sha_match = true`, `runtime_code_changed_after_runtime = false`)
+
+**Status: `Phase 13B-JETSON-IN-THE-LOOP-BRIDGE Pass`.**
+
+### Gate A — local loopback (Prepared)
+
+Unit suites 83/83; portable C configure/build/CTest 2/2; loopback session over
+the production TCP/UDP transports with the real `run_phase13b_jetson_node.py`
+process as the PC-local substitute; fault matrix 28/28; `max_mailbox_depth == 1`;
+no buffer leak.
+
+### Gate B — real Jetson transport (Transport Pass)
+
+Evidence: `experiments\phase13\phase13b-20260811T145056Z`
+
+| Metric | Value |
+| --- | --- |
+| `real_jetson_detected` / `jetson_arch` | `true` / `aarch64` |
+| Device tree model | NVIDIA Orin NX Developer Kit |
+| L4T | R35 rev 5.0, GCID 35550185, EABI aarch64 |
+| Phase 13A Python preflight | 28/28 |
+| ARM64 CTest | 2/2 (`phase13a_safety_mcu_tests`, `phase13b_safety_mcu_ffi_tests`) |
+| ARM64 binaries verified by `file` | ELF 64-bit LSB, ARM aarch64 |
+| Direct C test exit code | 0 |
+| `gate_b_frames_sent` / `received` / `decoded` / `processed` | 300 / 306 / 305 / 305 |
+| `gate_b_max_mailbox_depth` | 1 |
+| `gate_b_transport_packets_sent` | 1319 |
+| `gate_b_valid_acks_received` | 1314 |
+| `gate_b_command_accept_count` / `reject_count` | 1311 / 7 |
+| `gate_b_fault_matrix_passed` | true (28/28) |
+| `false_accept_count` / `false_reject_count` | 0 / 0 |
+| `clock_uncertainty_us` / `clock_rtt_us` | 392 / 788 |
+| `clock_valid_sample_count` / `clock_sample_count` | 40 / 40 |
+| `frame_age_ms` p50 / p95 / p99 | 1.421 / 1.766 / 2.554 |
+| `frame_one_way_latency_ms_mean` | 1.513 |
+| `command_rtt_ms_mean` | 2.089 |
+
+The six frames above the 300 sent are the deterministic fault-matrix
+injections; the mismatch between 306 received and 305 decoded is the injected
+payload-CRC corruption, rejected before decode exactly as designed.
+
+### Gate C — CARLA closed loop (Pass)
+
+Evidence: `experiments\phase13\phase13b-20260811T145709Z-gatec`
+
+| Metric | Value |
+| --- | --- |
+| CARLA map / reused | `Carla/Maps/Town03` / true |
+| `fixed_delta_seconds` / simulator frequency | 0.05 / 20 Hz |
+| `camera_fps` / `sensor_tick` / ticks per camera frame | 10 / 0.10 s / **2.0** |
+| `gate_c_carla_frames_sent` / `processed` | 300 / 305 |
+| CARLA ticks executed | 600 |
+| Frames with a matched command | 300 |
+| Command timeouts | 0 |
+| `gate_c_command_accept_count` / `reject_count` | 311 / 7 |
+| `gate_c_virtual_actuator_control_applied_count` | 610 |
+| `gate_c_virtual_actuator_active_control_applied_count` | 598 |
+| `gate_c_virtual_actuator_safe_stop_applied_count` | 12 |
+| `gate_c_lockstep_passed` | true |
+| `gate_c_realtime_stale_gate_passed` | true |
+| `gate_c_fault_matrix_passed` | true (28/28) |
+| `false_accept_count` / `false_reject_count` | 0 / 0 |
+| `clock_uncertainty_us` / valid samples | 477 / 40 of 40 |
+| `max_mailbox_depth` / overwrite count / buffer leak | 1 / 0 / false |
+
+600 ticks produced exactly 300 camera frames, confirming the documented
+one-frame-per-two-ticks relationship in practice.
+
+### Real Jetson resource and thermal telemetry
+
+| Metric | Gate B | Gate C |
+| --- | --- | --- |
+| `tegrastats_sample_count` | 46 | 66 |
+| `cpu_temperature_c` | 50.94 | 50.94 |
+| `gpu_temperature_c` | 49.09 | 49.22 |
+| `soc_temperature_c` | 51.38 | 51.59 |
+| `cpu_utilization_percent` | 0.75 | 0.75 |
+| `gr3d_gpu_utilization_percent` | 0.0 | 0.0 |
+| `ram_used_bytes` | 1 128 267 776 | 1 126 170 624 |
+| `swap_used_bytes` | 0 | 0 |
+| `cpu_frequency_hz` / `gpu_frequency_hz` | 729 MHz / 115.2 MHz | 729 MHz / 115.2 MHz |
+| `thermal_throttling_observed` | false | false |
+| `jetson_process_rss_bytes` | 194 551 808 | 194 113 536 |
+| `jetson_process_thread_count` / `fd_count` | 3 / 12 | 3 / 12 |
+| `power_measurement_available` | false | false |
+
+GR3D utilisation is 0 % because Phase 13B is dummy-perception only; nothing is
+dispatched to the GPU. `power_measurement_available=false` because the
+reComputer J4012 `tegrastats` output carries no `VDD_*` rail fields on this
+board — power is never inferred from utilisation.
+
+### Two defects found and fixed by real hardware
+
+Both were invisible to Gate A and only appeared against the real Jetson:
+
+1. **ACK stream desynchronisation.** After a single ACK timeout the stale
+   datagram stayed queued and every later command read the *previous*
+   command's ACK. It surfaced as fault case F06 (wrong lease) reporting
+   `STALE_REJECT` — in fact F05's ACK. Fixed by draining the ACK socket
+   immediately before each send.
+2. **Clock resolution.** `clock_uncertainty_us` measured 7497 then 7999 against
+   a 5000 us budget, while ICMP RTT over the same link is 0–1 ms. On Windows
+   before Python 3.13, `time.monotonic()` is `GetTickCount64`-backed with a
+   15.625 ms granularity — coarser than the whole budget — so every probe
+   quantised to a 0 us or 15625 us round trip. Fixed by taking every Phase 13B
+   timestamp from `time.perf_counter_ns` (100 ns on Windows, 1 ns on the
+   Jetson), with regression tests that fail if the resolution ever regresses.
+
+### Explicit boundary for this run
+
+Allowed and evidenced: real Jetson frame processing executed; real Jetson
+Linux, network and resource behaviour measured; unchanged Phase 13A packets
+traversed the network; the C Virtual Safety MCU validated commands; accepted
+commands controlled only the virtual CARLA actuator; the Jetson-in-the-loop
+closed loop was verified.
+
+Not claimed and not evidenced: full HIL, real MCU, real S32K344, real CAN/UART
+timing, physical camera, physical actuator, TensorRT deployment or inference
+benchmark, perception accuracy, navigation quality, route completion, CARLA
+Leaderboard, infraction benchmark, physical vehicle deployment.

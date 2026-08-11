@@ -481,3 +481,62 @@ power_measurement_available=false
 
 `Phase 13C` — TensorRT deployment on the real Jetson, using the Phase 13B
 bridge as the transport and safety substrate.
+
+## Phase 13B Runtime Result — executed 2026-08-11
+
+```text
+status=Phase 13B-JETSON-IN-THE-LOOP-BRIDGE Pass
+runtime_pc_git_sha=a05e22f60848d6cc25dc17866e322b9f638ee6db
+runtime_jetson_git_sha=a05e22f60848d6cc25dc17866e322b9f638ee6db
+runtime_git_sha_match=true
+runtime_code_changed_after_runtime=false
+
+gate_a=Prepared (loopback passed, unit suites 83/83, CTest 2/2)
+gate_b=Transport Pass  experiments\phase13\phase13b-20260811T145056Z
+gate_c=Pass            experiments\phase13\phase13b-20260811T145709Z-gatec
+
+real_jetson_detected=true
+jetson_arch=aarch64
+transport_medium=usb_gadget_ethernet
+pc_source_address_detected=192.168.55.100
+
+phase13a_python_preflight_passed=true (28/28)
+phase13a_arm64_ctest_passed=true (2/2)
+phase13a_arm64_binary_verified=true (ELF 64-bit LSB, ARM aarch64)
+phase13a_arm64_direct_test_exit_code=0
+
+gate_b_frames_sent=300
+gate_b_frames_received=306
+gate_b_frames_decoded=305
+gate_b_frames_processed=305
+gate_b_max_mailbox_depth=1
+gate_b_transport_packets_sent=1319
+gate_b_valid_acks_received=1314
+gate_b_command_accept_count=1311
+gate_b_command_reject_count=7
+
+gate_c_carla_frames_sent=300
+gate_c_carla_frames_processed=305
+gate_c_carla_ticks=600
+gate_c_command_accept_count=311
+gate_c_command_reject_count=7
+gate_c_virtual_actuator_control_applied_count=610
+gate_c_virtual_actuator_active_control_applied_count=598
+gate_c_virtual_actuator_safe_stop_applied_count=12
+gate_c_lockstep_passed=true
+gate_c_realtime_stale_gate_passed=true
+
+clock_sync_valid=true
+clock_uncertainty_us=392 (Gate B) / 477 (Gate C)
+clock_valid_sample_count=40/40
+clock_source=time.perf_counter_ns
+
+fault_matrix_passed=true (28/28 on both gates)
+false_accept_count=0
+false_reject_count=0
+```
+
+## Next Safe Step (updated)
+
+`Phase 13C` — TensorRT deployment on the real Jetson, using the verified
+Phase 13B bridge as the transport and safety substrate.
