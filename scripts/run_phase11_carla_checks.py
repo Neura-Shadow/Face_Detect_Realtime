@@ -108,8 +108,53 @@ def main() -> int:
                 "scripts/run_phase13b_loopback_checks.py",
                 "scripts/run_phase13b_jil_checks.py",
                 "scripts/run_phase13b_orchestrator.py",
+                "workers/core/tensorrt_asset_contract.py",
+                "workers/core/tensorrt_runtime.py",
+                "workers/core/tensorrt_perception.py",
+                "workers/core/tensorrt_range_monitor.py",
+                "scripts/run_phase13c_checks.py",
+                "scripts/run_phase13c_onnx_export.py",
+                "scripts/run_phase13c_engine_build.py",
+                "scripts/run_phase13c_standalone_benchmark.py",
+                "scripts/run_phase13c_backend_parity.py",
+                "scripts/run_phase13c_streamed_runtime.py",
+                "scripts/run_phase13c_carla_closed_loop.py",
+                "scripts/run_phase13c_orchestrator.py",
             ],
             "expected": [],
+        },
+        {
+            "name": "Phase 13C TensorRT asset/preprocess/postprocess/range/fault 單元測試",
+            "cmd": [
+                sys.executable,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "scripts/tests",
+                "-p",
+                "test_phase13c_*.py",
+            ],
+            "expected": [],
+        },
+        {
+            "name": "Phase 13C boundary smoke (FP16 only, no INT8/QAT claim)",
+            "cmd": [
+                sys.executable,
+                "-c",
+                (
+                    "from workers.core.tensorrt_asset_contract import boundary_fields; "
+                    "from workers.core.tensorrt_range_monitor import RANGE_VALIDATION_SCOPE; "
+                    "b=boundary_fields(); "
+                    "assert b['precision'] == 'fp16'; "
+                    "assert not b['int8_engine_built']; "
+                    "assert not b['int8_calibration_verified']; "
+                    "assert not b['qat_verified']; "
+                    "assert RANGE_VALIDATION_SCOPE == 'tensorrt_fp16_input_and_final_output'; "
+                    "print('phase13c boundary smoke passed')"
+                ),
+            ],
+            "expected": ["phase13c boundary smoke passed"],
         },
         {
             "name": "Phase 13B protocol/mailbox/clock/FFI 單元測試",

@@ -1,0 +1,68 @@
+# Phase 13C Jetson TensorRT FP16 node — systemd unit EXAMPLE.
+#
+# THIS FILE IS AN EXAMPLE ONLY. Phase 13C never installs, copies, enables or
+# starts it. Claude Code does not write to /etc/systemd/system, does not run
+# `systemctl enable` and does not run `systemctl start`.
+#
+# An operator who wants it as a service does this manually, after review:
+#
+#   sudo cp deployment/jetson/systemd/ma-vlna-tensorrt.service.example \
+#           /etc/systemd/system/ma-vlna-tensorrt.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now ma-vlna-tensorrt.service
+#
+# For a normal Phase 13C run the node is started per-run over non-interactive
+# SSH with a run-specific PID and log path under /tmp, and stopped by that exact
+# PID. That is the supported path; this unit exists only for long-lived rigs.
+
+[Unit]
+Description=MA-VLNA Phase 13C Jetson TensorRT FP16 edge perception node
+Documentation=file:///home/myjetsonnx/Face_Detect_Realtime/docs/phase13c_tensorrt_fp16_edge_perception.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=myjetsonnx
+Group=myjetsonnx
+WorkingDirectory=/home/myjetsonnx/Face_Detect_Realtime
+
+# Copy deployment/jetson/phase13c.env.example somewhere outside the repository
+# and point this at it. It must not contain passwords or keys.
+EnvironmentFile=-/home/myjetsonnx/ma-vlna-phase13c.env
+
+# The engine path must point at an engine BUILT ON THIS BOARD. A plan copied
+# from another machine, TensorRT version or GPU is rejected as stale.
+ExecStart=/home/myjetsonnx/venvs/ma-vlna/bin/python \
+    scripts/run_phase13b_jetson_node.py \
+    --bind-host 0.0.0.0 \
+    --frame-port 13510 \
+    --control-port 13513 \
+    --command-port 13511 \
+    --ack-port 13512 \
+    --perception-backend tensorrt \
+    --tensorrt-engine /home/myjetsonnx/models/ma-vlna/yolov9/yolov9-c-640-b1-trt852-fp16.engine \
+    --tensorrt-profile yolov9-c \
+    --require-no-fallback \
+    --require-real-jetson \
+    --command-validity-ms 1000 \
+    --output-dir experiments/phase13
+
+Restart=no
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Read-only with respect to system configuration: never changes nvpmodel,
+# clocks, the thermal policy, the kernel or JetPack, never runs jetson_clocks,
+# and never installs packages.
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=false
+PrivateTmp=false
+
+StandardOutput=append:/tmp/ma-vlna-phase13c-service.log
+StandardError=append:/tmp/ma-vlna-phase13c-service.log
+
+[Install]
+WantedBy=multi-user.target

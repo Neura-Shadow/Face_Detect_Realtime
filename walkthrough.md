@@ -507,3 +507,130 @@ cancelled and nothing looked wrong. Switching to `time.perf_counter_ns`
 
 Both were fixed at source, pushed, pulled on the Jetson at the exact new SHA,
 and the affected gate was re-run. Neither fix touched a wire contract.
+
+---
+
+# Phase 13C-TENSORRT-FP16-EDGE-PERCEPTION Walkthrough
+
+## What changes, and what deliberately does not
+
+Phase 13B proved the bridge with a dummy backend. Phase 13C puts a real
+TensorRT FP16 engine on the Jetson GPU **inside the command authority path**,
+and changes nothing else: the JILF frame header is still 56 bytes, the Phase 13A
+command is still 64 bytes with CRC over bytes 0..59, the JILA ACK is still 48
+bytes, the mailbox is still depth 1, and the portable C Virtual Safety MCU is
+still the command authority.
+
+The Jetson node gained exactly one selector:
+
+```text
+--perception-backend dummy|tensorrt      (default: dummy)
+```
+
+The default keeps Phase 13B byte-for-byte reproducible.
+
+## Why the export does not call the vendor export script
+
+The external YOLOv9 `export.py` ONNX branch begins with
+`check_requirements('onnx')`, which **pip-installs** the package when it is
+missing. Phase 13C forbids automatic dependency installation, so the gate drives
+`torch.onnx.export` directly while reproducing that branch contract exactly:
+`images` to `output0`, constant folding, fixed `1x3x640x640`, opset 12, loaded
+through the repository existing trusted YOLOv9 loader.
+
+The output contract is then derived from a **real reference forward pass** — the
+loaded model is run once at 640x640 and the actual shape and class names are
+recorded — rather than assuming a generic YOLO layout.
+
+## Why this phase stops at Prepared
+
+The export cannot run at all. Every Python environment on this machine that has
+PyTorch lacks the `onnx` package:
+
+| Environment | Python | torch | `onnx` |
+| --- | --- | --- | --- |
+| `ma-vlna-carla312` | 3.12.13 | 2.12.1+cpu | absent |
+| `anaconda3` | 3.10.14 | 2.12.0+cpu | absent |
+| `test_env` | 3.10.14 | 2.12.0+cpu | absent |
+
+In torch 2.12 **both** export paths need it — the dynamo exporter and the legacy
+TorchScript exporter selected with `dynamo=False` — and all three raise
+`OnnxExporterError('Module onnx is not installed!')`. The Jetson has neither
+torch nor onnx, so the export cannot be moved there either.
+
+That is a one-command fix, but it is the operator command to run:
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install onnx
+```
+
+Everything downstream is implemented and unit-tested; nothing else blocks.
+
+## Why the CUDA allocator is hand-written
+
+The Jetson venv has **no PyCUDA and no cuda-python**, and Phase 13C may not
+install them. So the runtime drives the installed `libcudart` through a narrow
+`ctypes` wrapper: `cudaMalloc`, `cudaFree`, `cudaMemcpyAsync`, stream create /
+destroy / synchronize, and the event API for GPU timing. Every call is
+status-checked and converted into a classified error.
+
+The invariants that matter for a real-time loop are structural, not hopeful: one
+reusable stream per engine, every device and host buffer allocated once in
+`_allocate_once()`, and `per_frame_device_allocation_count = 0` as a pass
+condition. A per-frame `cudaMalloc` would not merely be slow — it would make the
+latency distribution unpredictable, which is exactly what the deadline gate
+exists to catch.
+
+## Why an engine carries a cache key
+
+A serialized TensorRT plan is not portable across TensorRT version, CUDA
+version, GPU, precision, input profile or postprocess profile. Reusing one
+across any of those axes produces either a hard failure or, worse, silently
+different numerics. So the engine manifest stores a SHA-256 over all of them
+plus the ONNX hash, and `evaluate_engine_staleness()` refuses to reuse an engine
+whose file hash, any cache-key axis, or `built_on_target` flag disagrees — and
+reports the exact reason.
+
+## The output-layout trap
+
+A YOLOv9 output tensor is either `(1, 4+nc, anchors)` or `(1, anchors, 4+nc)`.
+The obvious rule — the larger axis is the anchor axis — is wrong: a
+single-anchor tensor `(1, 84, 1)` would be read as 84 anchors with 1 attribute
+and rejected as undecodable. The resolver instead excludes any axis narrower
+than 5 from being the attribute axis, lets the *recorded* contract decide when
+both readings remain possible, and only then falls back to the larger anchor
+count. Unit tests pin all four cases, including a shape that cannot match the
+recorded layout.
+
+## What the range monitor does and does not claim
+
+A serialized plan exposes no internal activations. Phase 13C therefore checks
+the engine **input tensor** and the **final decoded output**, and says exactly
+that:
+
+```text
+input_range_checked             = true
+tensor_output_range_checked     = true
+detection_schema_checked        = true
+activation_range_checked        = false
+quantization_saturation_checked = false
+range_validation_scope          = tensorrt_fp16_input_and_final_output
+```
+
+The Phase 13A recovery rule survives: after any rejection, three consecutive
+valid TensorRT results are required before AI authority resumes.
+
+## Boundary
+
+Allowed only with evidence: a target-built FP16 engine verified on the real Orin
+NX; real Jetson GPU inference executed; no-fallback TensorRT perception
+processing simulated frames; TensorRT input/final-output range gates executed;
+backend consistency measured against the official source; TensorRT result
+freshness governing diagnostic command authority; the C Virtual Safety MCU
+remaining the command authority; only the virtual CARLA actuator controlled.
+
+Forbidden: model accuracy, mAP, real-world perception quality, safe autonomous
+navigation, route completion, full HIL, real MCU, real CAN/UART timing, physical
+camera, physical actuator, INT8 verification, QAT verification, CARLA
+Leaderboard, formal route benchmark, infraction benchmark, physical vehicle
+deployment.

@@ -101,7 +101,11 @@ Phase 12 begins experiment planning and controlled experiment scaffolding. Phase
 
 Phase 13 begins embedded safety-contract verification. Phase 13A is host SIL only; it does not claim a real MCU, HIL, actuator, model-accuracy, OTA/security, or benchmark pass. See [docs/phase13a_embedded_contract_sil.md](docs/phase13a_embedded_contract_sil.md).
 
+  - Phase 13C-TENSORRT-FP16-EDGE-PERCEPTION: **Prepared - TensorRT 8.5 runtime with a ctypes CUDA allocator (PyCUDA absent on the Jetson), external model/engine asset contracts with an engine cache key, letterbox preprocessing, numpy NMS postprocessing, input+final-output range contract and a 22-case TensorRT fault matrix implemented; Gate A passed 100/100 unit tests. Gates B/C/D are blocked by `onnx_export_dependency_missing` - every PC torch environment lacks the `onnx` package and torch 2.12 requires it for all export paths; Phase 13C never installs dependencies automatically**
+
 Phase 13B connects the simulated CARLA world to the **real** Jetson Orin NX compute node and closes the loop back into CARLA through the portable C Virtual Safety MCU. `validation_type = processor_in_the_loop`: only the Jetson compute node and the USB-gadget Ethernet link are physical; the camera, environment, vehicle, Safety MCU, actuator and vehicle physics are simulated. Perception is `DummyPerceptionBackend` — TensorRT deployment belongs to Phase 13C. It does not claim full HIL, a real MCU or S32K344, real CAN/UART timing, a physical camera or actuator, TensorRT inference, perception accuracy, navigation quality, route completion, a CARLA Leaderboard result, an infraction benchmark, or physical vehicle deployment. See [docs/phase13b_jetson_in_the_loop_bridge.md](docs/phase13b_jetson_in_the_loop_bridge.md).
+
+Phase 13C replaces the Phase 13B dummy backend with real TensorRT FP16 inference on the Jetson GPU, keeping the verified Phase 13B transport and safety path unchanged. Precision is FP16 only; INT8 and QAT belong to Phase 13D. It does not claim model accuracy, mAP, perception quality, navigation quality or route completion. See [docs/phase13c_tensorrt_fp16_edge_perception.md](docs/phase13c_tensorrt_fp16_edge_perception.md).
 
 ---
 

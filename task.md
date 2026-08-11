@@ -540,3 +540,128 @@ false_reject_count=0
 
 `Phase 13C` — TensorRT deployment on the real Jetson, using the verified
 Phase 13B bridge as the transport and safety substrate.
+
+---
+
+# Phase 13C-TENSORRT-FP16-EDGE-PERCEPTION
+
+## Scope
+
+Replace the Phase 13B `DummyPerceptionBackend` on the real Jetson with a real
+TensorRT FP16 perception backend, preserving the verified Phase 13B transport
+and safety path.
+
+```text
+validation_type=processor_in_the_loop
+precision=fp16
+model_family=yolov9
+model_variant=yolov9-c
+batch_size=1
+input_size=640x640
+```
+
+The TensorRT result is in the command authority path: an AI_ACTIVE diagnostic
+command requires a fresh, successful, no-fallback TensorRT result for the same
+frame id. Missing, invalid, stale, timed-out, range-invalid or fallback results
+produce SAFE_STOP.
+
+## Status
+
+```text
+status=Phase 13C-TENSORRT-FP16-EDGE-PERCEPTION Prepared
+gate_a=passed (100/100 unit tests, py3.8 parse gate, Phase 13B regression)
+gate_b=blocked
+gate_c=blocked
+gate_d=blocked
+blocker=onnx_export_dependency_missing
+```
+
+The external YOLOv9 source and weights are present and verified. Every PC
+environment carrying torch lacks the `onnx` package, and torch 2.12 requires it
+for every export path. Phase 13C never installs dependencies automatically.
+
+## Operator unlock
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install onnx
+```
+
+Then re-run `scripts\run_phase13c_onnx_export.py`.
+
+## Commands
+
+Gate A:
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase13c_checks.py
+```
+
+ONNX export (after the unlock above):
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase13c_onnx_export.py `
+  --source-root D:\AIModels\yolov9 `
+  --weights D:\AIModels\yolov9\yolov9-c-converted.pt `
+  --output D:\AIModels\yolov9\exports\yolov9-c-640-b1.onnx `
+  --img-size 640 --batch-size 1 --require-export
+```
+
+Gate B on the Jetson (engine build, then standalone benchmark):
+
+```bash
+ssh myjetsonnx@192.168.55.1 "cd /home/myjetsonnx/Face_Detect_Realtime && \
+  source /home/myjetsonnx/venvs/ma-vlna/bin/activate && \
+  python scripts/run_phase13c_engine_build.py \
+    --onnx /home/myjetsonnx/models/ma-vlna/yolov9/yolov9-c-640-b1.onnx \
+    --engine /home/myjetsonnx/models/ma-vlna/yolov9/yolov9-c-640-b1-trt852-fp16.engine \
+    --precision fp16 --input-shape 1x3x640x640 --require-real-jetson --require-engine"
+```
+
+Gate C and Gate D:
+
+```powershell
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase13c_streamed_runtime.py `
+  --jetson-host 192.168.55.1 --frames 300 --require-real-jetson --require-no-fallback
+
+D:\CARLA\envs\ma-vlna-carla312\python.exe scripts\run_phase13c_orchestrator.py `
+  --jetson-host 192.168.55.1 `
+  --engine /home/myjetsonnx/models/ma-vlna/yolov9/yolov9-c-640-b1-trt852-fp16.engine `
+  --profile yolov9-c --camera-fps 5 --frames 300 `
+  --command-validity-ms 1000 --safety-margin-ms 50 `
+  --require-real-jetson --require-carla --require-no-fallback `
+  --output-dir experiments\phase13
+```
+
+## Boundary Fields
+
+```text
+precision=fp16
+fp16_engine_verified=false
+int8_engine_built=false
+int8_calibration_verified=false
+qat_verified=false
+input_range_checked=true
+tensor_output_range_checked=true
+detection_schema_checked=true
+activation_range_checked=false
+quantization_saturation_checked=false
+int8_calibration_range_checked=false
+range_validation_scope=tensorrt_fp16_input_and_final_output
+model_accuracy_verified=false
+map_evaluated=false
+route_completion_verified=false
+route_benchmark_verified=false
+infraction_benchmark_verified=false
+leaderboard_evaluated=false
+full_hil_verified=false
+real_mcu_verified=false
+physical_camera_verified=false
+physical_actuator_control_executed=false
+physical_vehicle_deployment=false
+```
+
+## Next Safe Step
+
+Install `onnx` in the export environment, re-run the export gate, then Gates
+B/C/D. After a real FP16 Pass the next phase is
+`Phase 13D-INT8-CALIBRATION-RANGE-SHIFT`.

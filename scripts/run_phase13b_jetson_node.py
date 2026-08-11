@@ -4,8 +4,9 @@ Pipeline on the real Jetson:
 
     FrameReceiver -> FixedBufferPool -> LatestFrameMailbox(depth=1)
       -> JPEG decode (BGR8)
-      -> input-only RangeShift validation
-      -> DummyPerceptionBackend
+      -> input-only RangeShift validation (dummy backend)
+         or TensorRT FP16 inference + input/output range contract (Phase 13C)
+      -> DummyPerceptionBackend or TensorRTPerceptionBackend
       -> diagnostic PlannerAction -> existing SafetyGate
       -> existing PlannerAction-to-control mapper
       -> EmbeddedCommandBridge (unchanged Phase 13A 64-byte packet)
@@ -286,6 +287,16 @@ class JetsonNode:
         self.commands_sent = 0
         self.commands_skipped = 0
         self.ack_resync_drops = 0
+        # Phase 13C TensorRT counters; all stay zero on the default dummy path.
+        self.tensorrt_frames_received = 0
+        self.tensorrt_inference_requested_count = 0
+        self.tensorrt_inference_completed_count = 0
+        self.tensorrt_inference_failed_count = 0
+        self.tensorrt_fallback_count = 0
+        self.tensorrt_safe_stop_count = 0
+        self.tensorrt_active_authority_count = 0
+        self.tensorrt_result_stale_count = 0
+        self.tensorrt_latency_samples = {}  # type: Dict[str, List[float]]
         self.command_classifications = {}  # type: Dict[str, int]
         self.ack_timeouts = 0
         self.ai_active_command_count = 0
@@ -295,6 +306,14 @@ class JetsonNode:
         self.range_state_counts = {}  # type: Dict[str, int]
         self.one_way_latency_ms = []  # type: List[float]
         self.command_rtt_ms = []  # type: List[float]
+        self.frame_to_command_ms = []  # type: List[float]
+
+        self.perception_mode = str(getattr(args, "perception_backend", "dummy")).lower()
+        self.tensorrt_backend = None  # type: Optional[Any]
+        self.tensorrt_monitor = None  # type: Optional[Any]
+        self.tensorrt_error = None  # type: Optional[str]
+        if self.perception_mode == "tensorrt":
+            self._init_tensorrt_backend()
 
         self._frame_thread = None  # type: Optional[threading.Thread]
         self._stop_frames = threading.Event()
@@ -554,36 +573,49 @@ class JetsonNode:
             self.faults["color_order_mismatch"] -= 1
             model_color_order = "BGR"
 
-        perception_frame = frame
-        if perception_frame.dtype != np.uint8:
-            perception_frame = np.nan_to_num(
-                perception_frame, nan=0.0, posinf=255.0, neginf=0.0
-            ).astype(np.uint8)
-        perception = self.perception.process(perception_frame, frame_id=int(header.frame_id))
-
         result_age_ms = float(self.args.nominal_result_age_ms)
         if self.faults["stale_result_age"]:
             self.faults["stale_result_age"] -= 1
             result_age_ms = float(self.range_profile.contract.max_result_age_ms) + 50.0
 
-        target_throttle = float(self.args.diagnostic_throttle)
-        range_result = self.range_profile.evaluate_frame(
-            bgr_frame=frame,
-            outputs={
-                "steering": 0.0,
-                "throttle": target_throttle,
-                "brake": 0.0,
-                "ai_confidence": float(self.args.diagnostic_confidence),
-            },
-            result_age_ms=result_age_ms,
-            model_color_order=model_color_order,
-        )
-        self._bump(self.range_state_counts, range_result.state.name)
-
         clock_degraded = self.clock.clock_sync_degraded
         if self.faults["force_clock_degraded"]:
             self.faults["force_clock_degraded"] -= 1
             clock_degraded = True
+
+        target_throttle = float(self.args.diagnostic_throttle)
+        if self.perception_mode == "tensorrt":
+            # Phase 13C: a real engine decides authority for THIS frame id.
+            tensorrt_frame = frame
+            if tensorrt_frame.dtype != np.uint8:
+                tensorrt_frame = np.nan_to_num(
+                    tensorrt_frame, nan=np.nan, posinf=np.inf, neginf=-np.inf
+                )
+            range_result, backend_name, _ = self._run_tensorrt_perception(
+                tensorrt_frame, int(header.frame_id), result_age_ms, clock_degraded
+            )
+        else:
+            perception_frame = frame
+            if perception_frame.dtype != np.uint8:
+                perception_frame = np.nan_to_num(
+                    perception_frame, nan=0.0, posinf=255.0, neginf=0.0
+                ).astype(np.uint8)
+            perception = self.perception.process(
+                perception_frame, frame_id=int(header.frame_id)
+            )
+            backend_name = str(getattr(perception, "backend", "dummy"))
+            range_result = self.range_profile.evaluate_frame(
+                bgr_frame=frame,
+                outputs={
+                    "steering": 0.0,
+                    "throttle": target_throttle,
+                    "brake": 0.0,
+                    "ai_confidence": float(self.args.diagnostic_confidence),
+                },
+                result_age_ms=result_age_ms,
+                model_color_order=model_color_order,
+            )
+        self._bump(self.range_state_counts, range_result.state.name)
 
         action = self._diagnostic_planner_action(target_throttle)
         gate_result = self.safety_gate.validate_planner_action(action)
@@ -604,12 +636,161 @@ class JetsonNode:
             brake=1.0 if clock_degraded else float(control.brake),
             result_age_ms=result_age_ms,
             clock_degraded=clock_degraded,
-            perception_backend=str(getattr(perception, "backend", "dummy")),
+            perception_backend=backend_name,
             simulation_timestamp_us=int(header.simulation_timestamp_us),
             pc_monotonic_us=int(header.pc_monotonic_us),
         )
         if record is not None:
             self.frame_command_records.append(record)
+
+    def _init_tensorrt_backend(self) -> None:
+        """Build the Phase 13C TensorRT backend. Never silently falls back."""
+
+        from run_phase13c_standalone_benchmark import load_contracts
+        from workers.core.tensorrt_perception import (
+            TensorRTPerceptionBackend,
+            load_class_names,
+        )
+        from workers.core.tensorrt_range_monitor import (
+            TensorRTRangeContract,
+            TensorRTRangeMonitor,
+        )
+        from workers.core.tensorrt_runtime import TensorRTEngineRunner, TensorRTRuntimeError
+
+        engine = str(getattr(self.args, "tensorrt_engine", "") or "")
+        if not engine:
+            self.tensorrt_error = "tensorrt_engine_path_missing"
+            self.blockers.append("engine_missing")
+            self.emit("tensorrt_backend_unavailable", classification="engine_missing")
+            return
+        try:
+            contracts = load_contracts(
+                str(getattr(self.args, "tensorrt_model_manifest", "") or ""),
+                str(getattr(self.args, "tensorrt_engine_manifest", "") or ""),
+                str(getattr(self.args, "tensorrt_profile", "yolov9-c")),
+            )
+            runner = TensorRTEngineRunner(
+                engine,
+                expected_input_shape=contracts["input_contract"].shape,
+                expected_input_name=contracts["input_contract"].input_name,
+            )
+            class_names, class_names_source = load_class_names(
+                str(getattr(self.args, "tensorrt_class_names", "") or "")
+                or contracts["class_names_source"]
+                or None
+            )
+            self.tensorrt_backend = TensorRTPerceptionBackend(
+                runner,
+                input_contract=contracts["input_contract"],
+                output_contract=contracts["output_contract"],
+                profile=contracts["postprocess_profile"],
+                class_names=class_names,
+                model_name=str(getattr(self.args, "tensorrt_profile", "yolov9-c")),
+            )
+            self.tensorrt_monitor = TensorRTRangeMonitor(
+                TensorRTRangeContract(
+                    expected_input_shape=tuple(contracts["input_contract"].shape),
+                    max_result_age_ms=int(self.range_profile.contract.max_result_age_ms),
+                    max_inference_ms=float(
+                        getattr(self.args, "tensorrt_max_inference_ms", 1000.0)
+                    ),
+                )
+            )
+            self.emit(
+                "tensorrt_backend_ready",
+                engine=engine,
+                class_names_source=class_names_source,
+                **runner.binding_report()
+            )
+        except TensorRTRuntimeError as exc:
+            self.tensorrt_error = exc.classification
+            self.blockers.append(exc.classification)
+            self.emit("tensorrt_backend_unavailable", classification=exc.classification,
+                      error=exc.message)
+        except Exception as exc:
+            self.tensorrt_error = "tensorrt_backend_init_failed"
+            self.blockers.append("tensorrt_backend_init_failed")
+            self.emit("tensorrt_backend_unavailable",
+                      classification="tensorrt_backend_init_failed", error=repr(exc)[:200])
+
+    def _record_tensorrt_latency(self, timing: Dict[str, Any]) -> None:
+        for key, value in timing.items():
+            if value is None:
+                continue
+            self.tensorrt_latency_samples.setdefault(key, []).append(float(value))
+
+    def _run_tensorrt_perception(
+        self, frame: Any, frame_id: int, result_age_ms: float, clock_degraded: bool
+    ) -> Tuple[Any, str, Optional[Any]]:
+        """Run TensorRT for one frame and gate authority on the same frame id.
+
+        Returns ``(range_result, backend_name, perception_result)``. Any failure
+        produces a fail-closed verdict, never a fallback to another backend.
+        """
+
+        from workers.core.tensorrt_perception import TensorRTPerceptionError
+        from workers.core.tensorrt_range_monitor import TensorRTRangeResult
+        from workers.core.tensorrt_runtime import TensorRTRuntimeError
+
+        self.tensorrt_frames_received += 1
+        if self.tensorrt_backend is None or self.tensorrt_monitor is None:
+            self.tensorrt_safe_stop_count += 1
+            return (
+                TensorRTRangeResult(
+                    state=RangeShiftState.OUTPUT_RANGE_INVALID,
+                    sample_valid=False,
+                    ai_result_valid=False,
+                    reason="tensorrt backend unavailable: %s" % (self.tensorrt_error or "unknown"),
+                    classification=self.tensorrt_error or "tensorrt_backend_unavailable",
+                ),
+                "tensorrt_unavailable",
+                None,
+            )
+
+        self.tensorrt_inference_requested_count += 1
+        try:
+            detections, inference_ms = self.tensorrt_backend.detect(frame)
+        except (TensorRTPerceptionError, TensorRTRuntimeError) as exc:
+            self.tensorrt_inference_failed_count += 1
+            self.tensorrt_safe_stop_count += 1
+            self.emit(
+                "tensorrt_inference_failed",
+                frame_id=frame_id,
+                classification=exc.classification,
+                error=exc.message,
+            )
+            return (
+                TensorRTRangeResult(
+                    state=RangeShiftState.OUTPUT_RANGE_INVALID,
+                    sample_valid=False,
+                    ai_result_valid=False,
+                    reason=exc.message,
+                    classification=exc.classification,
+                ),
+                "tensorrt",
+                None,
+            )
+
+        self.tensorrt_inference_completed_count += 1
+        self._record_tensorrt_latency(self.tensorrt_backend.last_timing)
+        verdict = self.tensorrt_monitor.evaluate(
+            input_stats=self.tensorrt_backend.last_stats,
+            detections=detections,
+            output_stats=self.tensorrt_backend.last_stats,
+            inference_ms=float(self.tensorrt_backend.last_timing.get("frame_to_perception_ms", 0.0)),
+            result_age_ms=float(result_age_ms),
+            engine_execute_ok=True,
+            fallback_used=bool(self.tensorrt_backend.fallback_used),
+        )
+        if self.tensorrt_backend.fallback_used:
+            self.tensorrt_fallback_count += 1
+        if verdict.classification == "result_stale":
+            self.tensorrt_result_stale_count += 1
+        if verdict.ai_result_valid and not clock_degraded:
+            self.tensorrt_active_authority_count += 1
+        else:
+            self.tensorrt_safe_stop_count += 1
+        return verdict, "tensorrt", detections
 
     def _diagnostic_planner_action(self, target_throttle: float) -> PlannerAction:
         """One bounded forward step, deterministic, runner-scoped.
@@ -834,6 +1015,17 @@ class JetsonNode:
         }
         one_way = self.clock.one_way_latency_ms(pc_monotonic_us, frame_receive_us) if pc_monotonic_us else None
         record["frame_one_way_latency_ms"] = one_way
+        # Phase 13C deadline metric: PC frame emission -> command issuance,
+        # expressed in the PC clock domain so it is comparable with the
+        # command validity window.
+        frame_to_command = None
+        if pc_monotonic_us and not self.clock.clock_sync_degraded:
+            delta_us = self.clock.to_pc_clock_us(send_us) - int(pc_monotonic_us)
+            if delta_us >= 0:
+                frame_to_command = round(delta_us / 1000.0, 4)
+        record["frame_to_command_ms"] = frame_to_command
+        if frame_to_command is not None:
+            self.frame_to_command_ms.append(frame_to_command)
         if one_way is not None:
             self.one_way_latency_ms.append(one_way)
         self.emit("command_sent", **record)
@@ -932,6 +1124,8 @@ class JetsonNode:
             "diagnostic_throttle_applied_max": max(self.diagnostic_throttle_applied)
             if self.diagnostic_throttle_applied
             else None,
+            "frame_to_command_ms_mean": _mean(self.frame_to_command_ms),
+            "frame_to_command_ms_sample_count": len(self.frame_to_command_ms),
             "command_rtt_ms_mean": _mean(self.command_rtt_ms),
             "command_rtt_ms_max": round(max(self.command_rtt_ms), 3) if self.command_rtt_ms else None,
             "frame_one_way_latency_ms_mean": _mean(self.one_way_latency_ms),
@@ -943,8 +1137,23 @@ class JetsonNode:
             "ack_packet_size_bytes": ACK_PACKET_SIZE,
             "frame_header_size_bytes": FRAME_HEADER_SIZE,
             "range_validation_scope": PHASE13B_RANGE_VALIDATION_SCOPE,
-            "perception_backend": "DummyPerceptionBackend",
-            "tensorrt_inference_verified": False,
+            "perception_backend": (
+                "TensorRTPerceptionBackend"
+                if self.perception_mode == "tensorrt"
+                else "DummyPerceptionBackend"
+            ),
+            "perception_mode": self.perception_mode,
+            "tensorrt_frames_received": self.tensorrt_frames_received,
+            "tensorrt_inference_requested_count": self.tensorrt_inference_requested_count,
+            "tensorrt_inference_completed_count": self.tensorrt_inference_completed_count,
+            "tensorrt_inference_failed_count": self.tensorrt_inference_failed_count,
+            "tensorrt_fallback_count": self.tensorrt_fallback_count,
+            "tensorrt_safe_stop_count": self.tensorrt_safe_stop_count,
+            "tensorrt_active_authority_count": self.tensorrt_active_authority_count,
+            "tensorrt_result_stale_count": self.tensorrt_result_stale_count,
+            "tensorrt_backend_error": self.tensorrt_error,
+            "tensorrt_inference_verified": self.perception_mode == "tensorrt"
+            and self.tensorrt_inference_completed_count > 0,
             "physical_camera_verified": False,
             "physical_actuator_control_executed": False,
             "real_mcu_verified": False,
@@ -955,7 +1164,22 @@ class JetsonNode:
         payload.update(self.ack_receiver.metrics())
         if self.command_sender is not None:
             payload.update(self.command_sender.metrics())
+        if self.frame_to_command_ms:
+            from run_phase13c_checks import latency_stats
+
+            payload["frame_to_command_ms_stats"] = latency_stats(self.frame_to_command_ms)
         payload.update(self.range_profile.evidence())
+        if self.tensorrt_monitor is not None:
+            payload.update(self.tensorrt_monitor.evidence())
+        if self.tensorrt_backend is not None:
+            payload.update(self.tensorrt_backend.metadata())
+        if self.tensorrt_latency_samples:
+            from run_phase13c_checks import latency_stats
+
+            payload["tensorrt_latency_metrics"] = {
+                name: latency_stats(values)
+                for name, values in self.tensorrt_latency_samples.items()
+            }
         payload.update(self.clock.to_dict())
         payload.update(self.resources.summary())
         payload.update(protocol_descriptor())
@@ -1057,6 +1281,11 @@ class JetsonNode:
             if self._frame_thread is not None:
                 self._frame_thread.join(timeout=10)
             self.resources.stop()
+            if self.tensorrt_backend is not None:
+                try:
+                    self.tensorrt_backend.close()
+                except Exception:
+                    pass
             self.frame_server.close()
             self.ack_receiver.close()
             if self.command_sender is not None:
@@ -1234,6 +1463,17 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--tegrastats-interval-ms", type=int, default=1000)
     parser.add_argument("--transport-medium", default="usb_gadget_ethernet")
     parser.add_argument("--pin-peer-host", action="store_true")
+    # Phase 13C: the default stays `dummy`, so Phase 13B behaviour is unchanged.
+    parser.add_argument(
+        "--perception-backend", choices=("dummy", "tensorrt"), default="dummy"
+    )
+    parser.add_argument("--tensorrt-engine", default="")
+    parser.add_argument("--tensorrt-profile", default="yolov9-c")
+    parser.add_argument("--tensorrt-model-manifest", default="")
+    parser.add_argument("--tensorrt-engine-manifest", default="")
+    parser.add_argument("--tensorrt-class-names", default="")
+    parser.add_argument("--tensorrt-max-inference-ms", type=float, default=1000.0)
+    parser.add_argument("--require-no-fallback", action="store_true")
     parser.add_argument("--pid-file", default="")
     return parser.parse_args(argv)
 
@@ -1263,6 +1503,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         node.write_evidence()
         print("Phase 13B Blocked: jpeg_codec_unavailable", file=sys.stderr)
         return 2
+
+    if args.perception_backend == "tensorrt" and args.require_no_fallback:
+        if node.tensorrt_backend is None:
+            node.write_evidence()
+            print(
+                "Phase 13C Blocked: %s" % (node.tensorrt_error or "tensorrt_backend_unavailable"),
+                file=sys.stderr,
+            )
+            return 2
 
     if args.run_phase13a_preflight:
         preflight = node.run_phase13a_preflight()
