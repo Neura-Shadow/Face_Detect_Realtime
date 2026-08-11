@@ -23,6 +23,7 @@ from workers.core.clock_sync import (
     DEFAULT_SAMPLE_COUNT,
     ClockSyncSample,
     JetsonClockDomain,
+    clock_source_info,
     estimate_clock_offset,
     monotonic_us,
 )
@@ -190,6 +191,31 @@ class TestMonotonicClock(unittest.TestCase):
         second = monotonic_us()
         self.assertGreaterEqual(second, first)
         self.assertGreater(first, 0)
+
+    def test_clock_source_is_monotonic_and_fine_enough(self) -> None:
+        """The clock must resolve far below the 5000 us uncertainty budget.
+
+        Windows `time.monotonic()` is GetTickCount64-backed with a 15.625 ms
+        granularity, which is coarser than the whole budget; Phase 13B therefore
+        uses `perf_counter_ns`. This test fails loudly if that ever regresses.
+        """
+
+        info = clock_source_info()
+        self.assertTrue(info["clock_source_monotonic"])
+        self.assertLessEqual(info["clock_source_resolution_ns"], 1_000)
+        self.assertLess(
+            info["clock_source_resolution_ns"] / 1000.0, DEFAULT_MAX_UNCERTAINTY_US / 10.0
+        )
+
+    def test_successive_reads_resolve_below_one_millisecond(self) -> None:
+        deltas = []
+        for _ in range(2000):
+            first = monotonic_us()
+            second = monotonic_us()
+            if second > first:
+                deltas.append(second - first)
+        self.assertTrue(deltas, "clock never advanced across 2000 back-to-back reads")
+        self.assertLess(min(deltas), 1000)
 
 
 if __name__ == "__main__":

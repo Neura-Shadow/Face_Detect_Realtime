@@ -29,9 +29,36 @@ DEFAULT_MAX_UNCERTAINTY_US = 5000
 
 
 def monotonic_us() -> int:
-    """Monotonic microsecond timestamp used on both PC and Jetson."""
+    """Monotonic microsecond timestamp used on both PC and Jetson.
 
-    return time.monotonic_ns() // 1000
+    ``perf_counter_ns`` is used rather than ``monotonic_ns`` on purpose. On
+    Windows before Python 3.13, ``time.monotonic()`` is backed by
+    ``GetTickCount64()`` with a 15.625 ms granularity — three times coarser than
+    the entire 5000 us clock-uncertainty budget. That quantises every
+    four-timestamp probe into a round trip of either 0 us or 15625 us, which
+    both destroys the offset estimate and makes most samples fail the
+    non-negative network-delay check.
+
+    ``perf_counter`` is documented monotonic on both platforms and is backed by
+    ``QueryPerformanceCounter()`` (100 ns) on Windows and
+    ``clock_gettime(CLOCK_MONOTONIC)`` (1 ns) on the Jetson. Both sides of the
+    Phase 13B bridge call this one function, so the epoch difference is
+    absorbed by ``jetson_minus_pc_offset_us``.
+    """
+
+    return time.perf_counter_ns() // 1000
+
+
+def clock_source_info() -> Dict[str, Any]:
+    """Describe the clock backing :func:`monotonic_us`, for run evidence."""
+
+    info = time.get_clock_info("perf_counter")
+    return {
+        "clock_source": "time.perf_counter_ns",
+        "clock_source_implementation": info.implementation,
+        "clock_source_monotonic": bool(info.monotonic),
+        "clock_source_resolution_ns": int(round(info.resolution * 1e9)),
+    }
 
 
 @dataclass(frozen=True)
@@ -124,6 +151,7 @@ class ClockSyncResult:
                 "jetson_minus_pc_offset_us=((t2-t1)+(t3-t4))/2; "
                 "pc_clock_us=jetson_clock_us-jetson_minus_pc_offset_us"
             ),
+            **clock_source_info(),
         }
 
 
@@ -234,4 +262,5 @@ class JetsonClockDomain:
             "clock_sync_valid": self.clock_sync_valid,
             "clock_sync_degraded": self.clock_sync_degraded,
             "clock_max_uncertainty_us": self.max_uncertainty_us,
+            **clock_source_info(),
         }
