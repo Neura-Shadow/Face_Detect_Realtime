@@ -658,10 +658,6 @@ class JetsonNode:
             TensorRTPerceptionBackend,
             load_class_names,
         )
-        from workers.core.tensorrt_range_monitor import (
-            TensorRTRangeContract,
-            TensorRTRangeMonitor,
-        )
         from workers.core.tensorrt_runtime import TensorRTEngineRunner, TensorRTRuntimeError
 
         engine = str(getattr(self.args, "tensorrt_engine", "") or "")
@@ -693,16 +689,9 @@ class JetsonNode:
                 profile=contracts["postprocess_profile"],
                 class_names=class_names,
                 model_name=str(getattr(self.args, "tensorrt_profile", "yolov9-c")),
+                precision=str(getattr(self.args, "tensorrt_precision", "fp16") or "fp16"),
             )
-            self.tensorrt_monitor = TensorRTRangeMonitor(
-                TensorRTRangeContract(
-                    expected_input_shape=tuple(contracts["input_contract"].shape),
-                    max_result_age_ms=int(self.range_profile.contract.max_result_age_ms),
-                    max_inference_ms=float(
-                        getattr(self.args, "tensorrt_max_inference_ms", 1000.0)
-                    ),
-                )
-            )
+            self.tensorrt_monitor = self._build_range_monitor(contracts)
             # Warm the engine before any real frame arrives. The first
             # inference after deserialization pays lazy CUDA context and kernel
             # initialisation (measured at ~1.28 s on the Orin NX versus a ~78 ms
@@ -744,6 +733,59 @@ class JetsonNode:
             self.blockers.append("tensorrt_backend_init_failed")
             self.emit("tensorrt_backend_unavailable",
                       classification="tensorrt_backend_init_failed", error=repr(exc)[:200])
+
+    def _build_range_monitor(self, contracts: Dict[str, Any]) -> Any:
+        """Phase 13C FP16 monitor, or the Phase 13D INT8 envelope monitor.
+
+        Passing ``--int8-calibration-envelope`` is what upgrades the gate. With
+        no envelope the node behaves exactly as it did in Phase 13C; with an
+        envelope that cannot be loaded it refuses to start, because an INT8
+        engine whose calibration envelope is unknown cannot be gated at all.
+        """
+
+        from workers.core.tensorrt_range_monitor import (
+            TensorRTRangeContract,
+            TensorRTRangeMonitor,
+        )
+        from workers.core.tensorrt_runtime import TensorRTRuntimeError
+
+        shared = {
+            "expected_input_shape": tuple(contracts["input_contract"].shape),
+            "max_result_age_ms": int(self.range_profile.contract.max_result_age_ms),
+            "max_inference_ms": float(getattr(self.args, "tensorrt_max_inference_ms", 1000.0)),
+        }
+
+        envelope_path = str(getattr(self.args, "int8_calibration_envelope", "") or "")
+        if not envelope_path:
+            return TensorRTRangeMonitor(TensorRTRangeContract(**shared))
+
+        from workers.core.int8_range_monitor import Int8RangeContract, Int8RangeMonitor, load_envelopes
+
+        envelopes = load_envelopes(envelope_path)
+        if envelopes is None:
+            raise TensorRTRuntimeError(
+                "calibration_envelope_missing",
+                "INT8 calibration envelope could not be loaded from %s" % envelope_path,
+            )
+        proxy = {}  # type: Dict[str, Any]
+        proxy_path = str(getattr(self.args, "int8_activation_proxy", "") or "")
+        if proxy_path and Path(proxy_path).is_file():
+            try:
+                proxy = json.loads(Path(proxy_path).read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                proxy = {}
+        self.emit(
+            "int8_calibration_envelope_loaded",
+            envelope_path=envelope_path,
+            envelope_dataset_sha256=envelopes.dataset_sha256,
+            envelope_source_frame_count=envelopes.source_frame_count,
+            activation_proxy_loaded=bool(proxy),
+        )
+        return Int8RangeMonitor(
+            Int8RangeContract(**shared),
+            envelopes=envelopes,
+            activation_proxy=proxy,
+        )
 
     def _record_tensorrt_latency(self, timing: Dict[str, Any]) -> None:
         for key, value in timing.items():
@@ -1520,6 +1562,12 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--tensorrt-class-names", default="")
     parser.add_argument("--tensorrt-max-inference-ms", type=float, default=1000.0)
     parser.add_argument("--tensorrt-warmup", type=int, default=20)
+    # Phase 13D: the precision is a manifest-derived label, and the calibration
+    # envelope is what turns the Phase 13C gate into the INT8 gate. Both stay
+    # empty/fp16 by default, so Phase 13B and 13C behaviour is unchanged.
+    parser.add_argument("--tensorrt-precision", default="fp16")
+    parser.add_argument("--int8-calibration-envelope", default="")
+    parser.add_argument("--int8-activation-proxy", default="")
     parser.add_argument("--require-no-fallback", action="store_true")
     parser.add_argument("--pid-file", default="")
     return parser.parse_args(argv)

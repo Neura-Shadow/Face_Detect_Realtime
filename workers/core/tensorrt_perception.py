@@ -519,6 +519,7 @@ class TensorRTPerceptionBackend:
         profile: PostprocessProfile,
         class_names: Optional[Sequence[str]] = None,
         model_name: str = "yolov9-c",
+        precision: str = "fp16",
     ) -> None:
         self._runner = runner
         self.input_contract = input_contract
@@ -526,6 +527,10 @@ class TensorRTPerceptionBackend:
         self.profile = profile
         self.class_names = list(class_names or [])
         self._model_name = model_name
+        # Declared by the caller from the engine manifest; Phase 13C engines
+        # stay "fp16" and Phase 13D INT8 engines declare "int8". It is a label
+        # for the evidence, never a switch that changes what the engine does.
+        self._precision = str(precision)
         self.fallback_used = False
         self.inference_count = 0
         self.failure_count = 0
@@ -540,6 +545,10 @@ class TensorRTPerceptionBackend:
     @property
     def backend_name(self) -> str:
         return "tensorrt"
+
+    @property
+    def precision(self) -> str:
+        return self._precision
 
     def detect(self, frame: np.ndarray) -> Tuple[List[Detection], int]:
         started = time.perf_counter_ns()
@@ -590,7 +599,7 @@ class TensorRTPerceptionBackend:
             "backend": "tensorrt",
             "model_name": self._model_name,
             "fallback_used": False,
-            "precision": "fp16",
+            "precision": self._precision,
             "input_contract": self.input_contract.to_dict(),
             "output_contract": self.output_contract.to_dict(),
             "postprocess_profile": self.profile.to_dict(),
