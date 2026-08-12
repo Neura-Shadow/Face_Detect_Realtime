@@ -42,6 +42,7 @@ from run_phase13d_checks import (  # noqa: E402
     new_run_id,
     pc_git_sha,
     run_command,
+    run_command_utf8,
     utc_now_iso,
 )
 
@@ -318,7 +319,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     summary["runtime_pc_git_sha"] = runtime_pc_sha
 
     if args.gate_a:
-        gate = run_command(
+        gate = run_command_utf8(
             [python, str(SCRIPTS_DIR / "run_phase13d_checks.py"), "--run-id", run_id,
              "--output-dir", args.output_dir],
             timeout=5400,
@@ -335,7 +336,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         status = STATUS_PREPARED
 
     if args.gate_b:
-        dataset = run_command(
+        dataset = run_command_utf8(
             [
                 python, str(SCRIPTS_DIR / "run_phase13d_dataset_build.py"),
                 "--run-id", run_id, "--mode", "all", "--output-root", args.pc_dataset_root,
@@ -349,7 +350,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "stdout_tail": dataset["stdout"].strip().splitlines()[-20:],
             "passed": dataset["returncode"] == 0,
         }
-        proxy = run_command(
+        proxy = run_command_utf8(
             [
                 python, str(SCRIPTS_DIR / "run_phase13d_activation_proxy.py"),
                 "--run-id", run_id,
@@ -435,7 +436,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             time.sleep(15)
 
         if args.gate_d and summary.get("blocker") is None:
-            gate_d = run_command(
+            gate_d = run_command_utf8(
                 [
                     python, str(SCRIPTS_DIR / "run_phase13d_streamed_runtime.py"),
                     "--run-id", run_id, "--jetson-host", args.jetson_host,
@@ -453,7 +454,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 summary["blocker"] = "gate_d_failed"
 
         if args.gate_e and summary.get("blocker") is None:
-            gate_e = run_command(
+            gate_e = run_command_utf8(
                 [
                     python, str(SCRIPTS_DIR / "run_phase13d_carla_closed_loop.py"),
                     "--run-id", run_id, "--jetson-host", args.jetson_host,

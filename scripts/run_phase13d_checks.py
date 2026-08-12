@@ -105,6 +105,52 @@ BOUNDARY_FIELDS = {
 }
 
 
+def run_command_utf8(
+    command: List[str], *, cwd: Optional[Path] = None, timeout: int = 1800
+) -> Dict[str, Any]:
+    """Run a child process and decode its output as UTF-8.
+
+    The Phase 13B simulation host logs in Chinese. Letting Python decode a child
+    with the Windows locale codec (cp950 here) makes the reader thread raise
+    ``UnicodeDecodeError`` on the first multi-byte character, and
+    ``subprocess.run`` then hands back ``stdout=None`` — so a gate that ran
+    perfectly well reports a crash while parsing its own child's output. The
+    encoding is therefore stated explicitly, and undecodable bytes are replaced
+    rather than allowed to destroy the whole capture.
+    """
+
+    import subprocess
+    import time as _time
+
+    started = _time.perf_counter_ns()
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(cwd or REPO_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
+        return {
+            "command": command,
+            "returncode": completed.returncode,
+            "stdout": completed.stdout or "",
+            "stderr": completed.stderr or "",
+            "duration_sec": round((_time.perf_counter_ns() - started) / 1e9, 3),
+        }
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {
+            "command": command,
+            "returncode": -1,
+            "stdout": "",
+            "stderr": repr(exc),
+            "duration_sec": round((_time.perf_counter_ns() - started) / 1e9, 3),
+        }
+
+
 def new_run_id() -> str:
     return "phase13d-%s-%s" % (
         datetime.utcnow().strftime("%Y%m%dT%H%M%SZ"),

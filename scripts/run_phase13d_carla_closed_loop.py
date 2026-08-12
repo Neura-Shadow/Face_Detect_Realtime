@@ -40,7 +40,7 @@ from run_phase13d_checks import (  # noqa: E402
     latency_budget_ms,
     new_run_id,
     pc_environment,
-    run_command,
+    run_command_utf8,
     utc_now_iso,
 )
 
@@ -145,10 +145,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             parity = {}
     summary["parity_metrics"] = parity
 
-    result = run_command(command, timeout=int(args.run_timeout_sec) + 900)
+    result = run_command_utf8(command, timeout=int(args.run_timeout_sec) + 900)
     summary["inner_returncode"] = result["returncode"]
-    summary["inner_stdout_tail"] = result["stdout"].strip().splitlines()[-30:]
-    summary["inner_stderr_tail"] = result["stderr"].strip().splitlines()[-15:]
+    summary["inner_stdout_tail"] = (result.get("stdout") or "").strip().splitlines()[-30:]
+    summary["inner_stderr_tail"] = (result.get("stderr") or "").strip().splitlines()[-15:]
 
     inner_root = Path(args.output_dir)
     if not inner_root.is_absolute():
