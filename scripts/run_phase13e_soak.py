@@ -339,7 +339,14 @@ class SoakRunner:
                         "frame_transport_stalled",
                         phase=name, ticks=ticks, stalled_ticks=stalled_ticks,
                     )
-                    break
+                    # Abort the whole run, not just this phase. Once no frame is
+                    # reaching the Jetson there is nothing left to soak, and
+                    # continuing would burn hours producing phases that only look
+                    # like a soak because they ticked for the requested duration.
+                    raise RuntimeError(
+                        "frame transport stalled in phase %s after %d ticks with no published frame"
+                        % (name, stalled_ticks)
+                    )
             if outcome["timeout"]:
                 timeouts += 1
             if outcome["latency_ms"] is not None:
