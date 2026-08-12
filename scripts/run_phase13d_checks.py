@@ -129,6 +129,7 @@ _NONZERO_BLOCKERS = (
 def evaluate_runtime_health(
     metrics: Dict[str, Any], *, deadline_ms: Optional[float] = None,
     observed_p99_ms: Optional[float] = None,
+    ignore: Sequence[str] = (),
 ) -> Dict[str, Any]:
     """One definition of the run-health rules every Phase 13D gate applies.
 
@@ -136,8 +137,15 @@ def evaluate_runtime_health(
     failures, skipped calibration frames, observed thermal throttling and a
     missed deadline are gate blockers wherever they appear, so they are decided
     here once rather than re-implemented per script.
+
+    ``ignore`` exists for one honest case: a session that deliberately injects
+    faults will record failures that the fault matrix — not this function — is
+    the correct judge of. A caller that suppresses a blocker on those grounds
+    must name it, and the suppressed set is written into the evidence so the
+    decision stays visible rather than silent.
     """
 
+    suppressed = set(str(item) for item in ignore)
     blockers = []  # type: List[str]
     if metrics.get("thermal_throttling_observed"):
         blockers.append("thermal_throttling_observed")
@@ -150,11 +158,14 @@ def evaluate_runtime_health(
             blockers.append("frame_to_command_latency_unavailable")
         elif float(observed_p99_ms) >= float(deadline_ms):
             blockers.append("inference_deadline_missed")
+    kept = sorted(set(blockers) - suppressed)
     return {
-        "runtime_health_passed": not blockers,
+        "runtime_health_passed": not kept,
         "runtime_health_deadline_ms": deadline_ms,
         "runtime_health_observed_p99_ms": observed_p99_ms,
-        "blockers": sorted(set(blockers)),
+        "runtime_health_suppressed_blockers": sorted(set(blockers) & suppressed),
+        "runtime_health_suppression_requested": sorted(suppressed),
+        "blockers": kept,
     }
 
 

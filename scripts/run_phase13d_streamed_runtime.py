@@ -160,6 +160,28 @@ def main(argv: Optional[List[str]] = None) -> int:
         summary["frames"] = driver.publish_synthetic_frames(
             int(args.frames), interval_sec=float(args.frame_interval_sec), wait_timeout_sec=600.0
         )
+
+        # Snapshot the streamed phase before any fault is injected. The fault
+        # matrix deliberately feeds invalid frames, so its rejected results and
+        # its one injected dtype failure belong to the fault verdict, not to the
+        # streamed-inference counts. Measuring both phases with one number would
+        # make a clean stream and a fault matrix mutually exclusive.
+        streamed_metrics = driver.collect_jetson_evidence()["metrics"]
+        summary["streamed_phase_metrics"] = {
+            key: streamed_metrics.get(key)
+            for key in (
+                "tensorrt_inference_requested_count",
+                "tensorrt_inference_completed_count",
+                "tensorrt_inference_failed_count",
+                "tensorrt_active_authority_count",
+                "tensorrt_fallback_count",
+                "tensorrt_range_reject_count",
+                "calibration_envelope_reject_count",
+                "range_state_counts",
+                "max_mailbox_depth",
+            )
+        }
+
         if not args.skip_fault_matrix:
             summary["phase13b_fault_matrix"] = driver.run_fault_matrix("D13D")
 
@@ -178,11 +200,27 @@ def main(argv: Optional[List[str]] = None) -> int:
         gate_d = {
             "gate_d_precision": metrics.get("precision"),
             "gate_d_perception_mode": metrics.get("perception_mode"),
+            # Streamed-phase counters come from the pre-fault snapshot.
             "gate_d_streamed_inference_count": int(
-                metrics.get("tensorrt_inference_completed_count", 0)
+                streamed_metrics.get("tensorrt_inference_completed_count", 0)
             ),
             "gate_d_valid_int8_inference_count": int(
-                metrics.get("tensorrt_active_authority_count", 0)
+                streamed_metrics.get("tensorrt_active_authority_count", 0)
+            ),
+            "gate_d_streamed_inference_failed_count": int(
+                streamed_metrics.get("tensorrt_inference_failed_count", 0)
+            ),
+            "gate_d_streamed_range_reject_count": int(
+                streamed_metrics.get("tensorrt_range_reject_count", 0)
+            ),
+            "gate_d_streamed_fallback_count": int(
+                streamed_metrics.get("tensorrt_fallback_count", 0)
+            ),
+            "gate_d_session_inference_completed_count": int(
+                metrics.get("tensorrt_inference_completed_count", 0)
+            ),
+            "gate_d_session_inference_failed_count": int(
+                metrics.get("tensorrt_inference_failed_count", 0)
             ),
             "gate_d_tensorrt_warmup_count": int(metrics.get("tensorrt_warmup_count", 0) or 0),
             "gate_d_frames_received": int(metrics.get("frames_received", 0)),
@@ -246,8 +284,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         if not args.skip_fault_matrix and not gate_d["gate_d_fault_matrix_passed"]:
             blockers.append("phase13b_fault_matrix_regression_failed")
 
+        # Health is judged on the streamed phase, with thermal throttling taken
+        # from the whole session because it cannot be injected.
         health = evaluate_runtime_health(
-            metrics,
+            dict(streamed_metrics,
+                 thermal_throttling_observed=metrics.get("thermal_throttling_observed")),
             deadline_ms=budget,
             observed_p99_ms=gate_d["frame_to_command_ms_p99"],
         )

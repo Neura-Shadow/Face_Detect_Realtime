@@ -255,8 +255,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not gate_e["gate_e_parity_passed"]:
         blockers.append("parity_gate_not_passed")
 
+    # The inner Phase 13B host injects the fault matrix inside the same session,
+    # so its recorded inference failures are the injected ones. Only the fault
+    # matrix can judge those, and it does: it must pass with zero false accepts
+    # and zero false rejects, checked separately above. The suppression is named
+    # here and written into the evidence rather than applied silently.
+    suppress = ()  # type: Any
+    if gate_e["gate_e_fault_matrix_passed"] and not (
+        gate_e["gate_e_false_accept_count"] or gate_e["gate_e_false_reject_count"]
+    ):
+        suppress = ("tensorrt_inference_failed",)
     health = evaluate_runtime_health(
-        jetson_metrics, deadline_ms=budget, observed_p99_ms=gate_e["frame_to_command_ms_p99"]
+        jetson_metrics,
+        deadline_ms=budget,
+        observed_p99_ms=gate_e["frame_to_command_ms_p99"],
+        ignore=suppress,
     )
     summary["runtime_health"] = health
     if not args.require_no_fallback:

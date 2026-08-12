@@ -645,6 +645,49 @@ def matrix_counts(rows: List[Dict[str, Any]]) -> Dict[str, int]:
     return {"false_accept_count": false_accept, "false_reject_count": false_reject}
 
 
+class TestRuntimeHealthSuppression(unittest.TestCase):
+    """Suppression is a safety-relevant knob, so it is pinned explicitly."""
+
+    def test_nothing_is_suppressed_by_default(self) -> None:
+        health = evaluate_runtime_health({"tensorrt_inference_failed_count": 1})
+        self.assertIn("tensorrt_inference_failed", health["blockers"])
+        self.assertEqual(health["runtime_health_suppressed_blockers"], [])
+        self.assertFalse(health["runtime_health_passed"])
+
+    def test_a_suppressed_blocker_is_recorded_not_hidden(self) -> None:
+        health = evaluate_runtime_health(
+            {"tensorrt_inference_failed_count": 1}, ignore=("tensorrt_inference_failed",)
+        )
+        self.assertNotIn("tensorrt_inference_failed", health["blockers"])
+        self.assertEqual(
+            health["runtime_health_suppressed_blockers"], ["tensorrt_inference_failed"]
+        )
+        self.assertEqual(
+            health["runtime_health_suppression_requested"], ["tensorrt_inference_failed"]
+        )
+
+    def test_suppressing_one_blocker_does_not_suppress_the_others(self) -> None:
+        health = evaluate_runtime_health(
+            {"tensorrt_inference_failed_count": 1, "tensorrt_fallback_count": 1,
+             "thermal_throttling_observed": True},
+            ignore=("tensorrt_inference_failed",),
+        )
+        self.assertEqual(
+            health["blockers"], ["tensorrt_fallback_used", "thermal_throttling_observed"]
+        )
+        self.assertFalse(health["runtime_health_passed"])
+
+    def test_a_clean_run_passes(self) -> None:
+        health = evaluate_runtime_health(
+            {"tensorrt_inference_failed_count": 0}, deadline_ms=949.0, observed_p99_ms=90.3
+        )
+        self.assertTrue(health["runtime_health_passed"], health["blockers"])
+
+    def test_a_missing_latency_measurement_is_a_blocker(self) -> None:
+        health = evaluate_runtime_health({}, deadline_ms=949.0, observed_p99_ms=None)
+        self.assertIn("frame_to_command_latency_unavailable", health["blockers"])
+
+
 class TestPhase13DFaultMatrix(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
