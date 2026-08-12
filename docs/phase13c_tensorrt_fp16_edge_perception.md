@@ -10,54 +10,50 @@ verified Phase 13B Jetson-in-the-loop transport and safety path unchanged.
 
 ## 1. Status of this phase
 
-**`Phase 13C-TENSORRT-FP16-EDGE-PERCEPTION Prepared`** — the TensorRT source
-integration, asset contracts, unit tests and local fail-closed gates pass, but
-no real Jetson FP16 engine was verified.
+**`Phase 13C-TENSORRT-FP16-EDGE-PERCEPTION Pass`** — real Jetson TensorRT FP16
+perception processed simulated CARLA frames, passed input/output range and
+backend-consistency gates, produced fresh no-fallback perception results in the
+command-authority path, and closed the loop through the C Virtual Safety MCU
+into CARLA virtual actuation.
 
-Gates B, C and D are **blocked** by a verified external dependency gap:
+Executed 2026-08-12 at
+`runtime_pc_git_sha = runtime_jetson_git_sha = c074bab0700ba084118eefa3e65986942e27f870`.
 
-```
-blocker = onnx_export_dependency_missing
-```
+| Gate | Result |
+| --- | --- |
+| **A** — local source / unit / fail-closed | Passed (107/107 Phase 13C unit tests) |
+| **B** — real Jetson engine + standalone inference | **Engine Pass** |
+| **C** — streamed TensorRT runtime | **Runtime Pass** |
+| **D** — CARLA closed loop | **Pass** |
 
-Every Python environment on the simulation PC that has PyTorch also lacks the
-`onnx` package, and PyTorch 2.12 requires it for *every* export path:
-
-| Environment | Python | torch | `onnx` | `torch.onnx.export` |
-| --- | --- | --- | --- | --- |
-| `D:\CARLA\envs\ma-vlna-carla312` | 3.12.13 | 2.12.1+cpu | absent | `OnnxExporterError('Module onnx is not installed!')` |
-| `C:\Users\zongx\anaconda3` | 3.10.14 | 2.12.0+cpu | absent | same |
-| `D:\Face_Detect_Realtime\test_env` | 3.10.14 | 2.12.0+cpu | absent | same |
-
-Passing `dynamo=False` to select the legacy TorchScript exporter does **not**
-avoid it in torch 2.12. The Jetson has neither torch nor onnx, so the export
-cannot be moved there either.
-
-Phase 13C is forbidden from installing dependencies automatically, so the run
-stops here rather than silently installing a package. **Operator unlock:**
-
-```bash
-D:\CARLA\envs\ma-vlna-carla312\python.exe -m pip install onnx
-```
-
-Then re-run `scripts/run_phase13c_onnx_export.py`. Nothing else is blocked: the
-external YOLOv9 source and weights are both present and verified.
-
----
+The `onnx_export_dependency_missing` blocker recorded at the Prepared stage was
+cleared by an explicitly operator-authorised install of exactly one package
+(`onnx==1.22.0`, plus its direct wheel requirement `ml_dtypes==0.5.4`) into
+`D:\CARLA\envs\ma-vlna-carla312` only. torch stayed at 2.12.1+cpu, CARLA still
+imports, and `pip check` reports no broken requirements. No other environment —
+anaconda, `test_env`, system Python or the Jetson — was touched.
 
 ## 2. What is physical and what is simulated
 
-Unchanged from Phase 13B. What Phase 13C adds to the *physical* column depends on which gate has actually run, and the wording below is kept exact:
+Unchanged from Phase 13B, plus one addition that is now earned rather than
+asserted:
 
-* At the **Prepared** stage the real Jetson CUDA runtime **memory path** was verified with a `cudaMalloc` / H2D / D2H / `cudaStreamSynchronize` / `cudaFree` round trip, and TensorRT 8.5 API and runtime availability were verified — but **no TensorRT engine inference had executed**. A CUDA memory-copy round trip is not model inference and is not GPU model compute.
-* Only once **Gate B** passes may this document state that real TensorRT FP16 inference executed on the Orin NX GPU.
+* At the **Prepared** stage the real Jetson CUDA runtime **memory path** was
+  verified with a `cudaMalloc` / H2D / D2H / `cudaStreamSynchronize` / `cudaFree`
+  round trip, and TensorRT 8.5 API and runtime availability were verified — but
+  **no TensorRT engine inference had executed**. A CUDA memory-copy round trip is
+  not model inference and is not GPU model compute.
+* **Gate B has now passed**, so this document may and does state: real TensorRT
+  FP16 inference executed on the Orin NX GPU. During the standalone benchmark
+  `tegrastats` measured **GR3D 96%** under sustained load, with a CUDA-event GPU
+  execution time of 47.3 ms p50 across 300 measured inferences.
 
 | Physical (measured) | Simulated (modelled) |
 | --- | --- |
 | Jetson Linux, CPU, **GPU**, RAM | CARLA RGB camera |
 | Jetson process and thread scheduling | Environment and traffic |
 | Jetson network stack | Ego vehicle and vehicle physics |
-| CUDA 11.4.315 / TensorRT 8.5.2.2 installation and runtime availability | Safety MCU (portable C emulator) |
+| CUDA 11.4.315 / TensorRT 8.5.2.2 FP16 engine execution on the GPU | Safety MCU (portable C emulator) |
 | Jetson thermal and resource telemetry | Actuator |
 | USB cable + L4T USB Device Mode Ethernet | |
 
@@ -129,8 +125,8 @@ External assets, all uncommitted:
 | --- | --- | --- |
 | YOLOv9 source | `D:\AIModels\yolov9` | present (git repo, `export.py`, `models/`, `utils/`) |
 | Weights | `D:\AIModels\yolov9\yolov9-c-converted.pt` | present, 51 477 927 bytes |
-| ONNX | `D:\AIModels\yolov9\exports\yolov9-c-640-b1.onnx` | **not produced** (export blocked) |
-| Engine | `/home/myjetsonnx/models/ma-vlna/yolov9/…-trt852-fp16.engine` | **not built** |
+| ONNX | `D:\AIModels\yolov9\exports\yolov9-c-640-b1.onnx` | produced, 101 451 362 bytes, SHA-256 `df77591b…e547e98c` |
+| Engine | `/home/myjetsonnx/models/ma-vlna/yolov9/…-trt852-fp16.engine` | target-built, 52 779 823 bytes, SHA-256 `0a596c07…f51690b3` |
 
 `workers/core/tensorrt_asset_contract.py` records `model_family`,
 `model_variant`, `external_source_root`, `external_source_git_sha`,
@@ -535,3 +531,172 @@ profile are **not** required.
 `Phase 13D-INT8-CALIBRATION-RANGE-SHIFT` — after a real FP16 Pass. Until the
 `onnx` dependency is unlocked, the immediate next step is the operator command
 in §1.
+
+---
+
+## 21. Runtime results — executed 2026-08-12
+
+`runtime_pc_git_sha = runtime_jetson_git_sha = c074bab0700ba084118eefa3e65986942e27f870`
+(`runtime_git_sha_match = true`)
+
+### Dependency unlock
+
+| Field | Value |
+| --- | --- |
+| `dependency_install_authorized` | true (operator, exactly one package) |
+| Target interpreter | `D:\CARLA\envs\ma-vlna-carla312\python.exe` |
+| `onnx_version_before` / `after` | null / **1.22.0** |
+| Added distributions | `onnx==1.22.0`, `ml_dtypes==0.5.4` (direct requirement of the onnx wheel) |
+| `dependency_install_exit_code` | 0 |
+| `torch_version_before` / `after` | 2.12.1+cpu / 2.12.1+cpu (unchanged) |
+| `carla_import_before` / `after` | true / true |
+| `pip check` | "No broken requirements found." |
+| Resolver plan | binary wheels only; nothing removed, downgraded or built from source |
+
+### ONNX export
+
+Graph: one input `images` `[1,3,640,640]` FLOAT, one output `output0`
+`[1,84,8400]` FLOAT, opset 12, IR 7, 702 nodes, producer `pytorch`.
+`onnx.checker.check_model(..., full_check=True)` passed.
+SHA-256 `df77591bd557f4392c5a8147fbcd9d247f1b0d7eb0a97a247c44f847e547e98c`,
+101 451 362 bytes. The output contract was derived from a real reference forward
+pass (`[1, 84, 8400]`, 80 COCO class names), not guessed.
+
+### Gate B — Engine Pass
+
+| Metric | Value |
+| --- | --- |
+| Builder | TensorRT 8.5 Python builder (trtexec attempted first, returned non-zero) |
+| Build duration | 1150.1 s |
+| Engine | 52 779 823 bytes, SHA-256 `0a596c079751f0a68b156face1eb6ee59c673cfc7d48667e0496def4f51690b3` |
+| Bindings | 2 — in `images` `[1,3,640,640]` FLOAT, out `output0` `[1,84,8400]` FLOAT |
+| Dynamic shapes | false |
+| Cache key | `89ba88d59683b9e2fbf8abe3cc12178a6361ce4e8a4ef9dfef2c2d8112329036` |
+| GPU / compute capability | NVIDIA Orin NX, 8.7 |
+| Warm-up / measured | 50 / 300 |
+| Throughput | 12.95 FPS (first run), 11.85 FPS (re-run at the final SHA) |
+| `per_frame_device_allocation_count` | 0 |
+| `cuda_error_count` / `engine_execute_failure_count` | 0 / 0 |
+| Device / host buffers | 2 / 2, 7 737 600 bytes each |
+| GR3D under sustained load | **96%** |
+
+Standalone latency (ms, 300 samples):
+
+| metric | min | p50 | p95 | p99 | max |
+| --- | --- | --- | --- | --- | --- |
+| `preprocess_ms` | 17.63 | 18.09 | 18.29 | 19.02 | 19.14 |
+| `h2d_ms` | 0.88 | 0.94 | 1.00 | 1.04 | 1.08 |
+| `tensorrt_enqueue_ms` | 3.18 | 3.27 | 3.32 | 3.34 | 3.42 |
+| `gpu_execution_ms` | 47.05 | 47.30 | 47.68 | 47.74 | 47.80 |
+| `d2h_ms` | 44.40 | 44.91 | 45.28 | 45.37 | 45.66 |
+| `postprocess_ms` | 8.84 | 8.98 | 9.75 | 9.99 | 10.61 |
+| `inference_total_ms` | 49.56 | 49.95 | 50.33 | 50.40 | 50.70 |
+| `frame_to_perception_ms` | 76.46 | 77.15 | 77.93 | 78.72 | 79.04 |
+
+`d2h_ms` includes the `cudaStreamSynchronize` that waits for the GPU, so it
+overlaps `gpu_execution_ms` and is **not** a pure device-to-host copy time.
+
+### Backend parity — conversion consistency only
+
+| Metric | Value | Threshold |
+| --- | --- | --- |
+| `reference_frame_count` | 40 | >= 32 |
+| `parity_evaluable_frame_count` | 40 | > 0 |
+| `reference_detection_count` | 85 | — |
+| `tensorrt_detection_count` | 89 | — |
+| `matched_detection_rate` | **1.000** | >= 0.90 |
+| `matched_class_agreement` | **1.000** | >= 0.95 |
+| `matched_box_iou_mean` | **0.954** | >= 0.75 |
+| `confidence_abs_error_p95` | **0.0112** | <= 0.10 |
+| `frames_with_schema_error` | 0 | 0 |
+| `frames_with_nonfinite_output` | 0 | 0 |
+
+Frames were captured locally from CARLA Town03 with 25 traffic vehicles and are
+uncommitted. This measures conversion consistency between the official YOLOv9
+PyTorch source and the TensorRT FP16 engine. It is **not** accuracy, mAP or
+recall.
+
+### Gate C — Runtime Pass
+
+300 frames sent / received / decoded / processed, 300 streamed inferences,
+**300 commands accepted, 0 rejected**, 300 valid ACKs, `max_mailbox_depth = 1`,
+0 mailbox drops, 0 fallbacks, 0 inference failures, 0 range rejects, warm-up 20.
+`frame_to_command_ms_p99 = 92.09` against a `latency_budget_ms = 949.36`.
+
+### Gate D — Pass
+
+| Metric | Value |
+| --- | --- |
+| Profile | Town03 reused, `fixed_delta_seconds` 0.05 (20 Hz), `camera_fps` 5, `sensor_tick` 0.20 s |
+| Ticks per camera frame | **4.0** |
+| CARLA ticks | 1200 |
+| `gate_d_carla_frames_sent` / `processed` | 300 / 305 |
+| `gate_d_tensorrt_inference_completed_count` | 304 |
+| `gate_d_tensorrt_active_authority_count` | 298 |
+| Virtual actuations (applied / active / SAFE_STOP) | 1215 / **1197** / **18** |
+| `gate_d_command_accept_count` | 311 |
+| `gate_d_command_timeout_count` | **0** |
+| `max_mailbox_depth` / drops / overwrites | 1 / 0 / 0 |
+| `frame_to_command_ms` p50 / p95 / p99 | 90.85 / 95.99 / **99.06** |
+| `latency_budget_ms` | **949.63** |
+| Realtime stale gate | passed |
+| Fault matrix (Phase 13B, against the TensorRT node) | **28/28** |
+| `false_accept_count` / `false_reject_count` | 0 / 0 |
+| `clock_uncertainty_us`, valid probes | 373, 40/40 |
+
+Range states over the run: `VALID` 298, `RECOVERY_PENDING` 3,
+`OUTPUT_RANGE_INVALID` 2, `INPUT_RANGE_SHIFT` 1, `COLOR_ORDER_MISMATCH` 1 — the
+last two are the injected fault cases firing correctly on the TensorRT path.
+
+### Real Jetson telemetry
+
+| Metric | Standalone benchmark (under load) | Gate D (final sample) |
+| --- | --- | --- |
+| `tegrastats_sample_count` | 28 | 175 |
+| `cpu_utilization_percent` | 10.5 | 1.5 |
+| `gr3d_gpu_utilization_percent` | **96.0** | 0.0 (post-run idle snapshot) |
+| `cpu_temperature_c` | 54.63 | 52.59 |
+| `gpu_temperature_c` | 53.47 | 50.75 |
+| `soc_temperature_c` | 54.34 | 53.16 |
+| `ram_used_bytes` | 5 311 037 440 | 5 335 154 688 |
+| `swap_used_bytes` | 0 | 0 |
+| `thermal_throttling_observed` | false | false |
+| `power_measurement_available` | false (`power_metrics = null`) | false |
+
+The Gate D GR3D figure is the *last* `tegrastats` sample, taken after the run
+finished, so it reads idle. Sustained GPU utilisation is the 96% measured during
+the benchmark; Gate D's own engine execution is evidenced by its 304 CUDA-event
+`gpu_execution_ms` samples (47.4 ms p50).
+
+### Four defects found by real hardware
+
+1. **Non-leaf fused parameters.** `attempt_load(..., fuse=True)` makes some
+   parameters computed tensors; the blanket `requires_grad = False` raised.
+2. **Detect head not prepared for export.** The vendor `run()` sets
+   `export = True` on the detect heads; without it the graph carried three extra
+   feature-map outputs alongside `output0`.
+3. **No engine warm-up.** The first inference after deserialization took 1286.8 ms
+   versus an 84.5 ms steady state (both measured by the new warm-up telemetry).
+   That single frame blew the 1000 ms inference-timeout gate, and together with
+   the two mandatory `RECOVERY_PENDING` frames produced three consecutive
+   non-VALID range states — exactly the frozen Phase 13A
+   `range_failsafe_threshold` — driving the C Safety MCU into FAILSAFE so that
+   297 of 300 commands were `STATE_REJECT`ed. The FSM behaved correctly; it was
+   being fed a spurious timeout.
+4. **A degenerate input-range bound and an unreachable colour-order fault.** The
+   TensorRT channel-mean bounds were `(0.0, 1.0)`, which nothing can violate, and
+   the check read the *letterboxed* tensor whose 44% grey padding lifts an
+   all-black frame to ~0.197. The colour-order fault never reached the TensorRT
+   branch at all. Both let a Phase 13B fault case be accepted where SAFE_STOP was
+   required.
+
+Each was fixed at source, pushed, pulled on the Jetson at the exact new SHA, and
+the affected gates were re-run.
+
+### Known evidence gap
+
+When the `trtexec` builder attempt fails and the Python builder succeeds, the
+engine-build script overwrites the first attempt's report, so the trtexec
+failure reason is not preserved in `summary.json`. The builder that produced the
+engine, its command, duration and resulting bindings are all recorded; only the
+discarded attempt's diagnostics are lost.

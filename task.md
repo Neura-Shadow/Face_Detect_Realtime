@@ -665,3 +665,106 @@ physical_vehicle_deployment=false
 Install `onnx` in the export environment, re-run the export gate, then Gates
 B/C/D. After a real FP16 Pass the next phase is
 `Phase 13D-INT8-CALIBRATION-RANGE-SHIFT`.
+
+## Phase 13C Runtime Result — executed 2026-08-12
+
+```text
+status=Phase 13C-TENSORRT-FP16-EDGE-PERCEPTION Pass
+runtime_pc_git_sha=c074bab0700ba084118eefa3e65986942e27f870
+runtime_jetson_git_sha=c074bab0700ba084118eefa3e65986942e27f870
+runtime_git_sha_match=true
+
+gate_a=passed (107/107 unit tests, py3.8 parse gate, Phase 13B regression)
+gate_b=Engine Pass
+gate_c=Runtime Pass
+gate_d=Pass
+
+dependency_install_authorized=true
+dependency_install_target_python=D:\CARLA\envs\ma-vlna-carla312\python.exe
+onnx_version_before=null
+onnx_version_after=1.22.0
+dependency_install_changed_packages=[onnx==1.22.0, ml_dtypes==0.5.4]
+dependency_install_exit_code=0
+torch_version_before=2.12.1+cpu
+torch_version_after=2.12.1+cpu
+carla_import_before=true
+carla_import_after=true
+dependency_environment_integrity_verified=true
+
+onnx_export_executed=true
+onnx_export_passed=true
+onnx_checker_available=true
+onnx_checker_passed=true   (full_check=True)
+onnx_input_contract_verified=true
+onnx_output_contract_verified=true
+onnx_opset=12
+onnx_input_shape=[1,3,640,640]
+onnx_input_dtype=FLOAT
+onnx_output_names=[output0]
+onnx_output_shapes=[[1,84,8400]]
+onnx_output_dtypes=[FLOAT]
+onnx_sha256=df77591bd557f4392c5a8147fbcd9d247f1b0d7eb0a97a247c44f847e547e98c
+onnx_size_bytes=101451362
+
+pc_onnx_sha256==jetson_onnx_sha256  (asset_hash_match=true)
+
+fp16_engine_built_on_target=true
+fp16_engine_verified=true
+engine_deserialization_verified=true
+engine_binding_contract_verified=true
+engine_sha256=0a596c079751f0a68b156face1eb6ee59c673cfc7d48667e0496def4f51690b3
+engine_size_bytes=52779823
+engine_build_duration_sec=1150.116
+engine_builder=tensorrt_python
+engine_binding_count=2
+engine_cache_key=89ba88d59683b9e2fbf8abe3cc12178a6361ce4e8a4ef9dfef2c2d8112329036
+int8_engine_built=false
+dla_used=false
+
+standalone_warmup_count=50
+standalone_measured_inference_count=300
+standalone_throughput_fps=12.952 (11.847 on the re-run at the final SHA)
+per_frame_device_allocation_count=0
+cuda_error_count=0
+engine_execute_failure_count=0
+tensorrt_fallback_count=0
+
+reference_frame_count=40
+parity_evaluable_frame_count=40
+matched_detection_rate=1.000
+matched_class_agreement=1.000
+matched_box_iou_mean=0.954
+confidence_abs_error_p95=0.0112
+frames_with_schema_error=0
+frames_with_nonfinite_output=0
+
+gate_c_frames_sent/received/decoded/processed=300/300/300/300
+gate_c_streamed_inference_count=300
+gate_c_command_accept_count=300
+gate_c_command_reject_count=0
+gate_c_max_mailbox_depth=1
+frame_to_command_ms_p99=92.09  (budget 949.36)
+
+gate_d_carla_frames_sent=300
+gate_d_carla_frames_processed=305
+gate_d_carla_ticks=1200
+gate_d_tensorrt_inference_completed_count=304
+gate_d_active_control_count=1197
+gate_d_safe_stop_count=18
+gate_d_command_timeout_count=0
+gate_d_max_mailbox_depth=1
+frame_to_command_ms_p50/p95/p99=90.85/95.99/99.06
+latency_budget_ms=949.63
+phase13b_fault_matrix_regression_passed=true (28/28)
+phase13c_fault_matrix_passed=true (22/22)
+false_accept_count=0
+false_reject_count=0
+
+thermal_throttling_observed=false
+power_measurement_available=false
+power_metrics=null
+```
+
+## Next Safe Step
+
+`Phase 13D-INT8-CALIBRATION-RANGE-SHIFT`.

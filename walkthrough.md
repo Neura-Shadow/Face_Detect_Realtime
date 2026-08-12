@@ -634,3 +634,89 @@ navigation, route completion, full HIL, real MCU, real CAN/UART timing, physical
 camera, physical actuator, INT8 verification, QAT verification, CARLA
 Leaderboard, formal route benchmark, infraction benchmark, physical vehicle
 deployment.
+
+## Runtime result — 2026-08-12
+
+`Phase 13C-TENSORRT-FP16-EDGE-PERCEPTION Pass` at
+`runtime_git_sha=c074bab0700ba084118eefa3e65986942e27f870` on both sides.
+
+Real TensorRT FP16 inference now sits inside the command-authority path: Gate B
+built a 52.8 MB engine on the Orin NX and ran 300 measured inferences at GR3D
+96%; Gate C streamed 300 frames with 300 commands accepted and none rejected;
+Gate D ran 1200 Town03 ticks producing exactly 300 camera frames, 304
+inferences, 1197 C-accepted active controls and 18 SAFE_STOPs with zero command
+timeouts and a p99 frame-to-command latency of 99 ms against a 950 ms budget.
+
+### The dependency unlock was deliberately narrow
+
+One package, one interpreter. The resolver plan was inspected before installing:
+two binary wheels (`onnx==1.22.0` and its direct requirement
+`ml_dtypes==0.5.4`), nothing removed, nothing downgraded, no source build. torch
+stayed at 2.12.1+cpu and CARLA still imports — both checked before and after —
+and anaconda, `test_env`, system Python and the Jetson were all verified to
+still lack `onnx` afterwards.
+
+### What real hardware caught that the local gates could not
+
+Gate A passed 107/107 the whole time. Four defects only appeared once the code
+met the actual board.
+
+**Fused checkpoints have non-leaf parameters.** `attempt_load(..., fuse=True)`
+folds BatchNorm into the preceding convolution, so some parameters are computed
+tensors and a blanket `requires_grad = False` raises.
+
+**The detect head has to be told it is exporting.** The vendor's `run()` sets
+`export = True` on the detect heads before `torch.onnx.export`. Skipping it
+produced a graph with four outputs — `output0` plus three per-scale feature maps
+`[1,144,80,80]`, `[1,144,40,40]`, `[1,144,20,20]` — which would have made the
+recorded single-output contract untrue and forced the engine to allocate and
+copy back tensors nothing consumes.
+
+**A cold engine is a slow engine, and the safety FSM noticed.** The first
+inference after deserialization took 1286.8 ms against an 84.5 ms steady state.
+That one frame exceeded the 1000 ms inference-timeout gate. Combined with the
+two `RECOVERY_PENDING` frames that always precede AI authority, that made three
+consecutive non-VALID range states — exactly the frozen Phase 13A
+`range_failsafe_threshold` — so the C Safety MCU entered FAILSAFE and
+`STATE_REJECT`ed 297 of the next 300 commands. The FSM was correct; it was being
+fed a spurious timeout. The node now warms the engine 20 times at startup and
+resets the backend counters so warm-up never pollutes the runtime metrics.
+
+**A bound that cannot fire is not a check.** The TensorRT channel-mean bounds
+shipped as `(0.0, 1.0)`, which every normalized value satisfies, and the check
+read the *letterboxed* tensor. Padding at 114/255 grey fills 44% of a 640x360
+frame padded to 640x640, so an all-black source measures ~0.197 there and would
+pass any plausible bound. Meanwhile the colour-order fault only ever reached the
+dummy backend's range profile, so on the TensorRT path it could not fire at all.
+Two Phase 13B fault cases were consequently ACCEPTED where SAFE_STOP was
+required. Preprocessing now records source-frame statistics taken *before*
+letterboxing, the bounds are the proven `(0.02, 0.98)`, and the declared colour
+order is passed into the TensorRT evaluation.
+
+The last of these is worth stating plainly: the earlier Prepared-stage claim
+that this phase had a working input-range gate was, for the TensorRT path,
+partly hollow. It took a real fault-matrix run against real hardware to show it.
+
+### Why the streamed gate needed pacing
+
+Publishing 300 frames as fast as TCP accepts them parks them in the socket
+buffer; a frame then waits ~1 s before the Jetson even reads it, and the
+measured frame-to-command latency reflects queueing rather than inference. The
+streamed gate now paces below the measured engine capacity, and it enforces the
+deadline it was already computing — previously it reported a p99 of 1493 ms
+against a 949 ms budget and still called the run a pass.
+
+### Boundary
+
+Evidenced: a target-built FP16 engine verified on the real Orin NX; real GPU
+inference executed; no-fallback TensorRT perception over streamed and CARLA
+frames; input and final-output range gates executed; backend consistency
+measured against the official source; TensorRT result freshness governing
+diagnostic command authority; the C Virtual Safety MCU remaining authoritative;
+only the virtual CARLA actuator controlled.
+
+Not claimed: model accuracy, mAP, recall, real-world perception quality, safe
+autonomous navigation, route completion, full HIL, real MCU or S32K344, real
+CAN/UART timing, physical camera, physical actuator, INT8, QAT, CARLA
+Leaderboard, formal route benchmark, infraction benchmark, physical vehicle
+deployment.
