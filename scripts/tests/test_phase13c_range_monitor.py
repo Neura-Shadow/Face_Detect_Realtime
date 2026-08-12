@@ -25,6 +25,8 @@ def good_input() -> dict:
         "input_max": 1.0,
         "channel_means": [0.4, 0.45, 0.5],
         "channel_stds": [0.2, 0.2, 0.2],
+        "source_channel_means": [0.4, 0.45, 0.5],
+        "source_channel_stds": [0.2, 0.2, 0.2],
         "input_dtype": "float32",
         "input_color_order": "RGB",
     }
@@ -121,7 +123,13 @@ class TestFailClosed(unittest.TestCase):
         self.assertEqual(verdict.state, RangeShiftState.COLOR_ORDER_MISMATCH)
 
     def test_channel_count_mismatch_is_rejected(self) -> None:
-        verdict = self._evaluate(input_stats=dict(good_input(), channel_means=[0.5, 0.5]))
+        # Both the source and tensor means carry the wrong channel count; the
+        # monitor reads the source stats first, so that is what must be short.
+        verdict = self._evaluate(
+            input_stats=dict(
+                good_input(), source_channel_means=[0.5, 0.5], channel_means=[0.5, 0.5]
+            )
+        )
         self.assertEqual(verdict.classification, "input_channel_count_mismatch")
 
     def test_nonfinite_output_is_rejected(self) -> None:
@@ -178,6 +186,60 @@ class TestFailClosed(unittest.TestCase):
     def test_negative_result_age_is_rejected(self) -> None:
         verdict = self._evaluate(result_age_ms=-5.0)
         self.assertEqual(verdict.classification, "result_stale")
+
+
+class TestSourceFrameBounds(unittest.TestCase):
+    """The channel-mean bound must be applied to the SOURCE frame.
+
+    Letterbox padding (114/255 grey) fills 44% of a 640x360 frame padded to
+    640x640, so an all-black source still measures ~0.197 on the padded tensor.
+    Checking the padded tensor would silently accept a black frame — which is
+    exactly what the real Gate D run exposed.
+    """
+
+    def _evaluate(self, stats):
+        return TensorRTRangeMonitor().evaluate(
+            input_stats=stats,
+            detections=[detection()],
+            output_stats=good_output(),
+            inference_ms=20.0,
+            result_age_ms=5.0,
+        )
+
+    def test_bounds_are_not_degenerate(self) -> None:
+        for low, high in TensorRTRangeContract().input_channel_mean_bounds:
+            self.assertGreater(low, 0.0, "a 0.0 lower bound can never fire")
+            self.assertLess(high, 1.0, "a 1.0 upper bound can never fire")
+
+    def test_black_source_frame_is_rejected_despite_padded_tensor_means(self) -> None:
+        stats = good_input()
+        stats["source_channel_means"] = [0.0, 0.0, 0.0]
+        stats["channel_means"] = [0.197, 0.197, 0.197]  # padding lifts the tensor
+        verdict = self._evaluate(stats)
+        self.assertFalse(verdict.ai_result_valid)
+        self.assertEqual(verdict.state, RangeShiftState.INPUT_RANGE_SHIFT)
+        self.assertEqual(verdict.classification, "input_range_shift")
+
+    def test_saturated_source_frame_is_rejected(self) -> None:
+        stats = good_input()
+        stats["source_channel_means"] = [1.0, 1.0, 1.0]
+        verdict = self._evaluate(stats)
+        self.assertFalse(verdict.ai_result_valid)
+        self.assertEqual(verdict.classification, "input_range_shift")
+
+    def test_source_means_take_precedence_over_tensor_means(self) -> None:
+        stats = good_input()
+        stats["source_channel_means"] = [0.5, 0.5, 0.5]
+        stats["channel_means"] = [0.0, 0.0, 0.0]  # would fail if it were used
+        verdict = self._evaluate(stats)
+        self.assertNotEqual(verdict.classification, "input_range_shift")
+
+    def test_tensor_means_are_used_when_source_stats_are_absent(self) -> None:
+        stats = good_input()
+        del stats["source_channel_means"]
+        stats["channel_means"] = [0.0, 0.0, 0.0]
+        verdict = self._evaluate(stats)
+        self.assertEqual(verdict.classification, "input_range_shift")
 
 
 class TestEvidence(unittest.TestCase):

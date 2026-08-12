@@ -101,6 +101,25 @@ class TestPreprocess(unittest.TestCase):
         self.assertAlmostEqual(float(tensor.max()), 1.0, places=6)
         self.assertAlmostEqual(stats["input_max"], 1.0, places=6)
 
+    def test_source_frame_statistics_are_recorded_separately(self) -> None:
+        """Source stats must reflect the frame, not the letterbox padding."""
+
+        black = np.zeros((360, 640, 3), dtype=np.uint8)
+        _, _, stats = preprocess_bgr(black, InputContract())
+        for value in stats["source_channel_means"]:
+            self.assertAlmostEqual(value, 0.0, places=6)
+        # The padded tensor is lifted by the 114/255 grey border, which is why
+        # the range contract must not use it as the input-range signal.
+        self.assertGreater(max(stats["channel_means"]), 0.1)
+        self.assertAlmostEqual(stats["source_input_min"], 0.0, places=6)
+        self.assertAlmostEqual(stats["source_input_max"], 0.0, places=6)
+
+    def test_source_statistics_track_a_bright_frame(self) -> None:
+        bright = np.full((360, 640, 3), 255, dtype=np.uint8)
+        _, _, stats = preprocess_bgr(bright, InputContract())
+        for value in stats["source_channel_means"]:
+            self.assertAlmostEqual(value, 1.0, places=6)
+
     def test_non_uint8_input_is_rejected(self) -> None:
         with self.assertRaises(TensorRTPerceptionError) as ctx:
             preprocess_bgr(np.zeros((32, 32, 3), dtype=np.float32), InputContract())

@@ -46,10 +46,15 @@ class TensorRTRangeContract:
     input_min: float = 0.0
     input_max: float = 1.0
     input_epsilon: float = 1e-4
+    # Applied to the SOURCE frame, not the letterboxed tensor. (0.0, 1.0) would
+    # be degenerate: every possible normalized value satisfies it, so the check
+    # could never fire. These bounds match the proven Phase 13B input-only
+    # profile and still reject an all-black, saturated or otherwise degenerate
+    # frame.
     input_channel_mean_bounds: Sequence[Sequence[float]] = (
-        (0.0, 1.0),
-        (0.0, 1.0),
-        (0.0, 1.0),
+        (0.02, 0.98),
+        (0.02, 0.98),
+        (0.02, 0.98),
     )
     expected_input_dtype: str = "float32"
     expected_input_shape: Sequence[int] = (1, 3, 640, 640)
@@ -234,7 +239,11 @@ class TensorRTRangeMonitor:
                 observations,
             )
 
-        means = stats.get("channel_means")
+        # Prefer the source-frame means; letterbox padding makes the padded
+        # tensor's means unusable as an input-range signal.
+        means = stats.get("source_channel_means")
+        if means is None:
+            means = stats.get("channel_means")
         if isinstance(means, (list, tuple)) and self.contract.input_channel_mean_bounds:
             bounds = list(self.contract.input_channel_mean_bounds)
             if len(means) != len(bounds):

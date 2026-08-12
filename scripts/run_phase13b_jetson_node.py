@@ -595,7 +595,11 @@ class JetsonNode:
                     tensorrt_frame, nan=np.nan, posinf=np.inf, neginf=-np.inf
                 )
             range_result, backend_name, _ = self._run_tensorrt_perception(
-                tensorrt_frame, int(header.frame_id), result_age_ms, clock_degraded
+                tensorrt_frame,
+                int(header.frame_id),
+                result_age_ms,
+                clock_degraded,
+                declared_color_order=model_color_order,
             )
         else:
             perception_frame = frame
@@ -748,7 +752,12 @@ class JetsonNode:
             self.tensorrt_latency_samples.setdefault(key, []).append(float(value))
 
     def _run_tensorrt_perception(
-        self, frame: Any, frame_id: int, result_age_ms: float, clock_degraded: bool
+        self,
+        frame: Any,
+        frame_id: int,
+        result_age_ms: float,
+        clock_degraded: bool,
+        declared_color_order: str = "RGB",
     ) -> Tuple[Any, str, Optional[Any]]:
         """Run TensorRT for one frame and gate authority on the same frame id.
 
@@ -801,8 +810,14 @@ class JetsonNode:
 
         self.tensorrt_inference_completed_count += 1
         self._record_tensorrt_latency(self.tensorrt_backend.last_timing)
+        input_stats = dict(self.tensorrt_backend.last_stats)
+        # A colour-order fault means the frame was delivered in an order the
+        # engine was not calibrated for; declare that to the range monitor so
+        # its colour-order check can fire on the TensorRT path too.
+        if declared_color_order and declared_color_order.upper() != "RGB":
+            input_stats["input_color_order"] = declared_color_order
         verdict = self.tensorrt_monitor.evaluate(
-            input_stats=self.tensorrt_backend.last_stats,
+            input_stats=input_stats,
             detections=detections,
             output_stats=self.tensorrt_backend.last_stats,
             inference_ms=float(self.tensorrt_backend.last_timing.get("frame_to_perception_ms", 0.0)),

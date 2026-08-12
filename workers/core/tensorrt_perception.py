@@ -177,11 +177,26 @@ def preprocess_bgr(
     if not np.all(np.isfinite(tensor)):
         raise TensorRTPerceptionError("input_nonfinite", "preprocessed tensor contains NaN/Inf")
 
+    # Statistics of the SOURCE frame, before letterboxing. Letterbox padding
+    # (114/255 = 0.447 grey) occupies 44% of a 640x360 frame padded to 640x640,
+    # which drags the padded tensor's channel means toward the middle: an
+    # all-black source frame still measures ~0.197 on the padded tensor. Any
+    # meaningful input-range bound therefore has to be applied to the source
+    # pixels, not to the padded network input.
+    source = np.asarray(frame).astype(np.float32) / float(contract.normalization_scale)
     stats = {
         "input_min": float(np.min(tensor)),
         "input_max": float(np.max(tensor)),
         "channel_means": [float(np.mean(tensor[0, index])) for index in range(tensor.shape[1])],
         "channel_stds": [float(np.std(tensor[0, index])) for index in range(tensor.shape[1])],
+        "source_input_min": float(np.min(source)),
+        "source_input_max": float(np.max(source)),
+        "source_channel_means": [
+            float(np.mean(source[:, :, index])) for index in range(source.shape[2])
+        ],
+        "source_channel_stds": [
+            float(np.std(source[:, :, index])) for index in range(source.shape[2])
+        ],
         "input_dtype": str(tensor.dtype),
         "input_contiguous": bool(tensor.flags["C_CONTIGUOUS"]),
         "input_color_order": contract.input_color_order,
