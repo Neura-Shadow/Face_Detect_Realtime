@@ -297,6 +297,9 @@ class JetsonNode:
         self.tensorrt_active_authority_count = 0
         self.tensorrt_result_stale_count = 0
         self.tensorrt_latency_samples = {}  # type: Dict[str, List[float]]
+        self.tensorrt_warmup_count = 0
+        self.tensorrt_warmup_first_ms = None  # type: Optional[float]
+        self.tensorrt_warmup_last_ms = None  # type: Optional[float]
         self.command_classifications = {}  # type: Dict[str, int]
         self.ack_timeouts = 0
         self.ai_active_command_count = 0
@@ -696,10 +699,35 @@ class JetsonNode:
                     ),
                 )
             )
+            # Warm the engine before any real frame arrives. The first
+            # inference after deserialization pays lazy CUDA context and kernel
+            # initialisation (measured at ~1.28 s on the Orin NX versus a ~78 ms
+            # steady state). Without this, frame 1 blows the inference-timeout
+            # gate, and three consecutive non-VALID range states drive the C
+            # Safety MCU into FAILSAFE, after which every later command is
+            # STATE_REJECTed.
+            warmup = max(0, int(getattr(self.args, "tensorrt_warmup", 0)))
+            warmup_ms = []  # type: List[float]
+            if warmup:
+                probe = np.full((360, 640, 3), 128, dtype=np.uint8)
+                for _ in range(warmup):
+                    self.tensorrt_backend.detect(probe)
+                    value = self.tensorrt_backend.last_timing.get("frame_to_perception_ms")
+                    if value is not None:
+                        warmup_ms.append(float(value))
+                # Warm-up must not pollute the runtime counters.
+                self.tensorrt_backend.inference_count = 0
+                self.tensorrt_backend.failure_count = 0
+            self.tensorrt_warmup_count = warmup
+            self.tensorrt_warmup_first_ms = round(warmup_ms[0], 3) if warmup_ms else None
+            self.tensorrt_warmup_last_ms = round(warmup_ms[-1], 3) if warmup_ms else None
             self.emit(
                 "tensorrt_backend_ready",
                 engine=engine,
                 class_names_source=class_names_source,
+                tensorrt_warmup_count=self.tensorrt_warmup_count,
+                tensorrt_warmup_first_ms=self.tensorrt_warmup_first_ms,
+                tensorrt_warmup_last_ms=self.tensorrt_warmup_last_ms,
                 **runner.binding_report()
             )
         except TensorRTRuntimeError as exc:
@@ -1152,6 +1180,9 @@ class JetsonNode:
             "tensorrt_active_authority_count": self.tensorrt_active_authority_count,
             "tensorrt_result_stale_count": self.tensorrt_result_stale_count,
             "tensorrt_backend_error": self.tensorrt_error,
+            "tensorrt_warmup_count": self.tensorrt_warmup_count,
+            "tensorrt_warmup_first_ms": self.tensorrt_warmup_first_ms,
+            "tensorrt_warmup_last_ms": self.tensorrt_warmup_last_ms,
             "tensorrt_inference_verified": self.perception_mode == "tensorrt"
             and self.tensorrt_inference_completed_count > 0,
             "physical_camera_verified": False,
@@ -1473,6 +1504,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--tensorrt-engine-manifest", default="")
     parser.add_argument("--tensorrt-class-names", default="")
     parser.add_argument("--tensorrt-max-inference-ms", type=float, default=1000.0)
+    parser.add_argument("--tensorrt-warmup", type=int, default=20)
     parser.add_argument("--require-no-fallback", action="store_true")
     parser.add_argument("--pid-file", default="")
     return parser.parse_args(argv)

@@ -57,7 +57,11 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--command-validity-ms", type=int, default=DEFAULT_COMMAND_VALIDITY_MS)
     parser.add_argument("--safety-margin-ms", type=int, default=DEFAULT_SAFETY_MARGIN_MS)
     parser.add_argument("--heartbeat-timeout-ms", type=int, default=15000)
-    parser.add_argument("--frame-interval-sec", type=float, default=0.0)
+    # An unpaced burst pushes every frame into the TCP buffer at once, so a
+    # frame can wait ~1 s before the Jetson even reads it and the measured
+    # frame-to-command latency reflects queueing rather than inference. Pace the
+    # publisher below the measured engine capacity instead.
+    parser.add_argument("--frame-interval-sec", type=float, default=0.1)
     parser.add_argument("--transport-medium", default="usb_gadget_ethernet")
     parser.add_argument("--output-dir", default="experiments/phase13")
     parser.add_argument("--require-real-jetson", action="store_true")
@@ -147,6 +151,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "gate_c_streamed_inference_count": int(
                 metrics.get("tensorrt_inference_completed_count", 0)
             ),
+            "gate_c_tensorrt_warmup_count": int(metrics.get("tensorrt_warmup_count", 0) or 0),
             "gate_c_frames_received": int(metrics.get("frames_received", 0)),
             "gate_c_frames_decoded": int(metrics.get("frames_decoded", 0)),
             "gate_c_frames_processed": int(metrics.get("frames_processed", 0)),
@@ -176,6 +181,19 @@ def main(argv: Optional[List[str]] = None) -> int:
             blockers.append("streamed_inference_count_insufficient")
         if gate_c["gate_c_max_mailbox_depth"] != 1:
             blockers.append("mailbox_depth_violation")
+
+        # The streamed gate must enforce the same deadline the closed loop does.
+        # Reporting the p99 without checking it would let a run that had almost
+        # every command rejected still read as a pass.
+        p99 = gate_c["frame_to_command_ms_p99"]
+        if p99 is None:
+            blockers.append("frame_to_command_latency_unavailable")
+        elif float(p99) >= budget:
+            blockers.append("inference_deadline_missed")
+        if gate_c["gate_c_command_accept_count"] < MIN_STREAMED_INFERENCES:
+            blockers.append("command_accept_count_insufficient")
+        if gate_c["gate_c_tensorrt_inference_failed_count"]:
+            blockers.append("tensorrt_inference_failed")
 
         fault = summary.get("phase13b_fault_matrix", {})
         summary["phase13b_fault_matrix_regression_passed"] = bool(
