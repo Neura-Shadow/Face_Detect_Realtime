@@ -166,6 +166,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     }
 
     inner_gate = inner_summary.get("gate_c", {}) or {}
+    # The lockstep loop's own counters (ticks, command timeouts) live in their
+    # own block, not in the gate block, and the fault matrix reports its verdict
+    # in a third. Reading a missing key as 0 would silently turn 1201 ticks into
+    # a tick-count failure, which is exactly what it did the first time.
+    inner_lockstep = inner_summary.get("lockstep", {}) or {}
+    inner_faults = inner_summary.get("fault_matrix", {}) or {}
     clock = inner_summary.get("clock", {}) or {}
     clock_uncertainty_ms = float(clock.get("clock_uncertainty_us", 0) or 0) / 1000.0
     budget = latency_budget_ms(
@@ -179,7 +185,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "gate_e_precision": jetson_metrics.get("precision"),
         "gate_e_perception_mode": jetson_metrics.get("perception_mode"),
         "gate_e_carla_frames_sent": int(inner_gate.get("gate_c_carla_frames_sent", 0)),
-        "gate_e_carla_ticks": int(inner_gate.get("gate_c_carla_ticks", 0)),
+        "gate_e_carla_ticks": int(
+            inner_lockstep.get("gate_c_carla_ticks", inner_gate.get("gate_c_carla_ticks", 0))
+        ),
         "gate_e_carla_frames_processed": int(inner_gate.get("gate_c_carla_frames_processed", 0)),
         "gate_e_int8_inference_completed_count": int(
             jetson_metrics.get("tensorrt_inference_completed_count", 0)
@@ -209,14 +217,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         "gate_e_safe_stop_count": int(
             inner_gate.get("gate_c_virtual_actuator_safe_stop_applied_count", 0)
         ),
-        "gate_e_command_timeout_count": int(
-            (inner_summary.get("lockstep", {}) or {}).get("gate_c_command_timeouts", 0)
-        ),
+        "gate_e_command_timeout_count": int(inner_lockstep.get("gate_c_command_timeouts", 0)),
         "gate_e_max_mailbox_depth": int(jetson_metrics.get("max_mailbox_depth", 0)),
         "gate_e_command_accept_count": int(inner_gate.get("gate_c_command_accept_count", 0)),
-        "gate_e_fault_matrix_passed": bool(inner_gate.get("gate_c_fault_matrix_passed", False)),
-        "gate_e_false_accept_count": int(inner_gate.get("gate_c_false_accept_count", 0)),
-        "gate_e_false_reject_count": int(inner_gate.get("gate_c_false_reject_count", 0)),
+        "gate_e_fault_matrix_executed": bool(inner_faults),
+        "gate_e_fault_matrix_passed": bool(
+            inner_faults.get("fault_matrix_passed",
+                             inner_gate.get("gate_c_fault_matrix_passed", False))
+        ),
+        "gate_e_fault_case_count": int(inner_faults.get("fault_case_count", 0)),
+        "gate_e_fault_case_passed_count": int(inner_faults.get("fault_case_passed_count", 0)),
+        "gate_e_false_accept_count": int(
+            inner_faults.get("false_accept_count", inner_gate.get("gate_c_false_accept_count", 0))
+        ),
+        "gate_e_false_reject_count": int(
+            inner_faults.get("false_reject_count", inner_gate.get("gate_c_false_reject_count", 0))
+        ),
         "gate_e_parity_passed": bool(parity.get("parity_passed", False)),
         "latency_budget_ms": round(budget, 4),
         "frame_to_command_ms_p99": frame_to_command.get("p99"),
@@ -252,16 +268,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         blockers.append("mailbox_depth_violation")
     if gate_e["gate_e_false_accept_count"] or gate_e["gate_e_false_reject_count"]:
         blockers.append("fault_matrix_false_classification")
+    if not gate_e["gate_e_fault_matrix_executed"]:
+        blockers.append("phase13b_fault_matrix_not_executed")
+    elif not gate_e["gate_e_fault_matrix_passed"]:
+        blockers.append("phase13b_fault_matrix_regression_failed")
     if not gate_e["gate_e_parity_passed"]:
         blockers.append("parity_gate_not_passed")
 
     # The inner Phase 13B host injects the fault matrix inside the same session,
-    # so its recorded inference failures are the injected ones. Only the fault
-    # matrix can judge those, and it does: it must pass with zero false accepts
-    # and zero false rejects, checked separately above. The suppression is named
-    # here and written into the evidence rather than applied silently.
+    # so its recorded inference failures are the injected ones. The justification
+    # for not counting them twice is that no injected fault was ever accepted:
+    # false accepts and false rejects are both zero, checked above and blocked
+    # on separately. A case that was rejected by a different-but-still-safe
+    # classification is blocked above too, so nothing is excused here.
     suppress = ()  # type: Any
-    if gate_e["gate_e_fault_matrix_passed"] and not (
+    if gate_e["gate_e_fault_matrix_executed"] and not (
         gate_e["gate_e_false_accept_count"] or gate_e["gate_e_false_reject_count"]
     ):
         suppress = ("tensorrt_inference_failed",)
