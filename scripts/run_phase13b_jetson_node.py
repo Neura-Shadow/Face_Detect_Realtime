@@ -282,6 +282,12 @@ class JetsonNode:
             "stale_result_age": 0,
             "force_clock_degraded": 0,
             "ack_sequence_unchecked": 0,
+            # Phase 13E soak faults. Both fail closed on the TensorRT path: an
+            # over-budget inference trips the deadline gate, and the CUDA fault
+            # is a test double that raises the same error class a real CUDA
+            # failure would, so no real GPU fault has to be provoked.
+            "inference_timeout": 0,
+            "cuda_error": 0,
         }  # type: Dict[str, int]
 
         self.commands_sent = 0
@@ -839,6 +845,11 @@ class JetsonNode:
 
         self.tensorrt_inference_requested_count += 1
         try:
+            if self.faults["cuda_error"]:
+                self.faults["cuda_error"] -= 1
+                raise TensorRTRuntimeError(
+                    "cuda_execution_error", "injected CUDA test-double error"
+                )
             detections, inference_ms = self.tensorrt_backend.detect(frame)
         except (TensorRTPerceptionError, TensorRTRuntimeError) as exc:
             self.tensorrt_inference_failed_count += 1
@@ -869,11 +880,28 @@ class JetsonNode:
         # its colour-order check can fire on the TensorRT path too.
         if declared_color_order and declared_color_order.upper() != "RGB":
             input_stats["input_color_order"] = declared_color_order
+        # An injected timeout reports an over-budget duration to the range
+        # monitor rather than sleeping: the gate under test is the deadline
+        # check, and stalling the pipeline for a second would also perturb
+        # every other soak measurement.
+        measured_inference_ms = float(
+            self.tensorrt_backend.last_timing.get("frame_to_perception_ms", 0.0)
+        )
+        if self.faults["inference_timeout"]:
+            self.faults["inference_timeout"] -= 1
+            measured_inference_ms = float(
+                getattr(self.args, "tensorrt_max_inference_ms", 1000.0)
+            ) + 1000.0
+            self.emit(
+                "inference_timeout_injected",
+                frame_id=frame_id,
+                reported_inference_ms=measured_inference_ms,
+            )
         verdict = self.tensorrt_monitor.evaluate(
             input_stats=input_stats,
             detections=detections,
             output_stats=self.tensorrt_backend.last_stats,
-            inference_ms=float(self.tensorrt_backend.last_timing.get("frame_to_perception_ms", 0.0)),
+            inference_ms=measured_inference_ms,
             result_age_ms=float(result_age_ms),
             engine_execute_ok=True,
             fallback_used=bool(self.tensorrt_backend.fallback_used),

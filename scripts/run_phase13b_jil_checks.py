@@ -643,11 +643,16 @@ class JilSessionDriver:
             return "ACCEPTED"
         return "NO_OBSERVATION"
 
+    @staticmethod
+    def _classification_total(metrics: Dict[str, Any]) -> int:
+        return sum(int(value) for value in dict(metrics.get("command_classifications", {})).values())
+
     def _frame_pipeline_fault_observation(
         self,
         *,
         jetson_fault: Optional[str] = None,
         publisher_attribute: Optional[str] = None,
+        primary_signal: Optional[str] = None,
         timeout_sec: float = 15.0,
     ) -> Tuple[str, Dict[str, Any]]:
         """Arm a Jetson pipeline fault, publish one frame and read the outcome.
@@ -655,6 +660,14 @@ class JilSessionDriver:
         Range, clock and stale-frame faults only exist inside the frame
         pipeline, so they must be injected against a real published frame
         rather than a bare command.
+
+        The wait is on a **complete** observation, not on the first counter that
+        moves. ``commands_sent`` increments when the command leaves the Jetson,
+        but its classification is only recorded once the ACK is resolved, so
+        polling on ``commands_sent`` alone samples a half-written observation and
+        the derived classification depends on which side of that gap the snapshot
+        landed. That is what made F28 flap between ``SAFE_STOP`` and
+        ``STALE_REJECT`` across otherwise identical runs.
         """
 
         if self.publisher is None:
@@ -667,21 +680,49 @@ class JilSessionDriver:
         result = self._publish_one_frame()
         deadline = time.time() + timeout_sec
         after = before
+        observation_complete = False
         while time.time() < deadline:
             time.sleep(0.2)
             after = self._jetson_metrics()
-            if int(after.get("commands_sent", 0)) > int(before.get("commands_sent", 0)):
+            sent = int(after.get("commands_sent", 0)) > int(before.get("commands_sent", 0))
+            classified = self._classification_total(after) > self._classification_total(before)
+            if sent and classified:
+                observation_complete = True
                 break
-        observed = self._derive_pipeline_classification(before, after)
+
+        stale_delta = int(after.get("stale_frame_reject_count", 0)) - int(
+            before.get("stale_frame_reject_count", 0)
+        )
+        safe_stop_delta = int(after.get("safe_stop_command_count", 0)) - int(
+            before.get("safe_stop_command_count", 0)
+        )
+        if primary_signal == "stale_frame" and stale_delta > 0 and safe_stop_delta > 0:
+            # The frame path is what this case exercises: the Jetson refused a
+            # stale frame and emitted SAFE_STOP. The MCU's independent verdict on
+            # that SAFE_STOP command is recorded below but is not substituted for
+            # the pipeline outcome — the backdated frame timestamp propagates into
+            # the command, so the MCU may also refuse it as stale, and reading
+            # that as the pipeline's answer would report a second, downstream
+            # refusal instead of the one under test.
+            observed = "SAFE_STOP"
+        else:
+            observed = self._derive_pipeline_classification(before, after)
         return observed, {
             "jetson_fault": jetson_fault,
             "publisher_fault": result.fault,
+            "primary_signal": primary_signal,
+            "observation_complete": observation_complete,
             "commands_sent_before": before.get("commands_sent"),
             "commands_sent_after": after.get("commands_sent"),
             "safe_stop_before": before.get("safe_stop_command_count"),
             "safe_stop_after": after.get("safe_stop_command_count"),
             "stale_frame_reject_before": before.get("stale_frame_reject_count"),
             "stale_frame_reject_after": after.get("stale_frame_reject_count"),
+            "mcu_classification_delta": {
+                name: int(value) - int(dict(before.get("command_classifications", {})).get(name, 0))
+                for name, value in dict(after.get("command_classifications", {})).items()
+                if int(value) > int(dict(before.get("command_classifications", {})).get(name, 0))
+            },
             "range_state_counts_after": after.get("range_state_counts"),
         }
 
@@ -859,11 +900,14 @@ class JilSessionDriver:
             expected: str,
             jetson_fault: Optional[str] = None,
             publisher_attribute: Optional[str] = None,
+            primary_signal: Optional[str] = None,
         ) -> FaultCase:
             def runner() -> Tuple[str, Dict[str, Any]]:
                 self.ensure_ready()
                 return self._frame_pipeline_fault_observation(
-                    jetson_fault=jetson_fault, publisher_attribute=publisher_attribute
+                    jetson_fault=jetson_fault,
+                    publisher_attribute=publisher_attribute,
+                    primary_signal=primary_signal,
                 )
 
             return FaultCase(fault_id, name, gate, step, expected, runner)
@@ -895,6 +939,7 @@ class JilSessionDriver:
                 "SAFE_STOP",
                 None,
                 publisher_attribute="stale_timestamp",
+                primary_signal="stale_frame",
             )
         )
 
