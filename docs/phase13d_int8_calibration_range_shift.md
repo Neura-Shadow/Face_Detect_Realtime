@@ -574,6 +574,20 @@ External, uncommitted assets:
 
 ---
 
-## 14. Next phase
+## 14. Follow-up and next phase
 
-`Phase 13E-SOAK-THERMAL-BACKPRESSURE-FAULT-INJECTION`.
+The parity blocker above was investigated in
+**[Phase 13D-MP-RECOVERY](phase13d_mp_recovery.md)**, a bounded PTQ
+mixed-precision sensitivity search over the real backbone/neck layer groups. It
+did not recover parity: even forcing every named layer to FP16 — leaving 4 INT8
+layers — still missed both bounds and was slower than plain FP16. That phase is
+**Frozen**, and it changed the INT8 backend's default role to
+`experimental_non_authoritative`.
+
+Two consequences for this document: the Gate D and Gate E runs recorded above
+were executed *before* that freeze, when the INT8 backend could still grant AI
+authority, and they remain accurate as records of those runs. As of the freeze,
+INT8 can no longer grant `AI_ACTIVE` at all, and **FP16 is the production
+command-authority backend**.
+
+Next phase: `Phase 13E-FP16-SOAK-THERMAL-BACKPRESSURE-FAULT-INJECTION`.
