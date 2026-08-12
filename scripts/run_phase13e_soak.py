@@ -804,10 +804,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         safe_total = sum(phase["safe_stop_applied"] for phase in runner.phases)
         summary["active_control_total"] = active_total
         summary["safe_stop_total"] = safe_total
-        if active_total <= 0:
-            blockers.append("no_active_control_applied")
-        if safe_total <= 0:
-            blockers.append("no_safe_stop_path_observed")
+        # Only a driving phase can apply control. A preflight-only run verifies
+        # the engine and the fault matrix and never drives, so requiring control
+        # of it would fail a run that did exactly what was asked.
+        drove = bool(runner.phases)
+        summary["driving_phase_executed"] = drove
+        if drove:
+            if active_total <= 0:
+                blockers.append("no_active_control_applied")
+            if safe_total <= 0:
+                blockers.append("no_safe_stop_path_observed")
         if false_accept or false_reject:
             blockers.append("fault_matrix_false_classification")
         if unrecovered:
