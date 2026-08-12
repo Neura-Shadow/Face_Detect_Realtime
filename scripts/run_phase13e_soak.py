@@ -234,12 +234,27 @@ class SoakRunner:
         return payload
 
     def run_phase13b_fault_matrix(self) -> Dict[str, Any]:
+        """Run the Phase 13B matrix, then restore the transport it tears down.
+
+        Two of its cases deliberately break the frame transport — a truncated
+        payload and a disconnect/reconnect — so after the matrix the frame
+        client may be closed. Phase 13C and 13D ran the matrix *after* their
+        streaming, so it never mattered there. This phase runs it first, and a
+        closed frame client would leave every later phase ticking CARLA with
+        nowhere to publish.
+        """
+
         outcome = self.driver.run_fault_matrix("E13E")
         for row in self.driver.fault_rows:
             entry = dict(row)
             entry["recovered"] = ""
             entry["recovery_sec"] = ""
             self.fault_rows.append(entry)
+        reconnected = self.driver.reconnect_frames()
+        outcome["frame_transport_restored"] = bool(reconnected)
+        self.emit("frame_transport_restored", reconnected=bool(reconnected))
+        if not reconnected:
+            self.blockers.append("frame_transport_restore_failed")
         return outcome
 
     # ── main loop ───────────────────────────────────────────────────────────
@@ -301,6 +316,8 @@ class SoakRunner:
         safe_stop_before = actuator.safe_stop_applied_count
         self.emit("phase_started", phase=name, duration_sec=duration_sec)
 
+        stalled_ticks = 0
+        stall_limit = int(self.args.frame_stall_tick_limit)
         while time.time() < deadline:
             if publish_interval_sec:
                 time.sleep(max(0.0, publish_interval_sec))
@@ -310,6 +327,19 @@ class SoakRunner:
             ticks += 1
             if outcome["frame"]:
                 frames += 1
+                stalled_ticks = 0
+            else:
+                # A camera that never delivers, or a transport with nowhere to
+                # publish, must not be able to masquerade as hours of soak. The
+                # phase aborts instead of ticking an empty loop to the deadline.
+                stalled_ticks += 1
+                if stall_limit and stalled_ticks >= stall_limit:
+                    self.blockers.append("frame_transport_stalled")
+                    self.emit(
+                        "frame_transport_stalled",
+                        phase=name, ticks=ticks, stalled_ticks=stalled_ticks,
+                    )
+                    break
             if outcome["timeout"]:
                 timeouts += 1
             if outcome["latency_ms"] is not None:
@@ -322,6 +352,7 @@ class SoakRunner:
         metrics = self.sample_telemetry(phase=name)
         payload = {
             "phase": name,
+            "frame_transport_stalled": bool(stall_limit and stalled_ticks >= stall_limit),
             "requested_duration_sec": round(float(duration_sec), 3),
             "actual_duration_sec": round(time.time() - started, 3),
             "carla_ticks": ticks,
@@ -635,6 +666,12 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--backpressure-settle-sec", type=float, default=60.0)
     parser.add_argument("--backpressure-recovery-ratio-max", type=float, default=1.25)
     parser.add_argument("--fault-window-sec", type=float, default=30.0)
+    parser.add_argument(
+        "--frame-stall-tick-limit",
+        type=int,
+        default=600,
+        help="abort a phase after this many consecutive ticks with no published frame",
+    )
     parser.add_argument("--jitter-sec", type=float, default=0.15)
     parser.add_argument("--contention-sec", type=int, default=30)
     parser.add_argument("--memory-pressure-mb", type=int, default=512)
