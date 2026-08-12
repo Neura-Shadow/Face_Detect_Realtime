@@ -169,6 +169,7 @@ def build_int8_engine(
     calibrator: Any,
     enable_fp16: bool = True,
     fp16_layer_prefixes: Optional[List[str]] = None,
+    obey_precision_constraints: bool = False,
 ) -> Dict[str, Any]:
     """TensorRT 8.5 Python builder with INT8 (+FP16) and DLA explicitly off."""
 
@@ -238,12 +239,19 @@ def build_int8_engine(
 
     prefixes = list(fp16_layer_prefixes or [])
     if prefixes:
-        # PREFER, not OBEY: a constraint TensorRT cannot honour should degrade
-        # into a recorded fallback layer, not into a failed build.
-        config.set_flag(trt.BuilderFlag.PREFER_PRECISION_CONSTRAINTS)
-        attempt["prefer_precision_constraints"] = True
+        # PREFER lets TensorRT ignore a constraint whose fused kernel has no
+        # FP16 implementation, which is safe but was measured to leave the
+        # detect head in INT8 anyway. OBEY forces the un-fusing; if it cannot be
+        # satisfied the build fails loudly instead of silently under-delivering.
+        if obey_precision_constraints:
+            config.set_flag(trt.BuilderFlag.OBEY_PRECISION_CONSTRAINTS)
+        else:
+            config.set_flag(trt.BuilderFlag.PREFER_PRECISION_CONSTRAINTS)
+        attempt["obey_precision_constraints"] = bool(obey_precision_constraints)
+        attempt["prefer_precision_constraints"] = not bool(obey_precision_constraints)
         attempt.update(constrain_layers_to_fp16(network, trt, prefixes))
     else:
+        attempt["obey_precision_constraints"] = False
         attempt["prefer_precision_constraints"] = False
         attempt["fp16_constrained_layer_count"] = 0
 
@@ -283,6 +291,11 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
         action="append",
         default=[],
         help="keep layers whose name starts with this prefix in FP16 (repeatable)",
+    )
+    parser.add_argument(
+        "--obey-precision-constraints",
+        action="store_true",
+        help="force the FP16 layer constraints instead of treating them as a preference",
     )
     parser.add_argument("--force-rebuild", action="store_true")
     parser.add_argument("--force-recalibrate", action="store_true")
@@ -485,6 +498,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 calibrator=calibrator,
                 enable_fp16=not args.no_fp16,
                 fp16_layer_prefixes=list(args.fp16_layer_prefix or []),
+                obey_precision_constraints=bool(args.obey_precision_constraints),
             )
             build_attempts.append(attempt)
             calibrator_metrics = calibrator.metrics()
