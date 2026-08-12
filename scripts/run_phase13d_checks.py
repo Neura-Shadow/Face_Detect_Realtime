@@ -335,6 +335,7 @@ PHASE13D_SOURCE_FILES = (
     "workers/core/int8_engine_audit.py",
     "workers/core/int8_range_monitor.py",
     "workers/core/int8_activation_proxy.py",
+    "workers/core/int8_layer_groups.py",
     "scripts/run_phase13d_checks.py",
     "scripts/run_phase13d_dataset_build.py",
     "scripts/run_phase13d_activation_proxy.py",
@@ -344,6 +345,8 @@ PHASE13D_SOURCE_FILES = (
     "scripts/run_phase13d_streamed_runtime.py",
     "scripts/run_phase13d_carla_closed_loop.py",
     "scripts/run_phase13d_orchestrator.py",
+    "scripts/run_phase13d_mp_sensitivity.py",
+    "scripts/run_phase13d_mp_report.py",
 )
 
 #: Modules that must import and parse under Jetson Python 3.8.
@@ -353,6 +356,7 @@ JETSON_MODULES = (
     "workers/core/int8_engine_audit.py",
     "workers/core/int8_range_monitor.py",
     "workers/core/int8_activation_proxy.py",
+    "workers/core/int8_layer_groups.py",
     "workers/core/tensorrt_asset_contract.py",
     "workers/core/tensorrt_runtime.py",
     "workers/core/tensorrt_perception.py",
@@ -360,6 +364,7 @@ JETSON_MODULES = (
     "scripts/run_phase13d_int8_engine_build.py",
     "scripts/run_phase13d_precision_benchmark.py",
     "scripts/run_phase13d_precision_parity.py",
+    "scripts/run_phase13d_mp_sensitivity.py",
     "scripts/run_phase13b_jetson_node.py",
 )
 

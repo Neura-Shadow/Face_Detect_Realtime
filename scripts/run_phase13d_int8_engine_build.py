@@ -21,6 +21,7 @@ Runtime compatibility: Jetson Python 3.8.10.
 from __future__ import annotations
 
 import argparse
+import os
 import platform
 import sys
 import time
@@ -170,6 +171,7 @@ def build_int8_engine(
     enable_fp16: bool = True,
     fp16_layer_prefixes: Optional[List[str]] = None,
     obey_precision_constraints: bool = False,
+    timing_cache_path: str = "",
 ) -> Dict[str, Any]:
     """TensorRT 8.5 Python builder with INT8 (+FP16) and DLA explicitly off."""
 
@@ -228,6 +230,29 @@ def build_int8_engine(
     # is selected.
     attempt["default_device_type"] = str(getattr(config, "default_device_type", "GPU"))
 
+    # A tactic timing cache makes a diagnostic sweep affordable: it reuses
+    # measured kernel timings instead of re-timing every tactic, which is what
+    # dominates a 20-minute build. It caches *timings*, never results. Because
+    # skipping re-timing can in principle change which tactic wins, the final
+    # engine of this phase is built with the cache disabled, and every engine
+    # records whether it used one.
+    timing_cache = None
+    attempt["timing_cache_used"] = False
+    attempt["timing_cache_path"] = str(timing_cache_path or "")
+    if timing_cache_path and hasattr(config, "create_timing_cache"):
+        existing = b""
+        if os.path.isfile(timing_cache_path):
+            with open(timing_cache_path, "rb") as handle:
+                existing = handle.read()
+        try:
+            timing_cache = config.create_timing_cache(existing)
+            config.set_timing_cache(timing_cache, False)
+            attempt["timing_cache_used"] = True
+            attempt["timing_cache_seed_bytes"] = len(existing)
+        except Exception as exc:
+            attempt["timing_cache_error"] = repr(exc)[:200]
+            timing_cache = None
+
     profile = builder.create_optimization_profile()
     input_tensor = network.get_input(0)
     profile.set_shape(input_tensor.name, tuple(input_shape), tuple(input_shape), tuple(input_shape))
@@ -258,6 +283,15 @@ def build_int8_engine(
     plan = builder.build_serialized_network(network, config)
     duration = (time.perf_counter_ns() - started) / 1e9
     attempt["engine_build_duration_sec"] = round(duration, 3)
+    if timing_cache is not None and timing_cache_path:
+        try:
+            payload = timing_cache.serialize()
+            Path(timing_cache_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(timing_cache_path, "wb") as handle:
+                handle.write(bytes(payload))
+            attempt["timing_cache_written_bytes"] = len(bytes(payload))
+        except Exception as exc:
+            attempt["timing_cache_write_error"] = repr(exc)[:200]
     if plan is None:
         attempt["engine_build_returncode"] = 1
         attempt["error"] = "build_serialized_network returned None"
@@ -291,6 +325,11 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
         action="append",
         default=[],
         help="keep layers whose name starts with this prefix in FP16 (repeatable)",
+    )
+    parser.add_argument(
+        "--timing-cache",
+        default="",
+        help="TensorRT tactic timing cache; speeds up a diagnostic sweep, never used for the final engine",
     )
     parser.add_argument(
         "--obey-precision-constraints",
@@ -499,6 +538,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 enable_fp16=not args.no_fp16,
                 fp16_layer_prefixes=list(args.fp16_layer_prefix or []),
                 obey_precision_constraints=bool(args.obey_precision_constraints),
+                timing_cache_path=str(args.timing_cache or ""),
             )
             build_attempts.append(attempt)
             calibrator_metrics = calibrator.metrics()
