@@ -649,6 +649,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--camera-fov", type=float, default=90.0)
     parser.add_argument("--fixed-delta-seconds", type=float, default=0.05)
     parser.add_argument("--spawn-point-index", type=int, default=0)
+    parser.add_argument("--spawn-retry-count", type=int, default=8)
     parser.add_argument("--ego-blueprint", default="vehicle.tesla.model3")
     parser.add_argument("--map-load-mode", default="reuse_or_load")
     parser.add_argument("--setup-timeout-sec", type=float, default=180.0)
@@ -746,8 +747,40 @@ def main(argv: Optional[List[str]] = None) -> int:
             runner.blockers.append("frame_transport_failed")
             raise RuntimeError("frame transport could not be established")
 
-        session = CarlaLockstepSession(args)
-        summary["carla"] = session.setup()
+        # A soak that was killed rather than closed leaves its ego vehicle and
+        # camera occupying the spawn point, and the next run then fails with
+        # "ego vehicle spawn failed". Try a bounded number of alternative spawn
+        # points and record which one was actually used, rather than requiring a
+        # simulator restart to recover from our own previous crash.
+        session = None  # type: Optional[CarlaLockstepSession]
+        spawn_attempts = []  # type: List[Dict[str, Any]]
+        base_index = int(args.spawn_point_index)
+        for attempt in range(max(1, int(args.spawn_retry_count))):
+            args.spawn_point_index = base_index + attempt
+            candidate = CarlaLockstepSession(args)
+            try:
+                summary["carla"] = candidate.setup()
+                session = candidate
+                spawn_attempts.append(
+                    {"spawn_point_index": args.spawn_point_index, "spawned": True}
+                )
+                break
+            except Exception as exc:
+                spawn_attempts.append(
+                    {
+                        "spawn_point_index": args.spawn_point_index,
+                        "spawned": False,
+                        "error": repr(exc)[:160],
+                    }
+                )
+                try:
+                    candidate.close()
+                except Exception:
+                    pass
+        summary["carla_spawn_attempts"] = spawn_attempts
+        if session is None:
+            runner.blockers.append("carla_setup_failed")
+            raise RuntimeError("ego vehicle could not be spawned at any candidate spawn point")
         runner.session = session
         for _ in range(int(args.warmup_ticks)):
             session.tick()
