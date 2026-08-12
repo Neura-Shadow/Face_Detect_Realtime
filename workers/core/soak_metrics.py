@@ -272,6 +272,121 @@ def evaluate_drift(
     return verdict
 
 
+def three_window_stats(
+    series: SoakSeries, *, total_sec: Optional[float] = None, window_sec: Optional[float] = None
+) -> Dict[str, Any]:
+    """Start, middle and end windows.
+
+    A soak verdict taken from first and last samples alone is a two-point
+    estimate that a single outlier can move. The middle window is what shows
+    whether a change was a step, a ramp or noise.
+    """
+
+    if not len(series):
+        return {"available": False, "reason": "no samples"}
+    duration = float(total_sec if total_sec is not None else series.times[-1])
+    window = float(window_sec) if window_sec else max(1.0, duration * 0.1)
+    middle_start = max(series.times[0], (duration / 2.0) - (window / 2.0))
+    return {
+        "available": True,
+        "window_sec": round(window, 3),
+        "total_sec": round(duration, 3),
+        "start": distribution(series.slice_window(series.times[0], series.times[0] + window)),
+        "middle": distribution(series.slice_window(middle_start, middle_start + window)),
+        "end": distribution(
+            [value for t, value in zip(series.times, series.values) if t >= duration - window]
+        ),
+    }
+
+
+def drift_rate_per_hour(
+    series: SoakSeries, *, total_sec: Optional[float] = None, statistic: str = "mean",
+    window_sec: Optional[float] = None,
+) -> Dict[str, Any]:
+    """Rate of change between the start and end windows, per hour.
+
+    Reporting an absolute delta over an arbitrary run length is not comparable
+    between runs; a per-hour rate is, and it is what a leak is normally argued
+    about.
+    """
+
+    windows = three_window_stats(series, total_sec=total_sec, window_sec=window_sec)
+    if not windows.get("available"):
+        return {"available": False, "name": series.name}
+    duration = float(windows["total_sec"])
+    hours = duration / 3600.0
+    start_value = windows["start"].get(statistic)
+    middle_value = windows["middle"].get(statistic)
+    end_value = windows["end"].get(statistic)
+    if start_value is None or end_value is None or hours <= 0:
+        return {"available": False, "name": series.name}
+    return {
+        "available": True,
+        "name": series.name,
+        "statistic": statistic,
+        "start": start_value,
+        "middle": middle_value,
+        "end": end_value,
+        "absolute_delta": round(float(end_value) - float(start_value), 6),
+        "rate_per_hour": round((float(end_value) - float(start_value)) / hours, 6),
+        "duration_hours": round(hours, 6),
+    }
+
+
+def continuity_report(
+    *,
+    frame_times_sec: Sequence[float],
+    telemetry_times_sec: Sequence[float],
+    total_sec: float,
+    max_frame_gap_sec: float = 60.0,
+    max_telemetry_gap_sec: float = 60.0,
+) -> Dict[str, Any]:
+    """Prove frames, inferences and telemetry continued for the whole run.
+
+    Each frame-to-command sample required a completed FP16 inference for that
+    frame, so the frame series is also the inference-continuity record: a gap in
+    it is a gap in inference.
+    """
+
+    def _gaps(times: Sequence[float]) -> Dict[str, Any]:
+        ordered = sorted(float(value) for value in times)
+        if len(ordered) < 2:
+            return {"count": len(ordered), "first_sec": ordered[0] if ordered else None,
+                    "last_sec": ordered[-1] if ordered else None, "max_gap_sec": None}
+        gaps = [later - earlier for earlier, later in zip(ordered, ordered[1:])]
+        return {
+            "count": len(ordered),
+            "first_sec": round(ordered[0], 3),
+            "last_sec": round(ordered[-1], 3),
+            "max_gap_sec": round(max(gaps), 3),
+            "mean_gap_sec": round(sum(gaps) / len(gaps), 4),
+        }
+
+    frames = _gaps(frame_times_sec)
+    telemetry = _gaps(telemetry_times_sec)
+    reasons = []  # type: List[str]
+    if frames["count"] < 2:
+        reasons.append("insufficient_frames")
+    elif frames["max_gap_sec"] is not None and frames["max_gap_sec"] > float(max_frame_gap_sec):
+        reasons.append("frame_continuity_gap")
+    if telemetry["count"] < 2:
+        reasons.append("insufficient_telemetry")
+    elif (
+        telemetry["max_gap_sec"] is not None
+        and telemetry["max_gap_sec"] > float(max_telemetry_gap_sec)
+    ):
+        reasons.append("telemetry_continuity_gap")
+    return {
+        "frames": frames,
+        "telemetry": telemetry,
+        "total_sec": round(float(total_sec), 3),
+        "max_frame_gap_allowed_sec": float(max_frame_gap_sec),
+        "max_telemetry_gap_allowed_sec": float(max_telemetry_gap_sec),
+        "continuity_held": not reasons,
+        "reasons": reasons,
+    }
+
+
 def evaluate_backpressure_recovery(
     *,
     pre_burst_p99_ms: Optional[float],

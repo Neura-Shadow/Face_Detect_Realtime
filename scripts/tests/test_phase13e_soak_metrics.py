@@ -24,11 +24,14 @@ from workers.core.soak_metrics import (  # noqa: E402
     DriftLimits,
     SoakSeries,
     classify_soak,
+    continuity_report,
     distribution,
+    drift_rate_per_hour,
     evaluate_backpressure_recovery,
     evaluate_drift,
     is_progressive,
     percentile,
+    three_window_stats,
     window_stats,
 )
 
@@ -276,3 +279,71 @@ class TestClassification(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestThreeWindowsAndDriftRate(unittest.TestCase):
+    def test_middle_window_distinguishes_a_ramp_from_an_early_step(self) -> None:
+        # Start and end windows alone cannot tell these two apart: both begin at
+        # 100 and finish at 200. Only the middle window shows that one climbed
+        # steadily while the other jumped early and then held.
+        ramping = three_window_stats(ramp("rss", 100.0, 200.0), total_sec=TOTAL_SEC)
+        stepped = three_window_stats(
+            series_from("rss", [100.0] * 50 + [200.0] * 150), total_sec=TOTAL_SEC
+        )
+        self.assertAlmostEqual(ramping["start"]["mean"], stepped["start"]["mean"], delta=6.0)
+        self.assertAlmostEqual(ramping["end"]["mean"], stepped["end"]["mean"], delta=6.0)
+        self.assertAlmostEqual(ramping["middle"]["mean"], 150.0, delta=6.0)
+        self.assertAlmostEqual(stepped["middle"]["mean"], 200.0, delta=6.0)
+
+    def test_drift_rate_is_normalised_per_hour(self) -> None:
+        # 100 units of growth across 1000 seconds is 360 units per hour.
+        rate = drift_rate_per_hour(ramp("rss", 100.0, 200.0), total_sec=TOTAL_SEC)
+        self.assertTrue(rate["available"])
+        self.assertAlmostEqual(rate["duration_hours"], TOTAL_SEC / 3600.0, places=6)
+        self.assertGreater(rate["rate_per_hour"], 250.0)
+        self.assertLess(rate["rate_per_hour"], 360.0)
+
+    def test_a_flat_series_has_no_drift_rate(self) -> None:
+        rate = drift_rate_per_hour(flat("rss", 400.0), total_sec=TOTAL_SEC)
+        self.assertAlmostEqual(rate["rate_per_hour"], 0.0, places=6)
+
+    def test_an_empty_series_is_unavailable(self) -> None:
+        self.assertFalse(drift_rate_per_hour(SoakSeries("rss"))["available"])
+
+
+class TestContinuityReport(unittest.TestCase):
+    def _times(self, count: int, step: float) -> List[float]:
+        return [index * step for index in range(count)]
+
+    def test_a_continuous_run_holds(self) -> None:
+        report = continuity_report(
+            frame_times_sec=self._times(600, 0.16),
+            telemetry_times_sec=self._times(20, 5.0),
+            total_sec=96.0,
+        )
+        self.assertTrue(report["continuity_held"], report["reasons"])
+        self.assertEqual(report["frames"]["count"], 600)
+        self.assertLess(report["frames"]["max_gap_sec"], 1.0)
+
+    def test_a_frame_gap_is_an_interruption(self) -> None:
+        times = self._times(100, 0.16) + [500.0]
+        report = continuity_report(
+            frame_times_sec=times, telemetry_times_sec=self._times(20, 5.0), total_sec=500.0
+        )
+        self.assertFalse(report["continuity_held"])
+        self.assertIn("frame_continuity_gap", report["reasons"])
+
+    def test_a_telemetry_gap_is_an_interruption(self) -> None:
+        report = continuity_report(
+            frame_times_sec=self._times(600, 0.16),
+            telemetry_times_sec=[0.0, 5.0, 400.0],
+            total_sec=400.0,
+        )
+        self.assertFalse(report["continuity_held"])
+        self.assertIn("telemetry_continuity_gap", report["reasons"])
+
+    def test_too_few_samples_never_reads_as_continuous(self) -> None:
+        report = continuity_report(frame_times_sec=[1.0], telemetry_times_sec=[], total_sec=10.0)
+        self.assertFalse(report["continuity_held"])
+        self.assertIn("insufficient_frames", report["reasons"])
+        self.assertIn("insufficient_telemetry", report["reasons"])
