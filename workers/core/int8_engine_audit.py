@@ -170,26 +170,34 @@ def read_engine_layers(engine_path: str, *, logger_severity: str = "ERROR") -> D
             "engine_inspector_unavailable",
             "TensorRT %s exposes no EngineInspector" % getattr(trt, "__version__", "?"),
         )
-    inspector = engine.create_engine_inspector()
     layers = []  # type: List[Dict[str, Any]]
     parse_failures = 0
     layer_count = int(getattr(engine, "num_layers", 0))
-    for index in range(layer_count):
-        try:
-            raw = inspector.get_layer_information(index, trt.LayerInformationFormat.JSON)
-            layers.append(json.loads(raw))
-        except Exception:
-            parse_failures += 1
-            layers.append({})
     engine_information = ""
-    try:
-        engine_information = str(
-            inspector.get_engine_information(trt.LayerInformationFormat.JSON)
-        )
-    except Exception:
-        engine_information = ""
 
-    return {
+    # TensorRT refuses to destroy an engine while an object it created is still
+    # alive, so the inspector is released explicitly before the engine and the
+    # engine before the runtime. Leaving that to interpreter teardown order
+    # makes TensorRT log an API usage error and is undefined behaviour.
+    inspector = engine.create_engine_inspector()
+    try:
+        for index in range(layer_count):
+            try:
+                raw = inspector.get_layer_information(index, trt.LayerInformationFormat.JSON)
+                layers.append(json.loads(raw))
+            except Exception:
+                parse_failures += 1
+                layers.append({})
+        try:
+            engine_information = str(
+                inspector.get_engine_information(trt.LayerInformationFormat.JSON)
+            )
+        except Exception:
+            engine_information = ""
+    finally:
+        del inspector
+
+    payload = {
         "engine_path": engine_path,
         "engine_num_layers": layer_count,
         "engine_layer_json": layers,
@@ -199,6 +207,9 @@ def read_engine_layers(engine_path: str, *, logger_severity: str = "ERROR") -> D
         "engine_deserialized": True,
         "tensorrt_version": str(getattr(trt, "__version__", "")),
     }
+    del engine
+    del runtime
+    return payload
 
 
 def audit_engine(engine_path: str, *, require_int8: bool = True) -> Dict[str, Any]:
