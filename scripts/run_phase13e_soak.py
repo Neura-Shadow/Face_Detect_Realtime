@@ -237,11 +237,9 @@ class SoakRunner:
         """Run the Phase 13B matrix, then restore the transport it tears down.
 
         Two of its cases deliberately break the frame transport — a truncated
-        payload and a disconnect/reconnect — so after the matrix the frame
-        client may be closed. Phase 13C and 13D ran the matrix *after* their
-        streaming, so it never mattered there. This phase runs it first, and a
-        closed frame client would leave every later phase ticking CARLA with
-        nowhere to publish.
+        payload and a disconnect — and reconnecting afterwards was measured not
+        to restore a usable stream. So this runs **last**, after every driving
+        phase, which is the position Phase 13C and 13D already use.
         """
 
         outcome = self.driver.run_fault_matrix("E13E")
@@ -250,11 +248,6 @@ class SoakRunner:
             entry["recovered"] = ""
             entry["recovery_sec"] = ""
             self.fault_rows.append(entry)
-        reconnected = self.driver.reconnect_frames()
-        outcome["frame_transport_restored"] = bool(reconnected)
-        self.emit("frame_transport_restored", reconnected=bool(reconnected))
-        if not reconnected:
-            self.blockers.append("frame_transport_restore_failed")
         return outcome
 
     # ── main loop ───────────────────────────────────────────────────────────
@@ -800,9 +793,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         runner.driver.actuator.records = []
         runner.started_at = time.time()
 
-        if "preflight" in requested and not args.skip_phase13b_fault_matrix:
-            summary["phase13b_fault_matrix"] = runner.run_phase13b_fault_matrix()
-
         if "burn_in" in requested:
             summary["burn_in"] = runner.run_timed_phase("burn_in", float(args.burn_in_sec))
         if "soak" in requested:
@@ -811,6 +801,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             summary["backpressure"] = runner.run_backpressure()
         if "fault" in requested:
             summary["phase13e_faults"] = runner.run_phase13e_faults()
+            # The Phase 13B matrix runs last, after every driving phase, because
+            # two of its cases tear down the frame transport and a reconnect
+            # afterwards was measured not to restore a usable stream. Phase 13C
+            # and 13D run it in this position for the same reason.
+            if not args.skip_phase13b_fault_matrix:
+                summary["phase13b_fault_matrix"] = runner.run_phase13b_fault_matrix()
 
         jetson_metrics = runner.sample_telemetry(phase="final")
         total_sec = runner.elapsed()
@@ -896,7 +892,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if unrecovered:
             blockers.append("fault_recovery_failed")
         fault_matrix = summary.get("phase13b_fault_matrix", {}) or {}
-        if "preflight" in requested and not args.skip_phase13b_fault_matrix:
+        if "fault" in requested and not args.skip_phase13b_fault_matrix:
             if not fault_matrix.get("fault_matrix_passed"):
                 blockers.append("phase13b_fault_matrix_regression_failed")
         timeouts = sum(phase["command_timeouts"] for phase in runner.phases)
