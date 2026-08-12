@@ -103,6 +103,63 @@ def load_contract_from_manifest(model_manifest: Optional[ModelManifest]) -> Inpu
     )
 
 
+#: Layer types whose precision may be constrained. CONSTANT and shape-only
+#: layers are excluded: they carry no activation to quantize and constraining
+#: them can invalidate an otherwise buildable network.
+_CONSTRAINABLE_LAYER_TYPES = (
+    "CONVOLUTION",
+    "ACTIVATION",
+    "ELEMENTWISE",
+    "CONCATENATION",
+    "SOFTMAX",
+    "SLICE",
+    "SHUFFLE",
+    "POOLING",
+    "SCALE",
+    "REDUCE",
+    "UNARY",
+    "MATRIX_MULTIPLY",
+)
+
+
+def constrain_layers_to_fp16(network: Any, trt: Any, prefixes: List[str]) -> Dict[str, Any]:
+    """Ask TensorRT to keep the named subgraph in FP16 rather than INT8.
+
+    INT8 is applied per layer, and a detection head's class-score branch is the
+    one place where 8-bit resolution is not enough: the scores collapse toward
+    zero and almost every detection falls under the confidence threshold, even
+    though the boxes that survive are still correct. Constraining that subgraph
+    by **name** keeps the decision explicit and auditable instead of hiding it
+    behind a layer-index heuristic.
+    """
+
+    constrained = []  # type: List[str]
+    skipped = []  # type: List[str]
+    if not prefixes:
+        return {"fp16_constrained_layer_count": 0, "fp16_constrained_layers": [],
+                "fp16_constraint_prefixes": [], "fp16_constraint_skipped_count": 0}
+    for index in range(network.num_layers):
+        layer = network.get_layer(index)
+        name = str(layer.name)
+        if not any(name.startswith(prefix) for prefix in prefixes):
+            continue
+        layer_type = str(layer.type).rsplit(".", 1)[-1].upper()
+        if layer_type not in _CONSTRAINABLE_LAYER_TYPES:
+            skipped.append("%s:%s" % (layer_type, name))
+            continue
+        layer.precision = trt.float16
+        for output_index in range(int(layer.num_outputs)):
+            layer.set_output_type(output_index, trt.float16)
+        constrained.append(name)
+    return {
+        "fp16_constraint_prefixes": list(prefixes),
+        "fp16_constrained_layer_count": len(constrained),
+        "fp16_constrained_layers": constrained,
+        "fp16_constraint_skipped_count": len(skipped),
+        "fp16_constraint_skipped_layers": skipped[:32],
+    }
+
+
 def build_int8_engine(
     *,
     onnx_path: Path,
@@ -111,6 +168,7 @@ def build_int8_engine(
     workspace_bytes: int,
     calibrator: Any,
     enable_fp16: bool = True,
+    fp16_layer_prefixes: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """TensorRT 8.5 Python builder with INT8 (+FP16) and DLA explicitly off."""
 
@@ -178,6 +236,17 @@ def build_int8_engine(
     attempt["network_input_name"] = str(input_tensor.name)
     attempt["network_layer_count"] = int(network.num_layers)
 
+    prefixes = list(fp16_layer_prefixes or [])
+    if prefixes:
+        # PREFER, not OBEY: a constraint TensorRT cannot honour should degrade
+        # into a recorded fallback layer, not into a failed build.
+        config.set_flag(trt.BuilderFlag.PREFER_PRECISION_CONSTRAINTS)
+        attempt["prefer_precision_constraints"] = True
+        attempt.update(constrain_layers_to_fp16(network, trt, prefixes))
+    else:
+        attempt["prefer_precision_constraints"] = False
+        attempt["fp16_constrained_layer_count"] = 0
+
     plan = builder.build_serialized_network(network, config)
     duration = (time.perf_counter_ns() - started) / 1e9
     attempt["engine_build_duration_sec"] = round(duration, 3)
@@ -209,6 +278,12 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--dataset-root-override", default="")
     parser.add_argument("--output-dir", default="experiments/phase13")
     parser.add_argument("--no-fp16", action="store_true")
+    parser.add_argument(
+        "--fp16-layer-prefix",
+        action="append",
+        default=[],
+        help="keep layers whose name starts with this prefix in FP16 (repeatable)",
+    )
     parser.add_argument("--force-rebuild", action="store_true")
     parser.add_argument("--force-recalibrate", action="store_true")
     parser.add_argument("--require-real-jetson", action="store_true")
@@ -409,6 +484,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 workspace_bytes=int(args.workspace_bytes),
                 calibrator=calibrator,
                 enable_fp16=not args.no_fp16,
+                fp16_layer_prefixes=list(args.fp16_layer_prefix or []),
             )
             build_attempts.append(attempt)
             calibrator_metrics = calibrator.metrics()
