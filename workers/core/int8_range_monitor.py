@@ -50,10 +50,17 @@ RANGE_VALIDATION_SCOPE_INT8 = "tensorrt_int8_input_envelope_and_final_output"
 
 @dataclass(frozen=True)
 class Int8RangeContract(TensorRTRangeContract):
-    """Phase 13C bounds plus the INT8 calibration-envelope switch."""
+    """Phase 13C bounds plus the INT8 calibration-envelope switch.
+
+    ``authoritative`` defaults to **False** because of the Phase 13D-MP-RECOVERY
+    freeze: a bounded PTQ mixed-precision sensitivity search did not recover
+    INT8-vs-FP16 parity, so an INT8 result may be produced and recorded but may
+    not grant AI authority. Turning it on is an explicit, deliberate act.
+    """
 
     calibration_envelope_enforced: bool = True
     precision: str = "int8"
+    authoritative: bool = False
 
 
 def runtime_statistics(stats: Dict[str, Any]) -> Dict[str, Any]:
@@ -107,6 +114,39 @@ class Int8RangeMonitor(TensorRTRangeMonitor):
         self.envelope_reject_count = 0
         self.envelope_violation_counts = {}  # type: Dict[str, int]
         self.envelope_evaluation_count = 0
+        self.non_authoritative_suppression_count = 0
+
+    @property
+    def authoritative(self) -> bool:
+        return bool(getattr(self.contract, "authoritative", False))
+
+    def evaluate(self, **kwargs: Any) -> TensorRTRangeResult:
+        """Every Phase 13C/13D check, then the authority policy on top.
+
+        A non-authoritative backend still runs, still validates and still
+        records — it simply cannot grant AI authority. The result is reported as
+        ``RECOVERY_PENDING`` rather than as a fault, because nothing failed: the
+        sample is valid and the refusal is a policy decision, not a rejection.
+        Reject counters are therefore deliberately left untouched.
+        """
+
+        verdict = super(Int8RangeMonitor, self).evaluate(**kwargs)
+        if self.authoritative or not verdict.ai_result_valid:
+            return verdict
+        self.non_authoritative_suppression_count += 1
+        return TensorRTRangeResult(
+            state=RangeShiftState.RECOVERY_PENDING,
+            sample_valid=True,
+            ai_result_valid=False,
+            reason=(
+                "INT8 backend is experimental_non_authoritative under the "
+                "Phase 13D-MP-RECOVERY freeze; AI authority withheld"
+            ),
+            classification="int8_non_authoritative",
+            consecutive_valid_samples=verdict.consecutive_valid_samples,
+            recovered=False,
+            observations=dict(verdict.observations),
+        )
 
     # ── checks ──────────────────────────────────────────────────────────────
 
@@ -170,6 +210,13 @@ class Int8RangeMonitor(TensorRTRangeMonitor):
                 "calibration_envelope_reject_count": self.envelope_reject_count,
                 "calibration_envelope_violation_counts": dict(self.envelope_violation_counts),
                 "calibration_envelope": self.envelopes.to_dict() if self.envelopes else None,
+                # Phase 13D-MP-RECOVERY freeze policy, reported as measured.
+                "int8_authoritative": self.authoritative,
+                "int8_backend_role": (
+                    "authoritative" if self.authoritative else "experimental_non_authoritative"
+                ),
+                "int8_may_grant_ai_active": self.authoritative,
+                "int8_non_authoritative_suppression_count": self.non_authoritative_suppression_count,
                 # Still not claimed at runtime, and never inferred from the plan.
                 "activation_range_checked": False,
                 "runtime_internal_activation_observed": False,

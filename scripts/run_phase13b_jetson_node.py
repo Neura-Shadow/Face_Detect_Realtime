@@ -781,8 +781,19 @@ class JetsonNode:
             envelope_source_frame_count=envelopes.source_frame_count,
             activation_proxy_loaded=bool(proxy),
         )
+        # Phase 13D-MP-RECOVERY froze the INT8 backend as
+        # experimental_non_authoritative. It runs, validates and records, but it
+        # may not grant AI authority unless that is turned on deliberately.
+        authoritative = bool(getattr(self.args, "int8_authoritative", False))
+        self.emit(
+            "int8_backend_role",
+            int8_authoritative=authoritative,
+            int8_backend_role=(
+                "authoritative" if authoritative else "experimental_non_authoritative"
+            ),
+        )
         return Int8RangeMonitor(
-            Int8RangeContract(**shared),
+            Int8RangeContract(authoritative=authoritative, **shared),
             envelopes=envelopes,
             activation_proxy=proxy,
         )
@@ -1568,6 +1579,9 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--tensorrt-precision", default="fp16")
     parser.add_argument("--int8-calibration-envelope", default="")
     parser.add_argument("--int8-activation-proxy", default="")
+    # Phase 13D-MP-RECOVERY freeze: INT8 is experimental_non_authoritative and
+    # cannot grant AI_ACTIVE unless this is passed deliberately.
+    parser.add_argument("--int8-authoritative", action="store_true")
     parser.add_argument("--require-no-fallback", action="store_true")
     parser.add_argument("--pid-file", default="")
     return parser.parse_args(argv)

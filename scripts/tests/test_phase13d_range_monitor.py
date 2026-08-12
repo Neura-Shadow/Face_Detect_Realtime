@@ -87,8 +87,15 @@ def evaluate(monitor: Int8RangeMonitor, **overrides: Any) -> Any:
 
 
 def monitor(**kwargs: Any) -> Int8RangeMonitor:
+    """A monitor for the range tests: authority explicitly enabled.
+
+    The Phase 13D-MP-RECOVERY freeze makes ``authoritative`` default to False,
+    which is asserted separately in ``TestNonAuthoritativeFreeze``. The range
+    tests are about the range logic, so they opt in explicitly.
+    """
+
     kwargs.setdefault("envelopes", envelopes())
-    contract = kwargs.pop("contract", Int8RangeContract())
+    contract = kwargs.pop("contract", Int8RangeContract(authoritative=True))
     return Int8RangeMonitor(contract, **kwargs)
 
 
@@ -164,14 +171,15 @@ class TestEnvelopeGate(unittest.TestCase):
         self.assertTrue(recovered.recovered)
 
     def test_a_missing_envelope_fails_closed(self) -> None:
-        gate = Int8RangeMonitor(Int8RangeContract(), envelopes=None)
+        gate = Int8RangeMonitor(Int8RangeContract(authoritative=True), envelopes=None)
         verdict = evaluate(gate)
         self.assertFalse(verdict.ai_result_valid)
         self.assertEqual(verdict.classification, "calibration_envelope_missing")
 
     def test_the_envelope_can_be_declared_unenforced_only_explicitly(self) -> None:
         gate = Int8RangeMonitor(
-            Int8RangeContract(calibration_envelope_enforced=False), envelopes=None
+            Int8RangeContract(calibration_envelope_enforced=False, authoritative=True),
+            envelopes=None,
         )
         for _ in range(3):
             verdict = evaluate(gate)
@@ -222,6 +230,60 @@ class TestPhase13CRulesStillHold(unittest.TestCase):
         verdict = evaluate(monitor(), detections=[detection(confidence=1.7)])
         self.assertFalse(verdict.ai_result_valid)
         self.assertEqual(verdict.classification, "confidence_out_of_range")
+
+
+class TestNonAuthoritativeFreeze(unittest.TestCase):
+    """Phase 13D-MP-RECOVERY freeze: INT8 may run, but may not command."""
+
+    def _frozen(self) -> Int8RangeMonitor:
+        return Int8RangeMonitor(Int8RangeContract(), envelopes=envelopes())
+
+    def test_int8_is_non_authoritative_by_default(self) -> None:
+        gate = self._frozen()
+        self.assertFalse(gate.authoritative)
+        self.assertFalse(Int8RangeContract().authoritative)
+
+    def test_a_perfectly_valid_int8_result_still_cannot_grant_authority(self) -> None:
+        gate = self._frozen()
+        for _ in range(6):
+            verdict = evaluate(gate)
+        self.assertFalse(verdict.ai_result_valid)
+        self.assertEqual(verdict.classification, "int8_non_authoritative")
+        self.assertEqual(verdict.state, RangeShiftState.RECOVERY_PENDING)
+        self.assertTrue(verdict.sample_valid)
+
+    def test_withholding_authority_is_not_recorded_as_a_range_rejection(self) -> None:
+        gate = self._frozen()
+        for _ in range(6):
+            evaluate(gate)
+        evidence = gate.evidence()
+        self.assertEqual(evidence["tensorrt_range_reject_count"], 0)
+        self.assertEqual(evidence["calibration_envelope_reject_count"], 0)
+        self.assertEqual(evidence["int8_non_authoritative_suppression_count"], 4)
+
+    def test_a_genuine_fault_still_reports_as_a_fault_not_as_policy(self) -> None:
+        gate = self._frozen()
+        verdict = evaluate(gate, fallback_used=True)
+        self.assertEqual(verdict.classification, "fallback_used")
+        self.assertFalse(verdict.ai_result_valid)
+        verdict = evaluate(gate, input_stats=input_stats(source_channel_means=[0.85, 0.85, 0.85]))
+        self.assertEqual(verdict.classification, "calibration_range_shift")
+
+    def test_the_freeze_is_reported_in_the_evidence(self) -> None:
+        evidence = self._frozen().evidence()
+        self.assertFalse(evidence["int8_authoritative"])
+        self.assertFalse(evidence["int8_may_grant_ai_active"])
+        self.assertEqual(evidence["int8_backend_role"], "experimental_non_authoritative")
+
+    def test_authority_can_only_be_granted_deliberately(self) -> None:
+        gate = Int8RangeMonitor(Int8RangeContract(authoritative=True), envelopes=envelopes())
+        for _ in range(3):
+            verdict = evaluate(gate)
+        self.assertTrue(verdict.ai_result_valid)
+        evidence = gate.evidence()
+        self.assertTrue(evidence["int8_may_grant_ai_active"])
+        self.assertEqual(evidence["int8_backend_role"], "authoritative")
+        self.assertEqual(evidence["int8_non_authoritative_suppression_count"], 0)
 
 
 class TestEvidence(unittest.TestCase):
