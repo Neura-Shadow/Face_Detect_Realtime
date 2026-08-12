@@ -47,14 +47,17 @@ external YOLOv9 source and weights are both present and verified.
 
 ## 2. What is physical and what is simulated
 
-Unchanged from Phase 13B, with one addition: the GPU now actually computes.
+Unchanged from Phase 13B. What Phase 13C adds to the *physical* column depends on which gate has actually run, and the wording below is kept exact:
+
+* At the **Prepared** stage the real Jetson CUDA runtime **memory path** was verified with a `cudaMalloc` / H2D / D2H / `cudaStreamSynchronize` / `cudaFree` round trip, and TensorRT 8.5 API and runtime availability were verified — but **no TensorRT engine inference had executed**. A CUDA memory-copy round trip is not model inference and is not GPU model compute.
+* Only once **Gate B** passes may this document state that real TensorRT FP16 inference executed on the Orin NX GPU.
 
 | Physical (measured) | Simulated (modelled) |
 | --- | --- |
 | Jetson Linux, CPU, **GPU**, RAM | CARLA RGB camera |
 | Jetson process and thread scheduling | Environment and traffic |
 | Jetson network stack | Ego vehicle and vehicle physics |
-| CUDA 11.4.315 / TensorRT 8.5.2.2 execution | Safety MCU (portable C emulator) |
+| CUDA 11.4.315 / TensorRT 8.5.2.2 installation and runtime availability | Safety MCU (portable C emulator) |
 | Jetson thermal and resource telemetry | Actuator |
 | USB cable + L4T USB Device Mode Ethernet | |
 

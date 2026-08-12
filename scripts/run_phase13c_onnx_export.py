@@ -117,9 +117,64 @@ def load_yolov9_model(source_root: Path, weights: Path) -> Any:
     finally:
         torch.load = original_load
     model.eval()
+    # `fuse=True` folds BatchNorm into the preceding convolution, so some
+    # parameters become *computed* (non-leaf) tensors. Assigning
+    # `requires_grad` on a non-leaf tensor raises, so only leaves are touched;
+    # the export itself additionally runs under `torch.no_grad()`.
     for parameter in model.parameters():
-        parameter.requires_grad = False
+        if parameter.is_leaf:
+            parameter.requires_grad_(False)
     return model
+
+
+def prepare_model_for_export(model: Any, *, img_size: int, batch_size: int) -> Dict[str, Any]:
+    """Reproduce the vendor ``export.py`` model preparation, inspected not guessed.
+
+    ``export.py``'s ``run()`` walks ``named_modules()`` and sets
+    ``inplace`` / ``dynamic`` / ``export`` on every detect head before calling
+    ``torch.onnx.export``, then performs two dry runs. Without ``export=True``
+    the head *also* returns its three per-scale feature maps, and the exported
+    graph gains three extra outputs alongside ``output0`` — which would make the
+    recorded single-output contract a lie and force the engine to allocate and
+    copy back tensors nothing consumes.
+    """
+
+    import torch  # type: ignore[import-not-found]
+
+    report = {
+        "detect_head_types_available": False,
+        "detect_heads_prepared": [],
+        "dry_runs": 0,
+    }  # type: Dict[str, Any]
+    try:
+        from models.yolo import (  # type: ignore[import-not-found]
+            DDetect,
+            Detect,
+            DualDDetect,
+            DualDetect,
+        )
+
+        detect_types = (Detect, DDetect, DualDetect, DualDDetect)
+        report["detect_head_types_available"] = True
+    except Exception as exc:
+        report["detect_head_import_error"] = repr(exc)[:200]
+        return report
+
+    for name, module in model.named_modules():
+        if isinstance(module, detect_types):
+            module.inplace = False
+            module.dynamic = False
+            module.export = True
+            report["detect_heads_prepared"].append(
+                {"name": name, "type": type(module).__name__}
+            )
+
+    dummy = torch.zeros(batch_size, 3, img_size, img_size)
+    with torch.no_grad():
+        for _ in range(2):
+            model(dummy)
+    report["dry_runs"] = 2
+    return report
 
 
 def describe_model_outputs(model: Any, size: int) -> Dict[str, Any]:
@@ -244,6 +299,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             import torch  # type: ignore[import-not-found]
 
             model = load_yolov9_model(Path(source_root), Path(weights))
+            # Prepare BEFORE the reference forward so the recorded output
+            # contract describes the graph that is actually exported.
+            summary["export_preparation"] = prepare_model_for_export(
+                model, img_size=int(args.img_size), batch_size=int(args.batch_size)
+            )
             described = describe_model_outputs(model, int(args.img_size))
             summary["reference_forward"] = described
 
@@ -275,7 +335,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 export_kwargs["dynamo"] = False
 
             started = time.perf_counter_ns()
-            torch.onnx.export(model, dummy, str(onnx_path), **export_kwargs)
+            with torch.no_grad():
+                torch.onnx.export(model, dummy, str(onnx_path), **export_kwargs)
             duration = (time.perf_counter_ns() - started) / 1e9
             summary["onnx_export_executed"] = True
 
@@ -285,13 +346,39 @@ def main(argv: Optional[List[str]] = None) -> int:
                 import onnx  # type: ignore[import-not-found]
 
                 graph = onnx.load(str(onnx_path))
-                onnx.checker.check_model(graph)
+                # full_check runs shape inference in strict mode as well, so a
+                # graph that merely parses but cannot be shape-inferred fails
+                # here rather than later inside the TensorRT parser.
+                onnx.checker.check_model(graph, full_check=True)
                 checker_passed = True
+
+                def _tensor_shape(value: Any) -> List[Any]:
+                    dims = []  # type: List[Any]
+                    for dimension in value.type.tensor_type.shape.dim:
+                        dims.append(
+                            int(dimension.dim_value)
+                            if dimension.HasField("dim_value")
+                            else str(dimension.dim_param)
+                        )
+                    return dims
+
+                def _tensor_dtype(value: Any) -> str:
+                    return str(
+                        onnx.TensorProto.DataType.Name(value.type.tensor_type.elem_type)
+                    )
+
                 graph_report = {
                     "graph_inputs": [item.name for item in graph.graph.input],
                     "graph_outputs": [item.name for item in graph.graph.output],
+                    "graph_input_shapes": [_tensor_shape(item) for item in graph.graph.input],
+                    "graph_input_dtypes": [_tensor_dtype(item) for item in graph.graph.input],
+                    "graph_output_shapes": [_tensor_shape(item) for item in graph.graph.output],
+                    "graph_output_dtypes": [_tensor_dtype(item) for item in graph.graph.output],
                     "ir_version": int(graph.ir_version),
                     "opset_imports": [int(item.version) for item in graph.opset_import],
+                    "producer_name": str(graph.producer_name),
+                    "node_count": len(graph.graph.node),
+                    "full_check": True,
                 }
             except Exception as exc:
                 graph_report = {"checker_error": repr(exc)[:200]}
