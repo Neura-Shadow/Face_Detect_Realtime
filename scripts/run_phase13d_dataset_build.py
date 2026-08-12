@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import queue
 import sys
 import time
 from pathlib import Path
@@ -148,7 +150,26 @@ def capture(args: argparse.Namespace) -> Dict[str, Any]:
         route_name = "route_%02d" % route_position
         vehicle = None
         camera = None
-        queue = []  # type: List[Any]
+        # A plain list is not safe here: the sensor callback runs on a CARLA
+        # thread, and a list mutated from two threads is what makes the client
+        # fault during teardown. Phase 13B already proved a bounded Queue.
+        images = queue.Queue(maxsize=4)  # type: Any
+        dropped_here = [0]
+
+        def _on_image(image, sink=images, counter=dropped_here):
+            try:
+                sink.put_nowait(image)
+            except queue.Full:
+                counter[0] += 1
+
+        def _latest(sink=images):
+            newest = None
+            while True:
+                try:
+                    newest = sink.get_nowait()
+                except queue.Empty:
+                    return newest
+
         try:
             vehicle = world.try_spawn_actor(vehicle_bp, spawn_points[spawn_index])
             if vehicle is None:
@@ -167,7 +188,7 @@ def capture(args: argparse.Namespace) -> Dict[str, Any]:
                 carla.Location(x=1.6, y=0.0, z=1.7), carla.Rotation(pitch=0.0)
             )
             camera = world.spawn_actor(camera_bp, transform, attach_to=vehicle)
-            camera.listen(lambda image: queue.append(image))
+            camera.listen(_on_image)
 
             for weather_name in weathers:
                 world.set_weather(getattr(carla.WeatherParameters, weather_name))
@@ -177,7 +198,7 @@ def capture(args: argparse.Namespace) -> Dict[str, Any]:
                 for _ in range(int(args.warmup_ticks)):
                     world.tick()
                     ticks += 1
-                    del queue[:]
+                    _latest()
 
                 captured = 0
                 while captured < frames_per_cell and time.time() < deadline:
@@ -187,11 +208,9 @@ def capture(args: argparse.Namespace) -> Dict[str, Any]:
                         vehicle.apply_control(
                             carla.VehicleControl(throttle=float(args.manual_throttle), steer=0.0)
                         )
-                    if not queue:
+                    image = _latest()
+                    if image is None:
                         continue
-                    image = queue[-1]
-                    dropped += max(0, len(queue) - 1)
-                    del queue[:]
 
                     raw = np.frombuffer(image.raw_data, dtype=np.uint8)
                     bgra = raw.reshape((int(image.height), int(image.width), 4))
@@ -221,14 +240,34 @@ def capture(args: argparse.Namespace) -> Dict[str, Any]:
                         "%s/%s captured %d of %d frames" % (route_name, weather_name, captured, frames_per_cell),
                     )
         finally:
+            # Stop the sensor first, tick once so any in-flight callback has
+            # already been delivered, and only then destroy. Destroying a
+            # listening sensor mid-callback is what crashes the client.
+            try:
+                if camera is not None:
+                    camera.stop()
+                    world.tick()
+                    ticks += 1
+                    _latest()
+            except Exception:
+                pass
+            try:
+                if vehicle is not None and autopilot_available:
+                    vehicle.set_autopilot(False, int(args.traffic_manager_port))
+            except Exception:
+                pass
             for actor in (camera, vehicle):
                 try:
-                    if actor is not None and hasattr(actor, "stop"):
-                        actor.stop()
                     if actor is not None and actor.is_alive:
                         actor.destroy()
                 except Exception:
                     pass
+            try:
+                world.tick()
+                ticks += 1
+            except Exception:
+                pass
+            dropped += int(dropped_here[0])
 
     try:
         if traffic_manager is not None:
@@ -490,11 +529,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         blockers.append("dataset_build_failed")
         summary["error"] = repr(exc)[:400]
 
+    # Capture alone cannot earn Dataset Pass — only the evaluation decides that
+    # — but a capture-only invocation still has to report whether it worked.
     executed_evaluation = args.mode in ("evaluate", "all") and manifest is not None
-    passed = executed_evaluation and not blockers
+    executed_capture = bool(summary["calibration_dataset_captured"])
+    completed = executed_capture if args.mode == "capture" else executed_evaluation
+    passed = completed and not blockers
     summary["blockers"] = sorted(set(blockers))
-    summary["dataset_gate_passed"] = passed
-    summary["status"] = STATUS_DATASET_PASS if passed else STATUS_BLOCKED
+    summary["dataset_gate_passed"] = bool(executed_evaluation and not blockers)
+    summary["status"] = (
+        STATUS_DATASET_PASS if summary["dataset_gate_passed"] else STATUS_BLOCKED
+    )
     summary["pc_environment"] = environment
     summary.update(BOUNDARY_FIELDS)
 
@@ -556,9 +601,18 @@ def main(argv: Optional[List[str]] = None) -> int:
                 print("%s=%s" % (name, payload[name]))
     if summary["blockers"]:
         print("blockers=%s" % ",".join(summary["blockers"]), file=sys.stderr)
-    if args.require_dataset and not passed:
-        return 1
-    return 0 if passed else 1
+
+    exit_code = 0 if passed else 1
+    # The CARLA Windows client faults (0xC0000409) while the interpreter
+    # finalises its native handles. Every artefact is already written and every
+    # line already printed by this point, but interpreter finalisation would
+    # replace this exit code with a crash code and discard buffered output. So
+    # after a CARLA session, flush and leave without finalising.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    if args.mode in ("capture", "all"):
+        os._exit(exit_code)
+    return exit_code
 
 
 if __name__ == "__main__":
