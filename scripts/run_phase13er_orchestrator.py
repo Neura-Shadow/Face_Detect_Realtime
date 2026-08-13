@@ -184,6 +184,41 @@ def wait_for_node(target: str, run_id: str, *, timeout_sec: float) -> Dict[str, 
     }
 
 
+def collect_node_evidence(
+    target: str, args: argparse.Namespace, run_id: str, run_dir: Path
+) -> Dict[str, Any]:
+    """Copy the node's own streamed evidence back to the PC.
+
+    Phase 13E-R Goal 3 made the control channel return a bounded tail of the
+    event stream instead of the whole thing, which is what keeps a multi-hour
+    run from building an unbounded response. The complete stream still exists,
+    on the Jetson, and it holds things the tail cannot: ``tensorrt_backend_ready``
+    is emitted once at construction and is 62,000 events behind the tail by the
+    end of a soak. Collecting the file is how "the engine was loaded exactly
+    once" stays a counted fact rather than an assertion.
+    """
+
+    remote_dir = "%s/experiments/phase13/%s-node" % (args.jetson_repo, run_id)
+    collected = {}  # type: Dict[str, Any]
+    for name, local_name in (
+        ("events.jsonl", "jetson_events.jsonl"),
+        ("frame_command_records.jsonl", "jetson_frame_command_records.jsonl"),
+        ("jetson_metrics.json", "jetson_node_metrics.json"),
+    ):
+        destination = run_dir / local_name
+        result = run_command_utf8(
+            ["scp", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
+             "%s:%s/%s" % (target, remote_dir, name), str(destination)],
+            timeout=900,
+        )
+        collected[local_name] = {
+            "returncode": result["returncode"],
+            "collected": destination.is_file(),
+            "bytes": destination.stat().st_size if destination.is_file() else 0,
+        }
+    return collected
+
+
 def stop_jetson_node(target: str, run_id: str) -> Dict[str, Any]:
     """Stop only the recorded PID. Never pkill, killall or pgrep -f."""
 
@@ -344,7 +379,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("  %s" % line)
 
     summary["soak_returncode"] = soak_returncode
+    # Collect before stopping: the node flushes on shutdown, but the files are
+    # complete enough to copy either way and a failed stop must not cost the
+    # evidence.
     summary["node_stop"] = stop_jetson_node(target, run_id)
+    soak_run_dir = output_root / ("%s-phase13e" % run_id)
+    if soak_run_dir.is_dir():
+        summary["node_evidence"] = collect_node_evidence(target, args, run_id, soak_run_dir)
+    else:
+        summary["node_evidence"] = collect_node_evidence(target, args, run_id, run_dir)
     summary["completed_at_utc"] = utc_now_iso()
     summary["status"] = "Completed" if soak_returncode == 0 else "Blocked"
     (run_dir / "orchestrator_summary.json").write_text(

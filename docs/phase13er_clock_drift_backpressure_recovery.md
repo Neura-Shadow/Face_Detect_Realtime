@@ -352,6 +352,148 @@ persists past a threshold, capped for the whole run so a genuinely dead
 transport still aborts, and every attempt is counted and reported. A run that
 needed three reconnects is never presented as one that needed none.
 
+### A third defect: the MCU latch, and where it is reached
+
+With the lease sized and the transport resilient, the run reached the fault
+matrix and every Phase 13E fault case reported unrecovered — including five
+that had already produced exactly the SAFE_STOP they existed to prove.
+
+Instrumenting the recovery window gave the answer rather than a guess: E01 and
+E04 each spent their full 30 s window with 192 and 189 framed iterations, every
+one applying SAFE_STOP, zero active control, zero command timeouts, and 377
+`STATE_REJECT`s between them.
+
+The C FSM was latched in FAILSAFE, and it got there **during** recovery rather
+than before it:
+
+1. A perception fault trips the node's fail-closed gate.
+2. The gate then emits `RECOVERY_PENDING` until it has three consecutive valid
+   results — by design.
+3. The MCU counts each of those as a consecutive range reject, and crossing
+   `range_failsafe_threshold` drops the FSM into FAILSAFE.
+4. From FAILSAFE, `clear_failsafe` leads to **STANDBY**, which is not in the
+   accepting set `{READY, ACTIVE, DEGRADED}` either. Every command is
+   `STATE_REJECT`, nothing updates `last_valid_rx_us`, and it never leaves on
+   its own.
+
+That latch is the design working. Measuring "does the pipeline recover" without
+clearing it measures something else entirely — which is exactly why every Phase
+13B fault case already calls `ensure_ready()` first. The Phase 13E cases never
+did, and the one place it mattered most was *inside* the recovery loop, not
+before it. It now runs there, bounded by an explicit clear limit so a genuinely
+stuck MCU still fails its case, and the clear count is reported per case.
+
+```
+fault_case_count             36
+fault_case_passed_count      36
+unrecovered_faults           []
+false_accept_count           0
+false_reject_count           0
+mcu_failsafe_recovery_count  4
+STATE_REJECT                 0      (was 2097, against 1152 accepted)
+```
+
+Two of the gates in this phase were mine and were wrong in the same way: they
+counted an event without asking what shape it had. The lease check counted every
+`LEASE_REJECT`, including the two the fault matrix injects on purpose. Once that
+was fixed it still fired on a single rejection racing the
+`clear_failsafe`→`begin_session` window, where there is momentarily no active
+lease. An expired lease rejects every remaining command in an unbroken run; a
+race produces an isolated one. The node now tracks the longest unbroken run of
+unprovoked lease rejections, and that is what gates.
+
+---
+
+## 7. Gates B–E — Full Pass
+
+One continuous process set at `7eaf7a4f`, both repositories SHA-matched, one
+node process (PID 78827) started and stopped by the orchestrator.
+
+```
+total_runtime_sec              9575.142
+burn_in_duration_sec           1800.041
+soak_duration_sec              7200.121   (2.00 h)
+frames, burn-in / soak         11227 / 46330
+active_control_total           235531
+safe_stop_total                17
+command_timeouts_total         0
+frame_to_command_ms            p50 109.6  p95 119.0  p99 123.3  max 251.5
+latency_budget_ms              449.526
+max_mailbox_depth              1  (every phase)
+tensorrt_fallback_count        0
+cuda_error_count               0
+per_frame_device_allocation    0
+thermal_throttling_observed    false
+engine_load_count              1  (source: jetson_node_event_stream)
+engine_reload_count            0
+```
+
+**Goal 1**, over 62,504 commands:
+
+```
+issued_future_skew_us_max      -2044      (maximum, never in the future)
+issued_future_skew_us_p99      -2300
+future_timestamp_reject_count  0
+clock_resync_count             633   (0 failures)
+estimated_drift_ppm            9.00
+clock_guard_us                 1770
+clock_sync_degraded            false
+max_unexpected_lease_streak    1  (limit 5)
+```
+
+**Goal 2**, the formal burst:
+
+```
+burst_seconds                  330.009    (>= 300)
+burst_input_fps                15.000     (>= 10)
+burst_processed_fps            10.815
+input_exceeds_processed        true
+burst_mailbox_drops            1380       (> 0)
+max_mailbox_depth              1
+unbounded_queue_detected       false
+producer_publish_failures      0
+producer_late_wakeups          0
+frame-to-command in burst      p95 161.0  p99 168.5
+issued_future_skew in burst    max -2201  (still never future, under overload)
+recovery_ratio                 0.994      (limit 1.25)
+```
+
+**Goal 3**, drift per hour over the full run:
+
+```
+open_fd_count                  0.0 / hour
+thread_count                   0.0 / hour
+swap_used_bytes                0.0 / hour
+process_rss_bytes              +2.77 MB / hour
+frame_to_command_ms            -1.23 ms / hour   (improving, not degrading)
+metrics_ring_high_watermark    512 of 512
+metrics_unbounded_list_count   0
+```
+
+**Gate E**: 36/36 fault cases passed, no unrecovered faults, zero false accepts,
+zero false rejects, F28 expected and observed `SAFE_STOP`, 4 explicit MCU
+FAILSAFE recoveries recorded.
+
+Continuity: `continuity_held: true`, all seven driving phases above the minimum
+frame rate, zero unplanned restarts, zero unexpected process exits, zero
+transport stalls, zero reconnects needed. `full_pass: true`.
+
+FP16 held command authority 62,479 times; INT8 zero, as frozen.
+
+### One more evidence gap, opened by Goal 3 itself
+
+The first validation of this run returned `engine_load_not_observed`. Goal 3
+made the control channel return a bounded tail of the node's event stream —
+which is what stops a multi-hour run building an unbounded response — and
+`tensorrt_backend_ready` is emitted once at construction, roughly 62,000 events
+behind the tail by the end of a soak. The evidence existed; it just was not
+being collected.
+
+So the orchestrator now copies the node's complete streamed files back at the
+end of a run, and the validator counts from them with the provenance recorded as
+`jetson_node_event_stream`. The alternative was asserting the count from PID
+continuity, which is true here but weaker than reading the counter.
+
 ### An honest note on a stalled first attempt
 
 The first hardware attempt aborted with `frame_transport_stalled`: 604 CARLA
@@ -376,7 +518,7 @@ happened.
 
 ---
 
-## 7. Not claimed
+## 8. Not claimed
 
 No full HIL. No real MCU, CAN or UART timing. No physical camera, actuator or
 vehicle. No model accuracy, mAP, recall or real-world perception quality. No

@@ -75,8 +75,15 @@ def evaluate(run_dir: Path, args: argparse.Namespace) -> Dict[str, Any]:
     jetson = load_json(run_dir / "jetson_metrics.json")
     faults = load_json(run_dir / "phase13e_fault_matrix.json")
     events = []  # type: List[Dict[str, Any]]
-    events_path = run_dir / "events.jsonl"
-    if events_path.is_file():
+    # The PC's own events plus, when collected, the Jetson node's complete
+    # streamed event log. The control channel only ever carries a bounded tail
+    # of the node's stream, so start-of-run events like tensorrt_backend_ready
+    # are thousands of events behind it by the end of a soak and can only be
+    # counted from the file itself.
+    event_paths = [run_dir / "events.jsonl", run_dir / "jetson_events.jsonl"]
+    for events_path in event_paths:
+        if not events_path.is_file():
+            continue
         for line in events_path.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if line:
@@ -185,7 +192,11 @@ def evaluate(run_dir: Path, args: argparse.Namespace) -> Dict[str, Any]:
     # number is never mistaken for a counter it did not come from.
     engine_loads = sum(1 for event in events if event.get("event_type") == "tensorrt_backend_ready")
     if engine_loads:
-        report["engine_load_count_source"] = "jetson_events"
+        report["engine_load_count_source"] = (
+            "jetson_node_event_stream"
+            if (run_dir / "jetson_events.jsonl").is_file()
+            else "jetson_events"
+        )
     elif int(args.engine_load_count) >= 0:
         engine_loads = int(args.engine_load_count)
         report["engine_load_count_source"] = "asserted_from_jetson_node_pid_continuity"
