@@ -1,0 +1,94 @@
+# Phase 13F systemd unit template for the supervised MA-VLNA Jetson FP16 node.
+#
+# TEMPLATE ONLY. This file is never installed automatically. Installing it into
+# /etc/systemd/system is an operator action requiring sudo, and Claude Code does
+# not run sudo, edit /etc, or enable passwordless sudo.
+#
+# Substitute the @PLACEHOLDER@ values, then install with the commands printed by
+#   python scripts/run_phase13f_install.py --print-commands
+#
+# Targeted at systemd 245 (Ubuntu 20.04 / JetPack R35.x), which is what this
+# Jetson actually runs. Directives newer than 245 are deliberately absent:
+#   * RestartSteps / RestartMaxDelaySec  (systemd 254+) -- exponential backoff
+#     is implemented inside the wrapper instead.
+#   * StartLimitIntervalSec/StartLimitBurst live in [Unit] here, not [Service];
+#     they moved in systemd 229 and [Unit] is correct for 245.
+
+[Unit]
+Description=MA-VLNA Jetson FP16 perception node (Phase 13F supervised service)
+Documentation=file://@REPO_ROOT@/docs/phase13f_jetson_service_supervision.md
+After=network-online.target
+Wants=network-online.target
+
+# Restart-storm protection, layer two. The wrapper refuses to respawn the node
+# after its own limit and exits non-zero; if the wrapper itself keeps failing,
+# systemd stops trying. Two independent limits so neither has to be perfect.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=notify
+NotifyAccess=main
+
+# Non-root. The node needs the GPU and the USB gadget network, not the machine.
+User=@SERVICE_USER@
+Group=@SERVICE_GROUP@
+SupplementaryGroups=video render
+
+WorkingDirectory=@REPO_ROOT@
+
+# Secrets and host-specific values live in a file, never in this unit and never
+# shell-expanded on the command line where they would land in `ps` and journald.
+EnvironmentFile=@ENV_FILE@
+
+# systemd creates, owns and removes this. The health socket and PID file live
+# here, so a stale socket from a killed predecessor cannot survive a restart.
+RuntimeDirectory=ma-vlna
+RuntimeDirectoryMode=0750
+
+ExecStart=@PYTHON@ @REPO_ROOT@/scripts/run_phase13f_service.py \
+    --service-name @SERVICE_NAME@ \
+    --manifest @MANIFEST@ \
+    --runtime-dir %t/ma-vlna \
+    --evidence-dir @EVIDENCE_DIR@ \
+    --log-path @LOG_PATH@ \
+    --pc-host ${MA_VLNA_PC_HOST} \
+    --bind-host ${MA_VLNA_BIND_HOST} \
+    --frame-port ${MA_VLNA_FRAME_PORT} \
+    --control-port ${MA_VLNA_CONTROL_PORT} \
+    --command-port ${MA_VLNA_COMMAND_PORT} \
+    --ack-port ${MA_VLNA_ACK_PORT} \
+    --expected-repo-sha ${MA_VLNA_EXPECTED_SHA}
+
+# The wrapper turns SIGTERM into a graceful node stop that emits SAFE_STOP.
+# If it cannot, the PC-side C Virtual Safety MCU heartbeat timeout produces
+# SAFE_STOP anyway -- the fail-closed guarantee does not depend on a clean exit.
+KillSignal=SIGTERM
+KillMode=mixed
+TimeoutStopSec=45
+
+# Watchdog. The wrapper pings at half this interval, per systemd's contract.
+# A hung wrapper is killed and restarted; a hung *node* is caught by the
+# wrapper's own readiness and exit handling.
+WatchdogSec=60
+
+Restart=on-failure
+RestartSec=5
+
+# Bounded logs. journald is the sink under systemd; the wrapper additionally
+# bounds its own JSONL log because Gate B runs it without journald.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=@SERVICE_NAME@
+
+# Modest hardening. Deliberately not aggressive: the node needs /dev/nvhost*,
+# the CUDA/TensorRT stack and the l4tbr0 gadget interface, and a unit that
+# cannot reach them is not a safer service, just a broken one.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=@EVIDENCE_DIR@ @LOG_DIR@
+
+[Install]
+WantedBy=multi-user.target
