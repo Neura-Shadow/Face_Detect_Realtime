@@ -149,6 +149,10 @@ def start_local_node(args: argparse.Namespace, run_id: str, log_path: Path) -> s
         "--frame-accept-poll-sec",
         "1.0",
     ]
+    if getattr(args, "decoupled_consumer", False):
+        command.append("--decoupled-consumer")
+    if getattr(args, "metrics_ring_capacity", None):
+        command += ["--metrics-ring-capacity", str(args.metrics_ring_capacity)]
     handle = open(str(log_path), "w", encoding="utf-8")
     return subprocess.Popen(
         command,
@@ -180,6 +184,11 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--mcu-library", default="")
     parser.add_argument("--output-dir", default="experiments/phase13")
     parser.add_argument("--node-start-timeout-sec", type=float, default=90.0)
+    parser.add_argument(
+        "--decoupled-consumer", action="store_true",
+        help="Phase 13E-R Goal 2: run the node pipeline on its own thread.",
+    )
+    parser.add_argument("--metrics-ring-capacity", type=int, default=0)
     parser.add_argument("--skip-unit-tests", action="store_true")
     parser.add_argument("--skip-c-build", action="store_true")
     return parser.parse_args(argv)
@@ -274,8 +283,15 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         jetson_evidence = driver.collect_jetson_evidence()
         node_metrics = jetson_evidence["metrics"]
+        # A frame is retired when it has been processed or deliberately
+        # superseded in the depth-1 mailbox. Requiring processed >= sent assumes
+        # the reader and the pipeline run in lock step, which stops being true
+        # as soon as latest-frame-only actually drops anything.
+        retired = int(node_metrics.get("frames_processed", 0)) + int(
+            node_metrics.get("frames_dropped_mailbox", 0)
+        )
         loopback_passed = (
-            int(node_metrics.get("frames_processed", 0)) >= int(args.frames)
+            retired >= int(args.frames)
             and int(node_metrics.get("max_mailbox_depth", 0)) == 1
             and int(node_metrics.get("valid_acks_received", 0)) > 0
             and bool(summary["fault_matrix"].get("fault_matrix_passed"))

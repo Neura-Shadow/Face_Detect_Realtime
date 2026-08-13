@@ -15,6 +15,7 @@ dropped and counted; nothing queues up.
 from __future__ import annotations
 
 import sys
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,6 +27,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:  # pragma: no cover - import bootstrap
     sys.path.insert(0, str(REPO_ROOT))
 
+from workers.core.bounded_metrics import BoundedSeries
 from workers.core.clock_sync import monotonic_us
 from workers.core.frame_transport import (
     FrameStreamClient,
@@ -132,9 +134,17 @@ class CarlaFramePublisher:
         self.frames_failed = 0
         self.frames_fault_injected = 0
         self.bytes_published = 0
-        self.encode_ms_samples = []  # type: List[float]
-        self.payload_size_samples = []  # type: List[int]
+        # Phase 13E-R Goal 3: these were unbounded lists. A ten-frames-per-second
+        # burst on top of a two-hour soak makes that a leak, not a detail.
+        self.encode_ms = BoundedSeries(
+            "frame_encode_ms", bucket_width=0.1, bucket_count=8192
+        )
+        self.payload_bytes = BoundedSeries(
+            "frame_payload_bytes", bucket_width=1024.0, bucket_count=8192, digits=0
+        )
+        self._last_encode_ms = 0.0
         self._frame_id = 0
+        self._publish_lock = threading.Lock()
 
     # ── colour path ─────────────────────────────────────────────────────────
 
@@ -159,7 +169,8 @@ class CarlaFramePublisher:
     def encode(self, bgr: np.ndarray) -> bytes:
         started = time.perf_counter()
         payload = self.codec.encode_bgr(bgr)
-        self.encode_ms_samples.append((time.perf_counter() - started) * 1000.0)
+        self._last_encode_ms = (time.perf_counter() - started) * 1000.0
+        self.encode_ms.observe(self._last_encode_ms)
         return payload
 
     def publish_bgr(
@@ -183,9 +194,46 @@ class CarlaFramePublisher:
             self.frames_failed += 1
             return PublishResult(False, resolved_frame_id, error=exc.message, fault="jpeg_encode")
 
-        encode_ms = self.encode_ms_samples[-1] if self.encode_ms_samples else 0.0
         height, width = int(bgr.shape[0]), int(bgr.shape[1])
         channels = int(bgr.shape[2]) if bgr.ndim == 3 else 1
+        return self.publish_encoded(
+            payload,
+            width=width,
+            height=height,
+            channels=channels,
+            frame_id=resolved_frame_id,
+            simulation_timestamp_us=simulation_timestamp_us,
+            flags=flags,
+            encode_ms=self._last_encode_ms,
+        )
+
+    def publish_encoded(
+        self,
+        payload: bytes,
+        *,
+        width: int,
+        height: int,
+        channels: int = 3,
+        frame_id: Optional[int] = None,
+        simulation_timestamp_us: int = 0,
+        flags: int = 0,
+        encode_ms: float = 0.0,
+    ) -> PublishResult:
+        """Publish an already-encoded JPEG payload.
+
+        Phase 13E-R Goal 2 needs a producer whose rate is set by its own clock
+        rather than by how fast the PC can JPEG-encode, so the burst republishes
+        payloads encoded once up front. Header construction, fault injection and
+        the wire format are identical to :meth:`publish_bgr`.
+        """
+
+        resolved_frame_id = self.next_frame_id() if frame_id is None else int(frame_id)
+        if not self.client.connected:
+            self.frames_dropped_backpressure += 1
+            return PublishResult(False, resolved_frame_id, error="frame client not connected")
+        width = int(width)
+        height = int(height)
+        channels = int(channels)
 
         fault = None  # type: Optional[str]
         stale_offset_us = 0
@@ -252,11 +300,14 @@ class CarlaFramePublisher:
 
         started = time.perf_counter()
         try:
-            if fault is None or fault == "stale_frame_timestamp":
-                self.client.send_frame_message(message)
-            else:
-                self.client.send_raw(message)
-                self.frames_fault_injected += 1
+            # One writer at a time: the frame socket is a single TCP stream and
+            # an interleaved write would desynchronise its framing.
+            with self._publish_lock:
+                if fault is None or fault == "stale_frame_timestamp":
+                    self.client.send_frame_message(message)
+                else:
+                    self.client.send_raw(message)
+                    self.frames_fault_injected += 1
         except FrameTransportError as exc:
             self.frames_failed += 1
             return PublishResult(
@@ -267,7 +318,7 @@ class CarlaFramePublisher:
         if fault is None or fault == "stale_frame_timestamp":
             self.frames_published += 1
             self.bytes_published += len(message)
-            self.payload_size_samples.append(len(payload))
+            self.payload_bytes.observe(len(payload))
         return PublishResult(
             published=fault is None,
             frame_id=resolved_frame_id,
@@ -295,23 +346,19 @@ class CarlaFramePublisher:
         )
 
     def metrics(self) -> Dict[str, Any]:
-        def _mean(values: List[float]) -> Optional[float]:
-            return round(sum(values) / len(values), 3) if values else None
-
+        encode = self.encode_ms.to_dict()
+        payload_bytes = self.payload_bytes.to_dict()
         payload = {
             "frames_published": self.frames_published,
             "frames_dropped_backpressure": self.frames_dropped_backpressure,
             "frames_failed": self.frames_failed,
             "frames_fault_injected": self.frames_fault_injected,
             "frame_bytes_published": self.bytes_published,
-            "frame_encode_ms_mean": _mean(self.encode_ms_samples),
-            "frame_encode_ms_max": round(max(self.encode_ms_samples), 3)
-            if self.encode_ms_samples
-            else None,
-            "frame_payload_bytes_mean": _mean([float(item) for item in self.payload_size_samples]),
-            "frame_payload_bytes_max": max(self.payload_size_samples)
-            if self.payload_size_samples
-            else None,
+            "frame_encode_ms_mean": encode["mean"],
+            "frame_encode_ms_max": encode["max"],
+            "frame_encode_ms_stats": encode,
+            "frame_payload_bytes_mean": payload_bytes["mean"],
+            "frame_payload_bytes_max": payload_bytes["max"],
             "frame_publisher_bounded": True,
             "frame_publisher_pending_queue_depth": 0,
             "camera_width": self.width,

@@ -627,10 +627,20 @@ class JilSessionDriver:
             "run_frames", frames=0, timeout_sec=wait_timeout_sec
         )
         # Give the Jetson pipeline a bounded drain window before reading metrics.
+        #
+        # The pipeline is retired when every published frame has been accounted
+        # for, which means processed *or* deliberately dropped by the depth-1
+        # mailbox. Waiting for processed >= sent assumes lock-step consumption
+        # and never completes once latest-frame-only actually discards a
+        # superseded frame — it just burns the whole timeout, and a long enough
+        # idle then tears the frame connection down on its own receive timeout.
         deadline = time.time() + wait_timeout_sec
         while time.time() < deadline:
             status = self.control.request("run_frames", frames=0, timeout_sec=1.0)
-            if int(status.get("frames_processed", 0)) >= self.frames_sent:
+            retired = int(status.get("frames_processed", 0)) + int(
+                status.get("frames_dropped_mailbox", 0)
+            )
+            if retired >= self.frames_sent:
                 response = status
                 break
             time.sleep(0.2)
@@ -639,6 +649,7 @@ class JilSessionDriver:
             "frames_processed": int(response.get("frames_processed", 0)),
             "frames_received": int(response.get("frames_received", 0)),
             "frames_decoded": int(response.get("frames_decoded", 0)),
+            "frames_dropped_mailbox": int(response.get("frames_dropped_mailbox", 0)),
             "max_mailbox_depth": int(response.get("max_mailbox_depth", 0)),
             "publish_duration_ms": round((monotonic_us() - started) / 1000.0, 3),
         }

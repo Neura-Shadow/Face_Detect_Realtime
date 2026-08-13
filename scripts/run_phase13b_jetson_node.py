@@ -346,6 +346,8 @@ class JetsonNode:
         )
         self.future_timestamp_reject_count = 0
         self.future_dated_command_count = 0
+        self.metric_window = None  # type: Optional[Dict[str, Any]]
+        self.decoupled_consumer = bool(getattr(args, "decoupled_consumer", False))
         self.frame_command_records = JsonlSink(
             str(getattr(args, "frame_record_path", None) or
                 (self.evidence_dir / "frame_command_records.jsonl")),
@@ -360,6 +362,10 @@ class JetsonNode:
             self._init_tensorrt_backend()
 
         self._frame_thread = None  # type: Optional[threading.Thread]
+        # Phase 13E-R Goal 2: an optional dedicated consumer. Off by default so
+        # Phase 13B/C/D keep the lock-step loop they were validated with.
+        self._process_thread = None  # type: Optional[threading.Thread]
+        self._frame_available = threading.Event()
         self._stop_frames = threading.Event()
         self._pipeline_lock = threading.Lock()
         self._frames_target = 0
@@ -429,6 +435,69 @@ class JetsonNode:
                     estimated_drift_ppm=self.clock.drift_ppm,
                 )
         return skew_us
+
+    # ── measurement windows ─────────────────────────────────────────────────
+
+    def _new_metric_window(self, name: str) -> Dict[str, Any]:
+        ring = int(self.args.metrics_ring_capacity)
+        return {
+            "window": str(name),
+            "opened_us": monotonic_us(),
+            "frame_to_command_ms": BoundedSeries(
+                "frame_to_command_ms", bucket_width=0.5, bucket_count=8192, ring_capacity=ring
+            ),
+            "issued_future_skew_us": BoundedSeries(
+                "issued_future_skew_us", lower_bound=-1_000_000.0, bucket_width=100.0,
+                bucket_count=16384, ring_capacity=ring, digits=1,
+            ),
+            "commands_sent_at_open": self.commands_sent,
+            "frames_processed_at_open": self.flow.frames_processed,
+            "frames_received_at_open": self.flow.frames_received,
+            "frames_dropped_at_open": self.flow.frames_dropped_mailbox,
+            "future_rejects_at_open": self.future_timestamp_reject_count,
+        }
+
+    def _handle_begin_metric_window(self, message: Dict[str, Any]) -> Dict[str, Any]:
+        """Open a fresh bounded window so a phase can be measured on its own.
+
+        Cumulative histograms cannot be differenced, so a phase that needs its
+        own p95/p99 — the Gate D burst, for instance — gets a parallel window
+        rather than an after-the-fact subtraction that would not be valid.
+        """
+
+        name = str(message.get("window", "window"))
+        self.metric_window = self._new_metric_window(name)
+        self.emit("metric_window_opened", window=name)
+        return {"window": name, "metric_window_open": True}
+
+    def _handle_end_metric_window(self, message: Dict[str, Any]) -> Dict[str, Any]:
+        window = self.metric_window
+        if window is None:
+            return {"metric_window_open": False, "error": "no metric window is open"}
+        self.metric_window = None
+        elapsed_sec = max(1e-6, (monotonic_us() - int(window["opened_us"])) / 1e6)
+        frames_processed = self.flow.frames_processed - int(window["frames_processed_at_open"])
+        frames_received = self.flow.frames_received - int(window["frames_received_at_open"])
+        dropped = self.flow.frames_dropped_mailbox - int(window["frames_dropped_at_open"])
+        payload = {
+            "window": window["window"],
+            "metric_window_open": False,
+            "window_elapsed_sec": round(elapsed_sec, 3),
+            "window_commands_sent": self.commands_sent - int(window["commands_sent_at_open"]),
+            "window_frames_received": frames_received,
+            "window_frames_processed": frames_processed,
+            "window_frames_dropped_mailbox": dropped,
+            "window_received_fps": round(frames_received / elapsed_sec, 3),
+            "window_processed_fps": round(frames_processed / elapsed_sec, 3),
+            "window_future_timestamp_reject_count": (
+                self.future_timestamp_reject_count - int(window["future_rejects_at_open"])
+            ),
+            "window_frame_to_command_ms": window["frame_to_command_ms"].to_dict(),
+            "window_issued_future_skew_us": window["issued_future_skew_us"].to_dict(),
+            "window_max_mailbox_depth": self.mailbox.max_depth_observed,
+        }
+        self.emit("metric_window_closed", **{k: v for k, v in payload.items() if k != "window"})
+        return payload
 
     # ── bounded metric evidence ─────────────────────────────────────────────
 
@@ -650,22 +719,50 @@ class JetsonNode:
             dropped = self.mailbox.publish(buffer)
             if dropped:
                 self.flow.frames_dropped_mailbox += 1
-            self._process_latest()
+            self._frame_available.set()
+            if self._process_thread is None:
+                # Inline processing keeps the reader and the pipeline in lock
+                # step: the mailbox can never hold two frames, so nothing is
+                # ever dropped and a fast publisher backs up in the kernel
+                # socket buffer instead. That is the mode Phase 13B/C/D ran in
+                # and it is preserved for them; overload needs the split loop.
+                self._process_latest()
             if self._frames_target and self.flow.frames_processed >= self._frames_target:
                 self._frames_done.set()
 
-    def _process_latest(self) -> None:
+    def _process_loop(self) -> None:
+        """Phase 13E-R Goal 2: consume the mailbox independently of the reader.
+
+        With reading and processing on one thread the depth-1 mailbox is never
+        contended, so ``frames_dropped_mailbox`` stays zero no matter how fast
+        frames arrive and the backlog silently accumulates in the TCP receive
+        buffer instead — an unbounded queue in everything but name. Splitting
+        the loops is what makes latest-frame-only real: the reader keeps
+        draining the socket and the mailbox discards whatever the pipeline did
+        not get to.
+        """
+
+        while not self._stop_frames.is_set():
+            if not self._process_latest():
+                self._frame_available.wait(timeout=0.005)
+                self._frame_available.clear()
+                continue
+            if self._frames_target and self.flow.frames_processed >= self._frames_target:
+                self._frames_done.set()
+
+    def _process_latest(self) -> bool:
         """Take the newest frame and run the Jetson diagnostic pipeline once."""
 
         buffer = self.mailbox.take()
         if buffer is None:
-            return
+            return False
         header = buffer.meta.get("header")
         payload = buffer.payload()
         try:
             self._process_frame(header, payload)
         finally:
             self.pool.release(buffer)
+        return True
 
     def _process_frame(self, header: Any, payload: bytes) -> None:
         receive_us = monotonic_us()
@@ -1304,6 +1401,12 @@ class JetsonNode:
             self.frame_to_command_ms.observe(frame_to_command)
         if one_way is not None:
             self.one_way_latency_ms.observe(one_way)
+        window = self.metric_window
+        if window is not None:
+            if frame_to_command is not None:
+                window["frame_to_command_ms"].observe(frame_to_command)
+            if skew_us is not None:
+                window["issued_future_skew_us"].observe(skew_us)
         self.emit("command_sent", **record)
         return record
 
@@ -1448,7 +1551,17 @@ class JetsonNode:
             "real_mcu_verified": False,
             "full_hil_verified": False,
         }
-        payload.update(self.flow.to_dict(self.pool, self.mailbox))
+        # While the pipeline is running, buffers are legitimately held: one
+        # being received, one waiting in the mailbox, one being processed.
+        # Charging those as leaks is what made a healthy overloaded run report
+        # buffer_leak_detected. At rest the allowance is zero and a held buffer
+        # is a real leak again.
+        in_flight_allowance = 0
+        if self._frame_thread is not None and not self._stop_frames.is_set():
+            in_flight_allowance = 3 if self._process_thread is not None else 2
+        payload.update(
+            self.flow.to_dict(self.pool, self.mailbox, max_in_flight=in_flight_allowance)
+        )
         payload.update(self.frame_server.metrics())
         payload.update(self.ack_receiver.metrics())
         if self.command_sender is not None:
@@ -1570,8 +1683,11 @@ class JetsonNode:
             exit_code = 2
         finally:
             self._stop_frames.set()
+            self._frame_available.set()
             if self._frame_thread is not None:
                 self._frame_thread.join(timeout=10)
+            if self._process_thread is not None:
+                self._process_thread.join(timeout=10)
             self.resources.stop()
             if self.tensorrt_backend is not None:
                 try:
@@ -1607,6 +1723,10 @@ class JetsonNode:
                 response["t2_jetson_recv_us"] = monotonic_us()
                 response["sample_index"] = message.get("sample_index")
                 response["t3_jetson_send_us"] = monotonic_us()
+            elif command == "begin_metric_window":
+                response.update(self._handle_begin_metric_window(message))
+            elif command == "end_metric_window":
+                response.update(self._handle_end_metric_window(message))
             elif command == "update_clock":
                 # Phase 13E-R Goal 1: fold a fresh sync into the live model
                 # instead of rebuilding it, so drift history survives.
@@ -1687,6 +1807,11 @@ class JetsonNode:
         self._stop_frames.clear()
         self._frames_done.clear()
         if bool(message.get("start_frame_server", True)) and self._frame_thread is None:
+            if self.decoupled_consumer and self._process_thread is None:
+                self._process_thread = threading.Thread(
+                    target=self._process_loop, name="phase13er-consumer", daemon=True
+                )
+                self._process_thread.start()
             self._frame_thread = threading.Thread(
                 target=self._frame_loop, name="phase13b-frames", daemon=True
             )
@@ -1711,6 +1836,9 @@ class JetsonNode:
             "frames_processed": self.flow.frames_processed,
             "frames_received": self.flow.frames_received,
             "frames_decoded": self.flow.frames_decoded,
+            # The caller needs drops to know when a publish burst has retired:
+            # a superseded frame is accounted for, not still in flight.
+            "frames_dropped_mailbox": self.flow.frames_dropped_mailbox,
             "max_mailbox_depth": self.mailbox.max_depth_observed,
             "target_reached": bool(target == 0 or self.flow.frames_processed >= self._frames_target),
         }
@@ -1777,6 +1905,14 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument(
         "--frame-record-path", default=None,
         help="Stream per-frame command records to this JSONL file instead of RAM.",
+    )
+    parser.add_argument(
+        "--decoupled-consumer", action="store_true",
+        help=(
+            "Phase 13E-R Goal 2: run the pipeline on its own thread so the "
+            "reader keeps draining the socket and the depth-1 mailbox actually "
+            "drops superseded frames instead of letting them queue in TCP."
+        ),
     )
     parser.add_argument("--ack-timeout-ms", type=int, default=500)
     parser.add_argument("--socket-timeout-sec", type=float, default=10.0)

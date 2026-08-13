@@ -48,6 +48,11 @@ from run_phase13e_checks import (  # noqa: E402
     pc_environment,
     utc_now_iso,
 )
+from simulation.independent_frame_producer import (  # noqa: E402
+    EncodedFrameRing,
+    IndependentFrameProducer,
+)
+from workers.core.clock_discipline import DEFAULT_RESYNC_INTERVAL_SEC  # noqa: E402
 from workers.core.clock_sync import monotonic_us  # noqa: E402
 from workers.core.soak_metrics import (  # noqa: E402
     DriftLimits,
@@ -118,8 +123,15 @@ class SoakRunner:
             command_validity_ms=args.command_validity_ms,
             camera_width=args.camera_width,
             camera_height=args.camera_height,
+            clock_resync_interval_sec=args.clock_resync_interval_sec,
+            clock_resync_samples=args.clock_resync_samples,
         )
         self.session = None  # type: Optional[CarlaLockstepSession]
+        # Phase 13E-R Goal 2: real camera frames encoded once for replay by a
+        # producer that CARLA's tick rate cannot throttle.
+        self.frame_ring = EncodedFrameRing(int(args.backpressure_ring_frames))
+        self._next_burst_sample = 0.0
+        self._burst_command_baseline = 0
         self.series = {}  # type: Dict[str, SoakSeries]
         self.phases = []  # type: List[Dict[str, Any]]
         self.fault_rows = []  # type: List[Dict[str, Any]]
@@ -264,6 +276,15 @@ class SoakRunner:
             return outcome
 
         bgra = self.driver.publisher.carla_image_to_bgra(image)
+        if not self.frame_ring.full:
+            # Fill the replay ring from real camera output while driving, so the
+            # Gate D burst sends representative content rather than a synthetic
+            # pattern the engine has never seen.
+            self.frame_ring.capture_bgra(
+                self.driver.publisher,
+                bgra,
+                simulation_timestamp_us=int(float(getattr(image, "timestamp", 0.0)) * 1_000_000),
+            )
         baseline = self.driver.server.processed_count()
         published_us = monotonic_us()
         result = self.driver.publisher.publish_bgra(
@@ -287,6 +308,29 @@ class SoakRunner:
             session.apply(self.driver.actuator.decide(mcu_result))
             outcome["latency_ms"] = round((monotonic_us() - published_us) / 1000.0, 3)
         return outcome
+
+    def _tick_only(self) -> None:
+        """Step CARLA and apply the latest command without publishing a frame.
+
+        During the Gate D burst the producer owns the frame transport. CARLA
+        still advances and still receives actuation, so the vehicle is not
+        frozen while the pipeline is overloaded — it simply stops deciding when
+        frames are offered.
+        """
+
+        self.session.tick()
+        processed = self.driver.server.processed_count()
+        if processed > self._burst_command_baseline:
+            self._burst_command_baseline = processed
+            # A command was classified since the last tick; apply the newest.
+            self.session.apply(self.driver.actuator.decide(self.driver.server.last_result))
+        else:
+            # None lets the actuator hold the last accepted command only while
+            # its validity window is open, then fall back to SAFE_STOP. Passing
+            # a stale result instead would keep refreshing that window.
+            self.session.apply(
+                self.driver.actuator.decide(None, reason="no_new_command_this_tick")
+            )
 
     def run_timed_phase(
         self,
@@ -345,6 +389,10 @@ class SoakRunner:
             if outcome["latency_ms"] is not None:
                 latencies.append(outcome["latency_ms"])
                 self.track("frame_to_command_ms", outcome["latency_ms"])
+            # Phase 13E-R Goal 1: keep the Jetson's clock model refreshed while
+            # driving. Without this the model ages out and, once degraded, AI
+            # authority is correctly withheld for the rest of the run.
+            self.driver.maybe_resync_clocks()
             if time.time() >= next_sample:
                 self.sample_telemetry(phase=name)
                 next_sample = time.time() + float(self.args.telemetry_interval_sec)
@@ -379,37 +427,85 @@ class SoakRunner:
     # ── backpressure ────────────────────────────────────────────────────────
 
     def run_backpressure(self) -> Dict[str, Any]:
-        """Burst input above the paced rate and require latest-frame-only."""
+        """Overload the pipeline from a producer CARLA cannot slow down.
+
+        Phase 13E published inside the driving loop, so ``session.tick()`` set
+        the rate and a nominal 10 FPS burst delivered 2.48. Input never exceeded
+        what the Jetson could retire, nothing was dropped, and latest-frame-only
+        was never demonstrated. Here a dedicated thread paces itself and CARLA
+        keeps ticking alongside it, which is what makes overload reachable.
+        """
 
         pre = self.run_timed_phase("backpressure_pre", float(self.args.backpressure_settle_sec))
+        frames = self.frame_ring.frames()
+        if not frames:
+            self.blockers.append("backpressure_producer_no_frames")
+            self.emit("backpressure_producer_unavailable", reason="encoded_frame_ring_empty")
+            return {
+                "pre_burst": pre,
+                "burst": {"producer_started": False, "reason": "encoded_frame_ring_empty"},
+                "overload_demonstrated": False,
+            }
+
         before = self.sample_telemetry(phase="backpressure_burst")
         drops_before = int(before.get("frames_dropped_mailbox", 0) or 0)
         received_before = int(before.get("frames_received", 0) or 0)
+        processed_before = int(before.get("frames_processed", 0) or 0)
 
-        # Burst: publish at the requested rate without waiting for each command,
-        # so frames arrive faster than the pipeline retires them.
+        producer = IndependentFrameProducer(
+            self.driver.publisher,
+            frames,
+            target_fps=float(self.args.backpressure_burst_fps),
+        )
+        self.driver.control.request("begin_metric_window", window="backpressure_burst")
         started = time.time()
         deadline = started + float(self.args.backpressure_burst_sec)
-        interval = 1.0 / max(1e-6, float(self.args.backpressure_burst_fps))
-        burst_frames = 0
-        next_publish = started
-        while time.time() < deadline:
-            now = time.time()
-            if now < next_publish:
-                time.sleep(min(0.005, next_publish - now))
-                continue
-            next_publish += interval
-            outcome = self._drive_once(wait_for_command=False)
-            if outcome["frame"]:
-                burst_frames += 1
+        self._next_burst_sample = started
+        self._burst_command_baseline = self.driver.server.processed_count()
+        producer.start()
+        self.emit(
+            "backpressure_burst_started",
+            target_fps=float(self.args.backpressure_burst_fps),
+            duration_sec=float(self.args.backpressure_burst_sec),
+            ring_size=len(frames),
+        )
+        ticks = 0
+        try:
+            while time.time() < deadline:
+                # CARLA keeps stepping and keeps applying commands, but it no
+                # longer gates how fast frames are offered to the Jetson.
+                self._tick_only()
+                ticks += 1
+                self.driver.maybe_resync_clocks()
+                if time.time() >= self._next_burst_sample:
+                    self.sample_telemetry(phase="backpressure_burst")
+                    self._next_burst_sample = time.time() + float(self.args.telemetry_interval_sec)
+        finally:
+            producer_metrics = producer.stop()
+        window = self.driver.control.request("end_metric_window")
+
+        burst_seconds = time.time() - started
         burst_metrics = self.sample_telemetry(phase="backpressure_burst")
+        processed_during = int(burst_metrics.get("frames_processed", 0) or 0) - processed_before
+        input_fps = float(producer_metrics.get("producer_input_fps", 0.0))
+        processed_fps = round(processed_during / max(1e-6, burst_seconds), 3)
+        drops_during = int(burst_metrics.get("frames_dropped_mailbox", 0) or 0) - drops_before
+        depth_during = int(burst_metrics.get("max_mailbox_depth", 0) or 0)
         burst_stats = {
-            "burst_seconds": round(time.time() - started, 3),
+            "producer_started": True,
+            "burst_seconds": round(burst_seconds, 3),
             "burst_target_fps": float(self.args.backpressure_burst_fps),
-            "burst_frames_published": burst_frames,
-            "burst_effective_fps": round(burst_frames / max(1e-6, time.time() - started), 3),
-            "max_mailbox_depth_during_burst": int(burst_metrics.get("max_mailbox_depth", 0) or 0),
+            "burst_carla_ticks": ticks,
+            "burst_input_fps": input_fps,
+            "burst_processed_fps": processed_fps,
+            "burst_frames_processed": processed_during,
+            "burst_mailbox_drops": drops_during,
+            "max_mailbox_depth_during_burst": depth_during,
+            "input_exceeds_processed": input_fps > processed_fps,
+            "window": window,
         }
+        burst_stats.update(producer_metrics)
+        burst_stats.update(self.frame_ring.to_dict())
 
         post = self.run_timed_phase("backpressure_post", float(self.args.backpressure_settle_sec))
         after = self.sample_telemetry(phase="backpressure_post")
@@ -418,7 +514,7 @@ class SoakRunner:
 
         recovery = evaluate_backpressure_recovery(
             pre_burst_p99_ms=pre["latency_ms"].get("p99"),
-            burst_p99_ms=None,
+            burst_p99_ms=(window.get("window_frame_to_command_ms") or {}).get("p99"),
             post_burst_p99_ms=post["latency_ms"].get("p99"),
             recovery_ratio_max=float(self.args.backpressure_recovery_ratio_max),
         )
@@ -428,9 +524,20 @@ class SoakRunner:
             "post_burst": post,
             "frames_received_delta": received_after - received_before,
             "mailbox_drops_delta": drops_after - drops_before,
-            "max_mailbox_depth": int(after.get("max_mailbox_depth", 0) or 0),
-            "latest_frame_only": int(after.get("max_mailbox_depth", 0) or 0) == 1,
-            "old_frames_dropped_not_queued": (drops_after - drops_before) >= 0,
+            "mailbox_drops_during_burst": drops_during,
+            "max_mailbox_depth": max(depth_during, int(after.get("max_mailbox_depth", 0) or 0)),
+            "latest_frame_only": max(depth_during, int(after.get("max_mailbox_depth", 0) or 0)) == 1,
+            "unbounded_queue_detected": max(
+                depth_during, int(after.get("max_mailbox_depth", 0) or 0)
+            ) > 1,
+            "old_frames_dropped_not_queued": drops_during > 0,
+            # The gate is only meaningful if input actually outran the consumer.
+            "overload_demonstrated": bool(
+                input_fps > processed_fps
+                and drops_during > 0
+                and input_fps >= float(self.args.backpressure_min_input_fps)
+                and burst_seconds >= float(self.args.backpressure_min_burst_sec)
+            ),
             "recovery": recovery,
         }
         self.emit("backpressure_completed", **{k: v for k, v in payload.items() if k != "pre_burst"})
@@ -662,9 +769,19 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--soak-sec", type=float, default=7200.0)
     parser.add_argument("--min-soak-sec", type=float, default=7200.0)
     parser.add_argument("--telemetry-interval-sec", type=float, default=5.0)
-    parser.add_argument("--backpressure-burst-fps", type=float, default=10.0)
-    parser.add_argument("--backpressure-burst-sec", type=float, default=60.0)
+    # Phase 13E-R Goal 2: the formal burst is >=10 FPS for >=300 s, driven by a
+    # producer independent of CARLA tick pacing.
+    parser.add_argument("--backpressure-burst-fps", type=float, default=15.0)
+    parser.add_argument("--backpressure-burst-sec", type=float, default=330.0)
+    parser.add_argument("--backpressure-min-input-fps", type=float, default=10.0)
+    parser.add_argument("--backpressure-min-burst-sec", type=float, default=300.0)
+    parser.add_argument("--backpressure-ring-frames", type=int, default=8)
     parser.add_argument("--backpressure-settle-sec", type=float, default=60.0)
+    # Phase 13E-R Goal 1: bounded periodic clock discipline.
+    parser.add_argument(
+        "--clock-resync-interval-sec", type=float, default=DEFAULT_RESYNC_INTERVAL_SEC
+    )
+    parser.add_argument("--clock-resync-samples", type=int, default=12)
     parser.add_argument("--backpressure-recovery-ratio-max", type=float, default=1.25)
     parser.add_argument("--fault-window-sec", type=float, default=30.0)
     parser.add_argument(
@@ -887,6 +1004,56 @@ def main(argv: Optional[List[str]] = None) -> int:
                 blockers.append("no_active_control_applied")
             if safe_total <= 0:
                 blockers.append("no_safe_stop_path_observed")
+        # Phase 13E-R Goal 1: the sender must never date a command into the
+        # receiver's future during healthy runtime. Measured against the ACK's
+        # own receive timestamp, which is the value the C MCU compared.
+        skew_max = jetson_metrics.get("issued_future_skew_us_max")
+        future_rejects = int(jetson_metrics.get("future_timestamp_reject_count", 0) or 0)
+        summary["clock_discipline"] = {
+            "issued_future_skew_us_max": skew_max,
+            "issued_future_skew_us_p99": jetson_metrics.get("issued_future_skew_us_p99"),
+            "issued_future_skew_sample_count": jetson_metrics.get(
+                "issued_future_skew_sample_count"
+            ),
+            "future_timestamp_reject_count": future_rejects,
+            "clock_resync_count": runner.driver.clock_resync_count,
+            "clock_resync_failure_count": runner.driver.clock_resync_failure_count,
+            "clock_resync_interval_sec": runner.driver.clock_resync_interval_sec,
+            "estimated_drift_ppm": jetson_metrics.get("estimated_drift_ppm"),
+            "clock_guard_us": jetson_metrics.get("clock_guard_us"),
+            "clock_model_age_ms": jetson_metrics.get("clock_model_age_ms"),
+            "clock_sync_degraded": jetson_metrics.get("clock_sync_degraded"),
+            "clock_degraded_reasons": jetson_metrics.get("clock_degraded_reasons"),
+        }
+        if drove:
+            if skew_max is not None and float(skew_max) > 0:
+                blockers.append("issued_timestamp_future_skew")
+            if future_rejects:
+                blockers.append("future_timestamp_rejects_observed")
+            if runner.driver.clock_resync_count <= 0:
+                blockers.append("no_periodic_clock_resync")
+        # Phase 13E-R Goal 3: bounded metric memory must be observable, not
+        # merely intended.
+        summary["metrics_memory"] = {
+            "metrics_ring_capacity": jetson_metrics.get("metrics_ring_capacity"),
+            "metrics_ring_high_watermark": jetson_metrics.get("metrics_ring_high_watermark"),
+            "metrics_storage": jetson_metrics.get("metrics_storage"),
+            "metrics_unbounded_list_count": jetson_metrics.get("metrics_unbounded_list_count"),
+        }
+        capacity = jetson_metrics.get("metrics_ring_capacity")
+        watermark = jetson_metrics.get("metrics_ring_high_watermark")
+        if capacity is not None and watermark is not None and int(watermark) > int(capacity):
+            blockers.append("metrics_ring_capacity_exceeded")
+        # Phase 13E-R Goal 2: a burst that never overloaded the consumer proves
+        # nothing about backpressure, so it blocks rather than passing quietly.
+        if "backpressure" in requested:
+            burst = summary.get("backpressure", {}) or {}
+            if not burst.get("overload_demonstrated"):
+                blockers.append("backpressure_overload_not_demonstrated")
+            if burst.get("unbounded_queue_detected"):
+                blockers.append("unbounded_queue_detected")
+            if burst.get("max_mailbox_depth") not in (None, 1):
+                blockers.append("mailbox_depth_violation")
         if false_accept or false_reject:
             blockers.append("fault_matrix_false_classification")
         if unrecovered:

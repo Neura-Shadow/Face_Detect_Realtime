@@ -151,12 +151,25 @@ class FixedBufferPool:
                 "buffer_states": [item.state.value for item in self._buffers],
             }
 
-    def leak_check(self) -> Dict[str, Any]:
-        """Report buffers still owned outside the pool (used at shutdown)."""
+    def leak_check(self, *, max_in_flight: int = 0) -> Dict[str, Any]:
+        """Report buffers still owned outside the pool.
+
+        ``max_in_flight`` is how many buffers the pipeline may legitimately hold
+        at this instant: one being received, one waiting in the depth-1 mailbox,
+        one being processed. At shutdown that allowance is zero and any held
+        buffer is a leak. Called mid-run with an allowance of zero, a perfectly
+        healthy in-flight frame reads as a leak — which is what happened the
+        first time the pipeline was actually driven into overload.
+        """
 
         with self._lock:
-            leaked = [item.index for item in self._buffers if item.state is not BufferState.FREE]
-            return {"leaked_buffer_indices": leaked, "buffer_leak_detected": bool(leaked)}
+            held = [item.index for item in self._buffers if item.state is not BufferState.FREE]
+            return {
+                "leaked_buffer_indices": held,
+                "buffer_in_flight_count": len(held),
+                "buffer_max_in_flight_allowance": int(max_in_flight),
+                "buffer_leak_detected": len(held) > int(max_in_flight),
+            }
 
 
 class LatestFrameMailbox:
@@ -256,9 +269,16 @@ class FrameFlowMetrics:
             return
         self.frame_age_samples_ms.append(float(age_ms))
 
-    def to_dict(self, pool: FixedBufferPool, mailbox: LatestFrameMailbox) -> Dict[str, Any]:
+    def to_dict(
+        self,
+        pool: FixedBufferPool,
+        mailbox: LatestFrameMailbox,
+        *,
+        max_in_flight: int = 0,
+    ) -> Dict[str, Any]:
         pool_snapshot = pool.snapshot()
         mailbox_snapshot = mailbox.snapshot()
+        leak = pool.leak_check(max_in_flight=max_in_flight)
         return {
             "frames_received": self.frames_received,
             "frames_decoded": self.frames_decoded,
@@ -277,5 +297,9 @@ class FrameFlowMetrics:
             "frame_age_ms_p99": _percentile(self.frame_age_samples_ms, 99.0),
             "frame_age_sample_count": len(self.frame_age_samples_ms),
             "frame_reject_counts": dict(self.reject_counts),
-            "buffer_leak_detected": pool.leak_check()["buffer_leak_detected"],
+            "buffer_pool_in_use": pool_snapshot["buffer_pool_in_use"],
+            "buffer_pool_high_watermark": pool_snapshot["buffer_pool_high_watermark"],
+            "buffer_in_flight_count": leak["buffer_in_flight_count"],
+            "buffer_max_in_flight_allowance": leak["buffer_max_in_flight_allowance"],
+            "buffer_leak_detected": leak["buffer_leak_detected"],
         }
