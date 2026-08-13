@@ -291,6 +291,67 @@ than accepting a burst that met every other condition. Same run, driving phases:
 zero command timeouts, frame-to-command p99 135.7 ms against a 449.6 ms budget,
 6,185 AI_ACTIVE commands applied.
 
+### Gate B — 30-minute burn-in on the real Jetson
+
+```
+actual_duration_sec              1800.128
+carla_ticks                      46356
+frames_published                 11589
+max_mailbox_depth                1
+frames_dropped_mailbox           0
+command_timeouts                 0
+tensorrt_fallback_count          0
+cuda_error_count                 0
+per_frame_device_allocation      0
+thermal_throttling_observed      false
+precision                        fp16
+frame_to_command_ms p99          133.39
+active_control_applied           46345
+safe_stop_applied                11
+```
+
+Goal 1 held across the whole of that run and the soak that followed it, over
+**35,370 commands**:
+
+```
+issued_future_skew_us_max        -1889     (maximum, i.e. never in the future)
+future_timestamp_reject_count    0
+clock_resync_count               370
+clock_resync_failure_count       0
+estimated_drift_ppm              11.60
+clock_sync_degraded              false
+metrics_ring_high_watermark      512 of 512
+buffer_leak_detected             false
+```
+
+The *maximum* skew being negative is the whole claim: not one command in 35,370
+was dated into the receiver's future.
+
+### Two defects that only a long run could reach
+
+Phase 13E died at 2.4 minutes. With the clock disciplined, the first Gate C
+attempt drove for roughly 90 minutes and found two things that had never been
+approached before.
+
+**The command lease was hard-coded to one hour.** At 60 minutes every command
+became `LEASE_REJECT` with the MCU in state 5. A Gate C run is 30 minutes of
+burn-in plus at least two hours of soak, so a one-hour lease cannot cover it.
+The lease lifetime is now derived from the phases it has to span — 3.62 h of
+lease against 2.62 h of driving for the standard profile. **The semantics are
+unchanged**: the lease still exists, still expires, and still gates authority.
+A run that takes any `LEASE_REJECT` while driving is now blocked outright
+rather than left to be noticed in a counter.
+
+**A single transport transient discarded the whole run.** About 90 minutes in,
+the node logged one `TRANSPORT_TIMEOUT`, closed the frame connection and
+re-accepted; the PC never reconnected, and the stall guard aborted the run after
+600 empty ticks. The guard is right to exist — a stalled transport must never
+masquerade as hours of soak — but throwing away 90 minutes of healthy driving
+for one transient is the wrong trade. Reconnection is now attempted once a stall
+persists past a threshold, capped for the whole run so a genuinely dead
+transport still aborts, and every attempt is counted and reported. A run that
+needed three reconnects is never presented as one that needed none.
+
 ### An honest note on a stalled first attempt
 
 The first hardware attempt aborted with `frame_transport_stalled`: 604 CARLA

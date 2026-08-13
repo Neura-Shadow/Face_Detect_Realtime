@@ -643,13 +643,23 @@ class SoakRunner:
     # ── fault injection ─────────────────────────────────────────────────────
 
     def verify_recovery(self, *, required: int = 3, timeout_sec: float = 30.0) -> Dict[str, Any]:
-        """Recovery needs three consecutive valid FP16 results in a row."""
+        """Recovery needs three consecutive valid FP16 results in a row.
+
+        The clock has to be maintained here too. Phase 13E-R's degradation rule
+        withholds AI authority once the model is older than three resync
+        intervals, and a fault sequence spends minutes outside the driving
+        phases: without resyncing, the model ages out, every command correctly
+        becomes SAFE_STOP, and recovery can never be observed no matter how
+        healthy the pipeline is. The rule is right; every path that issues
+        commands simply has to keep the clock alive.
+        """
 
         started = time.time()
         consecutive = 0
         attempts = 0
         actuator = self.driver.actuator
         while time.time() - started < timeout_sec and consecutive < int(required):
+            self.driver.maybe_resync_clocks()
             before = actuator.active_control_applied_count
             outcome = self._drive_once(wait_for_command=True)
             attempts += 1
@@ -708,6 +718,7 @@ class SoakRunner:
             )
         observed = "NO_OBSERVATION"
         for _ in range(20):
+            self.driver.maybe_resync_clocks()
             outcome = self._drive_once(wait_for_command=True)
             if not outcome["frame"]:
                 continue
@@ -1193,15 +1204,22 @@ def main(argv: Optional[List[str]] = None) -> int:
             "reconnect_successes": runner.transport_reconnect_successes,
             "reconnect_max_attempts": int(args.frame_reconnect_max_attempts),
         }
+        # Only an unprovoked LEASE_REJECT means the session lease lapsed; the
+        # fault matrix injects wrong-lease commands on purpose and those are
+        # the expected outcome of their own case.
         lease_rejects = int(
             (jetson_metrics.get("command_classifications") or {}).get("LEASE_REJECT", 0)
+        )
+        unexpected_lease_rejects = int(
+            jetson_metrics.get("unexpected_lease_reject_count", 0) or 0
         )
         summary["command_lease"] = {
             "lease_duration_sec": runner.driver.lease_duration_sec,
             "lease_reject_count": lease_rejects,
-            "lease_covered_run": lease_rejects == 0,
+            "unexpected_lease_reject_count": unexpected_lease_rejects,
+            "lease_covered_run": unexpected_lease_rejects == 0,
         }
-        if drove and lease_rejects:
+        if drove and unexpected_lease_rejects:
             blockers.append("command_lease_expired_during_run")
 
         summary["blockers"] = sorted(set(blockers + list(runner.driver.blockers)))

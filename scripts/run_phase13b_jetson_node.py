@@ -346,6 +346,7 @@ class JetsonNode:
         )
         self.future_timestamp_reject_count = 0
         self.future_dated_command_count = 0
+        self.unexpected_lease_reject_count = 0
         self.metric_window = None  # type: Optional[Dict[str, Any]]
         self.decoupled_consumer = bool(getattr(args, "decoupled_consumer", False))
         self.frame_command_records = JsonlSink(
@@ -1350,6 +1351,11 @@ class JetsonNode:
 
         rtt_ms = round((monotonic_us() - send_us) / 1000.0, 3)
         self.command_rtt_ms.observe(rtt_ms)
+        # A LEASE_REJECT from the injected wrong-lease fault is the expected
+        # outcome of that fault. Only an unprovoked one means the session's
+        # lease actually lapsed, which is what a long run has to rule out.
+        if observed == "LEASE_REJECT" and injected != "wrong_lease":
+            self.unexpected_lease_reject_count += 1
         # `expired_command` deliberately back-dates validity, so its rejection
         # is the injected outcome and must not be counted as a clock defect.
         skew_us = (
@@ -1519,6 +1525,7 @@ class JetsonNode:
             "issued_future_skew_sample_count": skew.count,
             "future_timestamp_reject_count": self.future_timestamp_reject_count,
             "future_dated_command_count": self.future_dated_command_count,
+            "unexpected_lease_reject_count": self.unexpected_lease_reject_count,
             "range_state_counts": dict(self.range_state_counts),
             "command_packet_size_bytes": PACKET_SIZE,
             "command_protocol_version": PROTOCOL_VERSION,
