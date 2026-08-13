@@ -654,27 +654,80 @@ class SoakRunner:
         commands simply has to keep the clock alive.
         """
 
+        # A fault that stops commands for longer than the heartbeat window
+        # latches the C MCU into FAILSAFE, and it stays there rejecting every
+        # command with STATE_REJECT until an operator recovers it explicitly.
+        # That latch is the design working. Measuring "does the pipeline
+        # recover" without clearing it measures something else entirely: the
+        # first Phase 13E-R fault run saw 2097 STATE_REJECTs against 799
+        # accepted commands and reported every case unrecovered, including
+        # five that had already produced exactly the SAFE_STOP they existed to
+        # prove. Every Phase 13B fault case already clears it the same way.
+        # The latch is not always in place when recovery starts -- it is often
+        # reached *during* it. After a perception fault the node's own
+        # fail-closed rule emits RECOVERY_PENDING until it has three
+        # consecutive valid results, and the MCU counts each of those as a
+        # consecutive range reject. Cross its threshold and the FSM drops into
+        # FAILSAFE, where clear_failsafe leads to STANDBY, which is not in the
+        # accepting set {READY, ACTIVE, DEGRADED} either. Every subsequent
+        # command is STATE_REJECT, nothing updates last_valid_rx_us, and it
+        # never leaves on its own: E01 and E04 sat there for the full 30 s
+        # window taking 377 STATE_REJECTs between them. So the check belongs
+        # inside the loop, bounded, and counted.
+        failsafe_before = self.driver.failsafe_recoveries
+
         started = time.time()
         consecutive = 0
         attempts = 0
+        framed = 0
+        active_applied = 0
+        safe_applied = 0
+        timeouts = 0
         actuator = self.driver.actuator
+        active_at_start = actuator.active_control_applied_count
+        safe_at_start = actuator.safe_stop_applied_count
+        max_clears = int(self.args.recovery_failsafe_clear_limit)
         while time.time() - started < timeout_sec and consecutive < int(required):
             self.driver.maybe_resync_clocks()
+            if self.driver.failsafe_recoveries - failsafe_before < max_clears:
+                # A no-op unless the FSM is actually latched.
+                self.driver.ensure_ready()
             before = actuator.active_control_applied_count
+            before_safe = actuator.safe_stop_applied_count
             outcome = self._drive_once(wait_for_command=True)
             attempts += 1
+            if outcome["timeout"]:
+                timeouts += 1
             if not outcome["frame"]:
                 continue
+            framed += 1
             if actuator.active_control_applied_count > before:
                 consecutive += 1
+                active_applied += 1
             else:
                 consecutive = 0
+                if actuator.safe_stop_applied_count > before_safe:
+                    safe_applied += 1
         return {
             "recovered": consecutive >= int(required),
             "consecutive_valid_required": int(required),
             "consecutive_valid_observed": consecutive,
             "recovery_sec": round(time.time() - started, 3),
             "recovery_attempts": attempts,
+            # Stated explicitly: a case that needed the MCU unlatched is not
+            # the same as one that recovered without it.
+            "mcu_failsafe_clear_count": self.driver.failsafe_recoveries - failsafe_before,
+            "mcu_failsafe_latched": self.driver.failsafe_recoveries > failsafe_before,
+            "mcu_failsafe_clear_limit": max_clears,
+            # When a case fails to recover, these say which link broke rather
+            # than leaving "recovered: false" to be guessed at.
+            "framed_iterations": framed,
+            "active_control_applied": active_applied,
+            "safe_stop_applied": safe_applied,
+            "command_timeouts": timeouts,
+            "actuator_active_delta": actuator.active_control_applied_count - active_at_start,
+            "actuator_safe_stop_delta": actuator.safe_stop_applied_count - safe_at_start,
+            "actuator_hold_applied": actuator.hold_applied_count,
         }
 
     def _fault_row(
@@ -697,6 +750,7 @@ class SoakRunner:
             "passed": observed == expected,
             "recovered": bool(recovery.get("recovered")) if recovery else "",
             "recovery_sec": recovery.get("recovery_sec") if recovery else "",
+            "recovery_detail": json.dumps(recovery, sort_keys=True) if recovery else "",
             "details": json.dumps(details, ensure_ascii=False, sort_keys=True, default=str),
         }
         self.fault_rows.append(row)
@@ -707,6 +761,9 @@ class SoakRunner:
         """Arm a node-side fault, drive one frame and require SAFE_STOP."""
 
         actuator = self.driver.actuator
+        # Same precondition every Phase 13B fault case uses: start from a MCU
+        # that is not still latched from the previous case.
+        self.driver.ensure_ready()
         before_safe = actuator.safe_stop_applied_count
         before_active = actuator.active_control_applied_count
         try:
@@ -894,10 +951,25 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
         help="Explicit command-lease lifetime; 0 derives it from the phase durations.",
     )
     parser.add_argument("--lease-margin-sec", type=float, default=3600.0)
+    parser.add_argument(
+        "--lease-reject-streak-limit", type=int, default=5,
+        help=(
+            "Longest run of unprovoked LEASE_REJECTs tolerated. An expired "
+            "lease rejects everything from that point on; a command racing an "
+            "explicit FAILSAFE recovery is isolated."
+        ),
+    )
     # A transient disconnect mid-soak is worth recovering from; a dead
     # transport still has to abort rather than be retried forever.
     parser.add_argument("--frame-reconnect-tick-threshold", type=int, default=120)
     parser.add_argument("--frame-reconnect-max-attempts", type=int, default=10)
+    parser.add_argument(
+        "--recovery-failsafe-clear-limit", type=int, default=3,
+        help=(
+            "How many explicit FAILSAFE clears one recovery window may perform. "
+            "Bounded so a genuinely stuck MCU still fails the case."
+        ),
+    )
     parser.add_argument("--backpressure-settle-sec", type=float, default=60.0)
     # Phase 13E-R Goal 1: bounded periodic clock discipline.
     parser.add_argument(
@@ -1099,6 +1171,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             "false_accept_count": false_accept,
             "false_reject_count": false_reject,
             "unrecovered_faults": unrecovered,
+            # How often the C watchdog latched into FAILSAFE and needed an
+            # explicit operator recovery. Recorded rather than absorbed.
+            "mcu_failsafe_recovery_count": runner.driver.failsafe_recoveries,
         }
 
         blockers = list(runner.blockers)
@@ -1213,13 +1288,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         unexpected_lease_rejects = int(
             jetson_metrics.get("unexpected_lease_reject_count", 0) or 0
         )
+        # An expired lease rejects every remaining command in an unbroken run;
+        # a command racing an explicit FAILSAFE recovery is isolated. The
+        # streak is what tells them apart, so that is what gates.
+        streak = int(jetson_metrics.get("max_unexpected_lease_reject_streak", 0) or 0)
+        streak_limit = int(args.lease_reject_streak_limit)
         summary["command_lease"] = {
             "lease_duration_sec": runner.driver.lease_duration_sec,
             "lease_reject_count": lease_rejects,
             "unexpected_lease_reject_count": unexpected_lease_rejects,
-            "lease_covered_run": unexpected_lease_rejects == 0,
+            "max_unexpected_lease_reject_streak": streak,
+            "lease_reject_streak_limit": streak_limit,
+            "lease_covered_run": streak <= streak_limit,
         }
-        if drove and unexpected_lease_rejects:
+        if drove and streak > streak_limit:
             blockers.append("command_lease_expired_during_run")
 
         summary["blockers"] = sorted(set(blockers + list(runner.driver.blockers)))

@@ -347,6 +347,8 @@ class JetsonNode:
         self.future_timestamp_reject_count = 0
         self.future_dated_command_count = 0
         self.unexpected_lease_reject_count = 0
+        self.unexpected_lease_reject_streak = 0
+        self.max_unexpected_lease_reject_streak = 0
         self.metric_window = None  # type: Optional[Dict[str, Any]]
         self.decoupled_consumer = bool(getattr(args, "decoupled_consumer", False))
         self.frame_command_records = JsonlSink(
@@ -1352,10 +1354,20 @@ class JetsonNode:
         rtt_ms = round((monotonic_us() - send_us) / 1000.0, 3)
         self.command_rtt_ms.observe(rtt_ms)
         # A LEASE_REJECT from the injected wrong-lease fault is the expected
-        # outcome of that fault. Only an unprovoked one means the session's
-        # lease actually lapsed, which is what a long run has to rule out.
+        # outcome of that fault. Only an unprovoked one is interesting, and
+        # even then the shape matters: a lapsed lease rejects every remaining
+        # command in an unbroken run, whereas a command that races an explicit
+        # FAILSAFE recovery (between clear_failsafe and begin_session, where
+        # there is momentarily no active lease) shows up as an isolated one.
+        # The streak is what distinguishes them.
         if observed == "LEASE_REJECT" and injected != "wrong_lease":
             self.unexpected_lease_reject_count += 1
+            self.unexpected_lease_reject_streak += 1
+            self.max_unexpected_lease_reject_streak = max(
+                self.max_unexpected_lease_reject_streak, self.unexpected_lease_reject_streak
+            )
+        elif observed == "ACCEPTED":
+            self.unexpected_lease_reject_streak = 0
         # `expired_command` deliberately back-dates validity, so its rejection
         # is the injected outcome and must not be counted as a clock defect.
         skew_us = (
@@ -1526,6 +1538,7 @@ class JetsonNode:
             "future_timestamp_reject_count": self.future_timestamp_reject_count,
             "future_dated_command_count": self.future_dated_command_count,
             "unexpected_lease_reject_count": self.unexpected_lease_reject_count,
+            "max_unexpected_lease_reject_streak": self.max_unexpected_lease_reject_streak,
             "range_state_counts": dict(self.range_state_counts),
             "command_packet_size_bytes": PACKET_SIZE,
             "command_protocol_version": PROTOCOL_VERSION,
