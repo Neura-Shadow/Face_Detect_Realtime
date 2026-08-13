@@ -35,6 +35,7 @@ from run_phase13d_checks import (  # noqa: E402
     new_run_id,
     pc_git_sha,
     run_command,
+    run_command_utf8,
     utc_now_iso,
 )
 
@@ -51,7 +52,10 @@ SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15"]
 
 
 def ssh(target: str, remote: str, *, timeout: int = 600) -> Dict[str, Any]:
-    return run_command(["ssh"] + SSH_OPTS + [target, remote], timeout=timeout)
+    # UTF-8 explicitly: the Jetson log carries non-ASCII text, and letting the
+    # Windows locale codec (cp950) decode it makes the reader thread raise and
+    # hands back stdout=None — a healthy node then looks like a crashed one.
+    return run_command_utf8(["ssh"] + SSH_OPTS + [target, remote], timeout=timeout)
 
 
 def repository_guard(branch: str) -> Dict[str, Any]:
@@ -156,7 +160,7 @@ def wait_for_node(target: str, run_id: str, *, timeout_sec: float) -> Dict[str, 
             % {"log": log_path(run_id)},
             timeout=120,
         )
-        tail = result["stdout"]
+        tail = result.get("stdout") or ""
         if "phase13b_jetson_node_ready" in tail:
             pid = ssh(
                 target,
