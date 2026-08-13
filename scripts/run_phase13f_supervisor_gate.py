@@ -761,12 +761,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         runner.case_preflight_failure(
             "S05", "control port already held",
-            "setsid nohup python3 -c \"import socket,time;s=socket.socket();"
-            "s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);"
-            "s.bind(('0.0.0.0',%d));s.listen(1);time.sleep(600)\" </dev/null "
-            ">%s/portholder.log 2>&1 & echo $! > %s/portholder.pid; sleep 2"
-            % (args.control_port, args.runtime_dir, args.runtime_dir),
-            "if [ -f %s/portholder.pid ]; then kill $(cat %s/portholder.pid) 2>/dev/null || true; "
+            # The holder writes its own PID for the same reason the supervisor
+            # does: `$!` is the backgrounded setsid, not the python it becomes,
+            # so a PID recorded by the shell cannot be used to stop it. The
+            # first attempt did exactly that, the holder survived its own
+            # teardown, and the next case failed preflight on a port that was
+            # supposed to have been released.
+            "setsid nohup python3 -c \"import os,socket,time;"
+            "open('%s/portholder.pid','w').write(str(os.getpid()));"
+            "s=socket.socket();s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);"
+            "s.bind(('0.0.0.0',%d));s.listen(1);time.sleep(900)\" </dev/null "
+            ">%s/portholder.log 2>&1 & sleep 3"
+            % (args.runtime_dir, args.control_port, args.runtime_dir),
+            "if [ -f %s/portholder.pid ]; then P=$(cat %s/portholder.pid); "
+            "kill $P 2>/dev/null || true; sleep 3; "
+            "if kill -0 $P 2>/dev/null; then kill -9 $P 2>/dev/null || true; sleep 2; fi; "
             "rm -f %s/portholder.pid; fi"
             % (args.runtime_dir, args.runtime_dir, args.runtime_dir),
         )
