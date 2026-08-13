@@ -199,8 +199,16 @@ class JetsonSession:
         self.wrapper_pid = self._read_supervisor_pid(timeout_sec=45)
         if self.wrapper_pid:
             self.started_wrapper_pids.append(self.wrapper_pid)
-        return {"wrapper_pid": self.wrapper_pid, "returncode": result["returncode"],
-                "command": command}
+        payload = {"wrapper_pid": self.wrapper_pid, "returncode": result["returncode"],
+                   "command": command}
+        if not self.wrapper_pid:
+            # A wrapper that never started must say so here. Silently returning
+            # no PID turns every later check into an unexplained UNKNOWN, which
+            # is how an argparse error in the launch line once masqueraded as a
+            # failed restart-storm case.
+            payload["start_failed"] = True
+            payload["wrapper_log_tail"] = self.tail_log("wrapper.log", 12)
+        return payload
 
     def _read_supervisor_pid(self, *, timeout_sec: float = 45.0) -> Optional[int]:
         deadline = time.time() + float(timeout_sec)
@@ -505,10 +513,18 @@ class GateBRunner:
         # A node that cannot start at all: point it at a non-existent profile so
         # every generation fails immediately. Preflight still passes, so the
         # storm limit is what has to stop it.
-        self.session.start_wrapper(
-            extra_args="--node-extra-args --tensorrt-engine=/nonexistent/engine.plan"
+        # `--opt=value`, not `--opt value`: argparse refuses to consume a token
+        # beginning with `--` as an option's value, so the space form fails with
+        # "expected one argument" and the wrapper never starts at all -- which
+        # is exactly how this case previously reported UNKNOWN instead of
+        # testing anything.
+        started = self.session.start_wrapper(
+            extra_args="--node-extra-args=--tensorrt-engine=/nonexistent/engine.plan"
                        " --node-ready-timeout-sec 8"
         )
+        if started.get("start_failed"):
+            self.record("S06", "restart storm", "BLOCKED", "WRAPPER_START_FAILED", started)
+            return
         deadline = time.time() + float(self.args.storm_timeout_sec)
         health = {}  # type: Dict[str, Any]
         saw_failed = False
