@@ -283,6 +283,55 @@ class JetsonSession:
         pids = [int(item) for item in (result.get("stdout") or "").split() if item.isdigit()]
         return {"leftover_node_pids": pids, "orphan_count": len(pids)}
 
+    def repair_environment(self) -> Dict[str, Any]:
+        """Undo anything a previous interrupted run left behind.
+
+        The preflight-failure cases deliberately break the target -- they hide
+        the engine and corrupt the manifest hash -- and restore it in their own
+        teardown. If the driver is interrupted mid-case that teardown never
+        runs, and the next run finds an engine that is simply gone. So repair
+        happens at the start of every run as well as the end, and is
+        idempotent.
+        """
+
+        engine = self.args.engine_path
+        manifest = "%s/%s" % (self.repo, self.args.manifest)
+        remote = "; ".join([
+            'if [ -f "%s.gateb-hidden" ]; then mv "%s.gateb-hidden" "%s" && echo engine_restored; fi'
+            % (engine, engine, engine),
+            'if [ -f "%s.bak" ]; then mv "%s.bak" "%s" && echo manifest_restored; fi'
+            % (manifest, manifest, manifest),
+            'if [ -f %s/portholder.pid ]; then P=$(cat %s/portholder.pid); '
+            'kill "$P" 2>/dev/null && echo portholder_stopped; rm -f %s/portholder.pid; fi'
+            % (self.runtime_dir, self.runtime_dir, self.runtime_dir),
+            "echo repair_done",
+        ])
+        result = self.ssh(remote, timeout=180)
+        output = (result.get("stdout") or "")
+        return {
+            "engine_restored": "engine_restored" in output,
+            "manifest_restored": "manifest_restored" in output,
+            "portholder_stopped": "portholder_stopped" in output,
+            "repair_ran": "repair_done" in output,
+        }
+
+    def rebuild_manifest(self) -> Dict[str, Any]:
+        """Regenerate the manifest so its hash matches the engine on disk."""
+
+        result = self.ssh(
+            "cd %s && source %s/bin/activate && python scripts/run_phase13f_manifest.py"
+            % (shlex.quote(self.repo), shlex.quote(self.venv)),
+            timeout=300,
+        )
+        for line in reversed((result.get("stdout") or "").splitlines()):
+            if line.strip().startswith("}"):
+                break
+        try:
+            payload = json.loads(result.get("stdout") or "{}")
+        except ValueError:
+            payload = {"ok": result["returncode"] == 0}
+        return payload
+
     def tail_log(self, name: str, lines: int = 40) -> List[str]:
         result = self.ssh(
             "tail -n %d %s/%s 2>/dev/null || true" % (lines, shlex.quote(self.runtime_dir), name),
@@ -470,6 +519,10 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--jetson-venv", default="/home/myjetsonnx/venvs/ma-vlna")
     parser.add_argument("--runtime-dir", default="/tmp/ma-vlna-gateb")
     parser.add_argument("--manifest", default="config/phase13f_service_manifest.json")
+    parser.add_argument(
+        "--engine-path",
+        default="/home/myjetsonnx/models/ma-vlna/yolov9/yolov9-c-640-b1-trt852-fp16.engine",
+    )
     parser.add_argument("--expected-repo-sha", default="")
     parser.add_argument("--pc-host", default="192.168.55.100")
     parser.add_argument("--frame-port", type=int, default=48701)
@@ -548,6 +601,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("%s Gate B run_id=%s" % (PHASE, run_id))
     print("fault matrix:")
     try:
+        summary["repair_before"] = session.repair_environment()
+        if summary["repair_before"]["engine_restored"] or summary["repair_before"]["manifest_restored"]:
+            # A previous run was interrupted mid-case; the manifest hash and
+            # the engine must agree again before anything is measured.
+            summary["manifest_rebuilt"] = session.rebuild_manifest()
         session.ssh("rm -rf %s && mkdir -p %s" % (
             shlex.quote(args.runtime_dir), shlex.quote(args.runtime_dir)), timeout=120)
         summary["notify_listener"] = session.start_notify_listener()
@@ -626,6 +684,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     finally:
         summary["cleanup"] = session.stop_all()
         summary["service_log_tail"] = session.tail_log("service.jsonl", 30)
+        # Always leave the target the way it was found, even on exception.
+        summary["repair_after"] = session.repair_environment()
+        summary["manifest_final"] = session.rebuild_manifest()
 
     orphans = summary.get("cleanup", {}).get("orphans", {})
     summary["orphan_count"] = int(orphans.get("orphan_count", 0))
