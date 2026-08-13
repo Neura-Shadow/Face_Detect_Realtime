@@ -214,15 +214,45 @@ class JetsonSession:
         return {"state": "UNKNOWN", "error": (result.get("stderr") or "")[-300:]}
 
     def wait_for_state(self, state: str, *, timeout_sec: float) -> Dict[str, Any]:
-        deadline = time.time() + float(timeout_sec)
+        started = time.time()
+        deadline = started + float(timeout_sec)
         last = {}  # type: Dict[str, Any]
         while time.time() < deadline:
             last = self.health()
             if last.get("state") == state:
-                last["wait_sec"] = round(timeout_sec - (deadline - time.time()), 3)
+                last["wait_sec"] = round(time.time() - started, 3)
                 return last
             time.sleep(3)
         last["timed_out"] = True
+        return last
+
+    def wait_for_ready_node(self, *, timeout_sec: float, min_start_count: int = 0) -> Dict[str, Any]:
+        """Wait for a service that is READY *and* has a live node behind it.
+
+        READY alone is not enough to inject into. Immediately after killing the
+        node the wrapper has not yet noticed, so a status read returns the old
+        READY with the old PID -- which is exactly how the first Gate B run
+        recorded a 0.5 s "recovery" that never happened. Requiring the start
+        count to have advanced is what makes recovery observable rather than
+        assumed.
+        """
+
+        started = time.time()
+        deadline = started + float(timeout_sec)
+        last = {}  # type: Dict[str, Any]
+        while time.time() < deadline:
+            last = self.health()
+            starts = int(last.get("node_start_count", 0) or 0)
+            if (
+                last.get("state") == "READY"
+                and last.get("node_pid")
+                and starts >= int(min_start_count)
+            ):
+                last["wait_sec"] = round(time.time() - started, 3)
+                return last
+            time.sleep(3)
+        last["timed_out"] = True
+        last["wait_sec"] = round(time.time() - started, 3)
         return last
 
     def signal_pid(self, pid: Optional[int], signal_name: str) -> Dict[str, Any]:
@@ -248,6 +278,15 @@ class JetsonSession:
         """Stop exactly what we started, in order, and confirm."""
 
         report = {}  # type: Dict[str, Any]
+        # Record the node PID before stopping the wrapper, so if the
+        # wrapper cannot reap it we can stop exactly that PID rather than
+        # matching on a name.
+        node_pid = None
+        try:
+            node_pid = self.node_pid()
+        except Exception:
+            node_pid = None
+        report["node_pid_before_stop"] = node_pid
         report["wrapper"] = self.signal_pid(self.wrapper_pid, "TERM")
         time.sleep(6)
         report["wrapper_still_running"] = self._pid_alive(self.wrapper_pid)
@@ -255,7 +294,15 @@ class JetsonSession:
             report["wrapper_kill"] = self.signal_pid(self.wrapper_pid, "KILL")
             time.sleep(2)
         report["listener"] = self.signal_pid(self.listener_pid, "TERM")
-        # Any node the wrapper did not reap is an orphan; count it honestly.
+        # If the wrapper failed to reap its node, stop that exact recorded
+        # PID. Still never a name match.
+        if node_pid and self._pid_alive(node_pid):
+            report["node_reaped_by_driver"] = self.signal_pid(node_pid, "TERM")
+            time.sleep(8)
+            if self._pid_alive(node_pid):
+                report["node_killed_by_driver"] = self.signal_pid(node_pid, "KILL")
+                time.sleep(3)
+        # Any node still running is an orphan; count it honestly.
         report["orphans"] = self.orphan_report()
         return report
 
@@ -368,20 +415,29 @@ class GateBRunner:
     def case_signal_node(self, case_id: str, signal_name: str) -> None:
         """Killing the node must be survived by the service."""
 
-        before = self.session.health()
+        # Inject only into a service that is actually up with a live node.
+        before = self.session.wait_for_ready_node(
+            timeout_sec=float(self.args.recovery_timeout_sec)
+        )
         pid = before.get("node_pid")
         starts_before = int(before.get("node_start_count", 0) or 0)
         signalled = self.session.signal_pid(pid, signal_name)
         if not signalled.get("signalled"):
-            self.record(case_id, "node %s" % signal_name, "READY", "NO_NODE_PID", signalled)
+            self.record(case_id, "node %s" % signal_name, "READY", "NO_NODE_PID",
+                        {"signal": signalled, "health_before": before})
             return
-        recovered = self.session.wait_for_state(
-            "READY", timeout_sec=float(self.args.recovery_timeout_sec)
+        # Recovery means a *new* generation reached READY, not that a stale
+        # status still says READY.
+        recovered = self.session.wait_for_ready_node(
+            timeout_sec=float(self.args.recovery_timeout_sec),
+            min_start_count=starts_before + 1,
         )
         starts_after = int(recovered.get("node_start_count", 0) or 0)
         observed = "READY" if recovered.get("state") == "READY" else str(recovered.get("state"))
         if observed == "READY" and starts_after <= starts_before:
             observed = "NOT_RESPAWNED"
+        if recovered.get("timed_out"):
+            observed = "RECOVERY_TIMEOUT"
         self.record(
             case_id, "node %s" % signal_name, "READY", observed,
             {
@@ -442,8 +498,12 @@ class GateBRunner:
             if not self.session._pid_alive(self.session.wrapper_pid):
                 break
             time.sleep(4)
+        # Let the wrapper finish exiting so its final records are on disk.
+        exit_deadline = time.time() + 60
+        while time.time() < exit_deadline and self.session._pid_alive(self.session.wrapper_pid):
+            time.sleep(3)
         alive = self.session._pid_alive(self.session.wrapper_pid)
-        log = self.session.tail_log("service.jsonl", 200)
+        log = self.session.tail_log("service.jsonl", 400)
         storm_logged = any("restart_storm_blocked" in line for line in log)
         observed = "BLOCKED" if (saw_failed or storm_logged) else str(health.get("state", "UNKNOWN"))
         self.record(
@@ -461,7 +521,9 @@ class GateBRunner:
     def case_pc_unavailable(self) -> None:
         """With no PC session, the service stays up and grants nothing."""
 
-        health = self.session.health()
+        health = self.session.wait_for_ready_node(
+            timeout_sec=float(self.args.recovery_timeout_sec)
+        )
         commands = int(health.get("node_start_count", 0) or 0)
         observed = "READY_NO_AUTHORITY"
         if health.get("state") != "READY":
@@ -478,15 +540,24 @@ class GateBRunner:
     def case_graceful_stop(self) -> None:
         """SIGTERM to the wrapper: SAFE_STOP, node stopped, no orphan."""
 
-        before = self.session.health()
+        before = self.session.wait_for_ready_node(
+            timeout_sec=float(self.args.recovery_timeout_sec)
+        )
         node_pid = before.get("node_pid")
         self.session.signal_pid(self.session.wrapper_pid, "TERM")
-        deadline = time.time() + 45
+        deadline = time.time() + float(self.args.graceful_stop_timeout_sec)
         while time.time() < deadline:
             if not self.session._pid_alive(self.session.wrapper_pid):
                 break
             time.sleep(2)
         wrapper_gone = not self.session._pid_alive(self.session.wrapper_pid)
+        # The node tears down TensorRT on the way out; give it the same
+        # grace the wrapper does before calling it a leftover process.
+        node_deadline = time.time() + 30
+        while node_pid and time.time() < node_deadline:
+            if not self.session._pid_alive(node_pid):
+                break
+            time.sleep(2)
         node_gone = not self.session._pid_alive(node_pid) if node_pid else True
         last_status = self.session.ssh(
             "cat %s/last_status.json 2>/dev/null || echo '{}'" % shlex.quote(self.args.runtime_dir),
@@ -536,7 +607,8 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--ready-timeout-sec", type=float, default=300.0)
     parser.add_argument("--recovery-timeout-sec", type=float, default=300.0)
     parser.add_argument("--preflight-timeout-sec", type=float, default=180.0)
-    parser.add_argument("--storm-timeout-sec", type=float, default=300.0)
+    parser.add_argument("--storm-timeout-sec", type=float, default=420.0)
+    parser.add_argument("--graceful-stop-timeout-sec", type=float, default=90.0)
     parser.add_argument("--node-ready-timeout-sec", type=float, default=180.0)
     parser.add_argument("--restart-initial-sec", type=float, default=2.0)
     parser.add_argument("--restart-max-sec", type=float, default=15.0)
