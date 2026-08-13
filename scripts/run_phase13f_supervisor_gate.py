@@ -32,6 +32,7 @@ under its own 3.8.10 venv.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import shlex
 import subprocess
@@ -119,9 +120,13 @@ class JetsonSession:
         counts_path = "%s/notify_counts.json" % self.runtime_dir
         pid_path = "%s/notify.pid" % self.runtime_dir
         script_path = "%s/notify_listener.py" % self.runtime_dir
+        # base64 rather than a heredoc: a heredoc cannot be chained with `&&`
+        # after its terminator, and this sidesteps every quoting hazard in
+        # shipping a Python script through ssh.
+        encoded = base64.b64encode(NOTIFY_LISTENER.encode("utf-8")).decode("ascii")
         remote = " && ".join([
             "mkdir -p %s" % shlex.quote(self.runtime_dir),
-            "cat > %s <<'PHASE13F_EOF'\n%s\nPHASE13F_EOF" % (script_path, NOTIFY_LISTENER),
+            "echo %s | base64 -d > %s" % (shlex.quote(encoded), shlex.quote(script_path)),
             "setsid nohup python3 %s %s %s </dev/null >%s/notify.log 2>&1 & echo $! > %s"
             % (script_path, socket_path, counts_path, self.runtime_dir, pid_path),
             "sleep 1",
@@ -153,8 +158,10 @@ class JetsonSession:
         log_path = "%s/wrapper.log" % self.runtime_dir
         env = ""
         if with_notify:
-            # Exercise the real notify and watchdog paths without systemd.
-            env = "NOTIFY_SOCKET=%s/notify.sock WATCHDOG_USEC=%d " % (
+            # `env` rather than a bare VAR=value prefix: nohup treats its first
+            # argument as the command name, so `nohup NOTIFY_SOCKET=... python`
+            # fails with "No such file or directory".
+            env = "env NOTIFY_SOCKET=%s/notify.sock WATCHDOG_USEC=%d " % (
                 self.runtime_dir, int(self.args.watchdog_usec)
             )
         command = (
@@ -488,6 +495,10 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except AttributeError:
+        pass
     args = parse_args(list(sys.argv[1:] if argv is None else argv))
     run_id = args.run_id or ("%s-13f-gateb" % new_run_id())
     runner = GateBRunner(args)
