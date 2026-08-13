@@ -41,6 +41,9 @@ from simulation.virtual_safety_mcu_server import (
     find_safety_mcu_library,
 )
 from workers.core.clock_discipline import DEFAULT_RESYNC_INTERVAL_SEC
+
+#: Default command-lease lifetime. Long runs must raise this to cover the run.
+DEFAULT_LEASE_DURATION_SEC = 3600.0
 from workers.core.clock_sync import (
     DEFAULT_MAX_UNCERTAINTY_US,
     DEFAULT_SAMPLE_COUNT,
@@ -266,6 +269,7 @@ class JilSessionDriver:
         auto_build_mcu_library: bool = True,
         clock_resync_interval_sec: float = DEFAULT_RESYNC_INTERVAL_SEC,
         clock_resync_samples: int = 12,
+        lease_duration_sec: float = DEFAULT_LEASE_DURATION_SEC,
     ) -> None:
         self.run_id = run_id
         self.jetson_host = jetson_host
@@ -281,6 +285,15 @@ class JilSessionDriver:
         # Phase 13E-R Goal 1: bounded periodic clock discipline.
         self.clock_resync_interval_sec = float(clock_resync_interval_sec)
         self.clock_resync_samples = max(4, int(clock_resync_samples))
+        # The command lease bounds how long AI authority may last without an
+        # explicit operator grant. One hour was fine for every run so far
+        # because none had ever survived that long: Phase 13E died at 2.4
+        # minutes on the clock defect, so nothing reached the expiry. A Gate C
+        # soak is 30 min burn-in plus >=2 h of driving, so the lease has to be
+        # told how long the run is. The semantics are unchanged -- the lease
+        # still exists, still expires, and still gates authority.
+        self.lease_duration_sec = float(lease_duration_sec)
+        self.lease_duration_us = int(self.lease_duration_sec * 1_000_000)
         self.clock_resync_count = 0
         self.clock_resync_failure_count = 0
         self.clock_last_resync_us = 0
@@ -386,7 +399,7 @@ class JilSessionDriver:
         self.command_lease_id = (uuid.uuid4().int & 0x7FFFFFFF) or 0x13B00001
         bootstrap = self.server.bootstrap(
             lease_id=self.command_lease_id,
-            lease_expires_us=monotonic_us() + 3_600_000_000,
+            lease_expires_us=monotonic_us() + self.lease_duration_us,
         )
         self.server.start(poll_timeout_sec=0.05)
         payload = {"ok": True, "lease": bootstrap}
@@ -402,7 +415,7 @@ class JilSessionDriver:
         if state == 5:  # FAILSAFE
             self.server.recover_from_failsafe(
                 lease_id=self.command_lease_id,
-                lease_expires_us=monotonic_us() + 3_600_000_000,
+                lease_expires_us=monotonic_us() + self.lease_duration_us,
             )
             self.failsafe_recoveries += 1
             self.emit("virtual_mcu_explicit_failsafe_recovery", previous_state=state)
@@ -547,7 +560,7 @@ class JilSessionDriver:
             "start_session",
             session_id=self.session_id,
             command_lease_id=self.command_lease_id,
-            lease_expires_pc_us=monotonic_us() + 3_600_000_000,
+            lease_expires_pc_us=monotonic_us() + self.lease_duration_us,
             jetson_minus_pc_offset_us=self.clock_result.jetson_minus_pc_offset_us,
             clock_uncertainty_us=self.clock_result.clock_uncertainty_us,
             clock_sync_valid=self.clock_result.clock_sync_valid,
@@ -883,7 +896,7 @@ class JilSessionDriver:
 
         def restore_lease() -> None:
             if self.server is not None:
-                self.server.refresh_lease(self.command_lease_id, monotonic_us() + 3_600_000_000)
+                self.server.refresh_lease(self.command_lease_id, monotonic_us() + self.lease_duration_us)
 
         cases.append(
             command_case(
@@ -980,7 +993,7 @@ class JilSessionDriver:
             if self.server is not None and state == 5:
                 self.server.recover_from_failsafe(
                     lease_id=self.command_lease_id,
-                    lease_expires_us=monotonic_us() + 3_600_000_000,
+                    lease_expires_us=monotonic_us() + self.lease_duration_us,
                 )
                 self.failsafe_recoveries += 1
             return observed, {"mcu_state": state, "explicit_recovery": state == 5}
@@ -1207,6 +1220,7 @@ class JilSessionDriver:
             payload.update(self.clock_result.to_dict())
         # Phase 13E-R Goal 1: the discipline loop's own counters, measured on
         # the PC that drives it. The projected model itself lives on the Jetson.
+        payload["command_lease_duration_sec"] = self.lease_duration_sec
         payload["clock_resync_count"] = self.clock_resync_count
         payload["clock_resync_failure_count"] = self.clock_resync_failure_count
         payload["clock_resync_interval_sec"] = self.clock_resync_interval_sec

@@ -125,6 +125,7 @@ class SoakRunner:
             camera_height=args.camera_height,
             clock_resync_interval_sec=args.clock_resync_interval_sec,
             clock_resync_samples=args.clock_resync_samples,
+            lease_duration_sec=self._required_lease_sec(args),
         )
         self.session = None  # type: Optional[CarlaLockstepSession]
         # Phase 13E-R Goal 2: real camera frames encoded once for replay by a
@@ -132,6 +133,8 @@ class SoakRunner:
         self.frame_ring = EncodedFrameRing(int(args.backpressure_ring_frames))
         self._next_burst_sample = 0.0
         self._burst_command_baseline = 0
+        self.transport_reconnect_attempts = 0
+        self.transport_reconnect_successes = 0
         self.series = {}  # type: Dict[str, SoakSeries]
         self.phases = []  # type: List[Dict[str, Any]]
         self.fault_rows = []  # type: List[Dict[str, Any]]
@@ -142,6 +145,30 @@ class SoakRunner:
         self.last_metrics = {}  # type: Dict[str, Any]
 
     # ── helpers ─────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _required_lease_sec(args: argparse.Namespace) -> float:
+        """Size the command lease to outlast the run it is granted for.
+
+        The lease bounds how long AI authority may last without an explicit
+        operator grant, and one hour had always been ample because no run had
+        ever survived that long — Phase 13E died at 2.4 minutes on the clock
+        defect. With the clock fixed, a Gate C run reached 60 minutes and every
+        command after that was LEASE_REJECT. Nothing about the lease semantics
+        changes here; it is simply told how long the run actually is.
+        """
+
+        if float(getattr(args, "lease_duration_sec", 0.0)) > 0:
+            return float(args.lease_duration_sec)
+        driving = (
+            float(args.burn_in_sec)
+            + float(args.soak_sec)
+            + float(args.backpressure_burst_sec)
+            + 2.0 * float(args.backpressure_settle_sec)
+        )
+        # Fault injection, the Phase 13B matrix, CARLA setup and evidence
+        # collection all sit outside the driving phases.
+        return max(3600.0, driving + float(args.lease_margin_sec))
 
     def elapsed(self) -> float:
         return time.time() - self.started_at
@@ -309,6 +336,33 @@ class SoakRunner:
             outcome["latency_ms"] = round((monotonic_us() - published_us) / 1000.0, 3)
         return outcome
 
+    def verify_camera_delivery(self, session: Any) -> Dict[str, Any]:
+        """Confirm the CARLA camera actually delivers before committing hours.
+
+        A first Phase 13E-R hardware attempt ticked 604 times with an empty
+        image queue and had to be aborted by the stall guard. The guard did its
+        job, but it fires deep inside a driving phase. Checking here costs a
+        second and fails with a reason instead of a symptom.
+        """
+
+        ticks = max(1, int(self.args.camera_check_ticks))
+        images = 0
+        started = time.time()
+        for _ in range(ticks):
+            session.tick()
+            if session.latest_image() is not None:
+                images += 1
+                if images >= 2:
+                    break
+        payload = {
+            "ticks_attempted": ticks,
+            "images_observed": images,
+            "camera_delivering": images > 0,
+            "check_duration_sec": round(time.time() - started, 3),
+        }
+        self.emit("carla_camera_delivery_checked", **payload)
+        return payload
+
     def _tick_only(self) -> None:
         """Step CARLA and apply the latest command without publishing a frame.
 
@@ -331,6 +385,43 @@ class SoakRunner:
             self.session.apply(
                 self.driver.actuator.decide(None, reason="no_new_command_this_tick")
             )
+
+    def _try_reconnect_transport(self, phase: str, stalled_ticks: int) -> bool:
+        """Attempt one bounded frame-transport reconnect. Returns success.
+
+        Only fires once the stall has persisted past a threshold, so a single
+        dropped frame does not trigger a reconnect, and only up to a fixed
+        budget for the whole run, so a permanently dead transport still aborts
+        instead of being retried forever.
+        """
+
+        threshold = int(self.args.frame_reconnect_tick_threshold)
+        if threshold <= 0 or stalled_ticks < threshold:
+            return False
+        if stalled_ticks % threshold:
+            return False
+        if self.transport_reconnect_attempts >= int(self.args.frame_reconnect_max_attempts):
+            return False
+        self.transport_reconnect_attempts += 1
+        recovered = False
+        try:
+            recovered = bool(self.driver.reconnect_frames())
+        except Exception as exc:  # transport errors are already classified
+            self.emit(
+                "frame_transport_reconnect_error",
+                phase=phase, attempt=self.transport_reconnect_attempts, error=repr(exc)[:200],
+            )
+            return False
+        if recovered:
+            self.transport_reconnect_successes += 1
+        self.emit(
+            "frame_transport_reconnect",
+            phase=phase,
+            attempt=self.transport_reconnect_attempts,
+            stalled_ticks=stalled_ticks,
+            recovered=recovered,
+        )
+        return recovered
 
     def run_timed_phase(
         self,
@@ -364,6 +455,12 @@ class SoakRunner:
             ticks += 1
             if outcome["frame"]:
                 frames += 1
+                stalled_ticks = 0
+            elif self._try_reconnect_transport(name, stalled_ticks + 1):
+                # A transient disconnect after an hour of healthy driving is
+                # worth recovering from; throwing the whole run away for it is
+                # not. Every reconnect is counted and reported, so a run that
+                # needed three is never mistaken for one that needed none.
                 stalled_ticks = 0
             else:
                 # A camera that never delivers, or a transport with nowhere to
@@ -776,6 +873,20 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--backpressure-min-input-fps", type=float, default=10.0)
     parser.add_argument("--backpressure-min-burst-sec", type=float, default=300.0)
     parser.add_argument("--backpressure-ring-frames", type=int, default=8)
+    parser.add_argument(
+        "--camera-check-ticks", type=int, default=60,
+        help="Ticks allowed for the camera to deliver its first frame before the run aborts.",
+    )
+    # Phase 13E-R: the command lease has to outlast the run it is granted for.
+    parser.add_argument(
+        "--lease-duration-sec", type=float, default=0.0,
+        help="Explicit command-lease lifetime; 0 derives it from the phase durations.",
+    )
+    parser.add_argument("--lease-margin-sec", type=float, default=3600.0)
+    # A transient disconnect mid-soak is worth recovering from; a dead
+    # transport still has to abort rather than be retried forever.
+    parser.add_argument("--frame-reconnect-tick-threshold", type=int, default=120)
+    parser.add_argument("--frame-reconnect-max-attempts", type=int, default=10)
     parser.add_argument("--backpressure-settle-sec", type=float, default=60.0)
     # Phase 13E-R Goal 1: bounded periodic clock discipline.
     parser.add_argument(
@@ -899,6 +1010,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             runner.blockers.append("carla_setup_failed")
             raise RuntimeError("ego vehicle could not be spawned at any candidate spawn point")
         runner.session = session
+        camera_check = runner.verify_camera_delivery(session)
+        summary["carla_camera_delivery"] = camera_check
+        if not camera_check["camera_delivering"]:
+            runner.blockers.append("carla_camera_not_delivering")
+            raise RuntimeError(
+                "CARLA camera delivered no image in %d ticks; refusing to start a "
+                "multi-hour run that would only tick an empty loop"
+                % camera_check["ticks_attempted"]
+            )
         for _ in range(int(args.warmup_ticks)):
             session.tick()
             session.latest_image()
@@ -1064,6 +1184,25 @@ def main(argv: Optional[List[str]] = None) -> int:
                 blockers.append("phase13b_fault_matrix_regression_failed")
         timeouts = sum(phase["command_timeouts"] for phase in runner.phases)
         summary["command_timeouts_total"] = timeouts
+
+        # A run that needed reconnects is not the same as one that did not, and
+        # a lease that expired mid-run invalidates every authority claim after
+        # it. Both are stated rather than left to be inferred.
+        summary["frame_transport_recovery"] = {
+            "reconnect_attempts": runner.transport_reconnect_attempts,
+            "reconnect_successes": runner.transport_reconnect_successes,
+            "reconnect_max_attempts": int(args.frame_reconnect_max_attempts),
+        }
+        lease_rejects = int(
+            (jetson_metrics.get("command_classifications") or {}).get("LEASE_REJECT", 0)
+        )
+        summary["command_lease"] = {
+            "lease_duration_sec": runner.driver.lease_duration_sec,
+            "lease_reject_count": lease_rejects,
+            "lease_covered_run": lease_rejects == 0,
+        }
+        if drove and lease_rejects:
+            blockers.append("command_lease_expired_during_run")
 
         summary["blockers"] = sorted(set(blockers + list(runner.driver.blockers)))
         soaked = "soak" in requested and soak_seconds >= float(args.min_soak_sec)
