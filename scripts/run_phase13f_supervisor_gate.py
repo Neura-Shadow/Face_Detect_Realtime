@@ -103,6 +103,9 @@ class JetsonSession:
         self.runtime_dir = args.runtime_dir
         self.wrapper_pid = None  # type: Optional[int]
         self.listener_pid = None  # type: Optional[int]
+        # Every wrapper this run started, so cleanup stops all of them and
+        # not merely the most recent.
+        self.started_wrapper_pids = []  # type: List[int]
 
     def ssh(self, remote: str, *, timeout: int = 300) -> Dict[str, Any]:
         return run_command_utf8(["ssh"] + SSH_OPTS + [self.target, remote], timeout=timeout)
@@ -183,6 +186,7 @@ class JetsonSession:
             )
         )
         remote = " && ".join([
+            "rm -f %s/supervisor.pid" % shlex.quote(self.runtime_dir),
             "cd %s" % shlex.quote(self.repo),
             "source %s/bin/activate" % shlex.quote(self.venv),
             "setsid nohup %s </dev/null >%s 2>&1 & echo $! > %s" % (command, log_path, pid_path),
@@ -190,11 +194,24 @@ class JetsonSession:
             "cat %s" % pid_path,
         ])
         result = self.ssh(remote, timeout=180)
-        for line in (result.get("stdout") or "").splitlines():
-            if line.strip().isdigit():
-                self.wrapper_pid = int(line.strip())
+        # `$!` is the backgrounded setsid, not the supervisor it execs into, so
+        # the shell's idea of the PID is wrong. The supervisor writes its own.
+        self.wrapper_pid = self._read_supervisor_pid(timeout_sec=45)
+        if self.wrapper_pid:
+            self.started_wrapper_pids.append(self.wrapper_pid)
         return {"wrapper_pid": self.wrapper_pid, "returncode": result["returncode"],
                 "command": command}
+
+    def _read_supervisor_pid(self, *, timeout_sec: float = 45.0) -> Optional[int]:
+        deadline = time.time() + float(timeout_sec)
+        path = "%s/supervisor.pid" % self.runtime_dir
+        while time.time() < deadline:
+            result = self.ssh("cat %s 2>/dev/null || true" % shlex.quote(path), timeout=60)
+            text = (result.get("stdout") or "").strip()
+            if text.isdigit():
+                return int(text)
+            time.sleep(2)
+        return None
 
     def health(self) -> Dict[str, Any]:
         code = (
@@ -288,7 +305,12 @@ class JetsonSession:
             node_pid = None
         report["node_pid_before_stop"] = node_pid
         report["wrapper"] = self.signal_pid(self.wrapper_pid, "TERM")
-        time.sleep(6)
+        # Any earlier wrapper this run started must be stopped too.
+        report["earlier_wrappers"] = [
+            self.signal_pid(pid, "TERM")
+            for pid in self.started_wrapper_pids if pid and pid != self.wrapper_pid
+        ]
+        time.sleep(8)
         report["wrapper_still_running"] = self._pid_alive(self.wrapper_pid)
         if report["wrapper_still_running"]:
             report["wrapper_kill"] = self.signal_pid(self.wrapper_pid, "KILL")

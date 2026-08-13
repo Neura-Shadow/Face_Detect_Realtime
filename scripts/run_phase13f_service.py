@@ -166,6 +166,7 @@ class ServiceSupervisor:
         self.last_child_returncode = None  # type: Optional[int]
         self._node_log = None  # type: Optional[Any]
         self._node_started_at = 0.0
+        self._pid_file_path = ""
         self.started_at = time.time()
 
     # ── evidence ────────────────────────────────────────────────────────────
@@ -487,10 +488,47 @@ class ServiceSupervisor:
         )
         return "failed"
 
+    def write_pid_file(self) -> Optional[str]:
+        """Record our own PID, because nothing else can do it correctly.
+
+        A launcher cannot: `setsid nohup env python ... & echo $!` records the
+        PID of the backgrounded setsid, which then execs or forks, so the shell
+        captures a PID that is not the supervisor. Gate B did exactly that and
+        left four wrappers running, each invisible to a stop that was
+        signalling the wrong process. The process that knows its PID is this
+        one.
+        """
+
+        path = self.args.pid_file or os.path.join(self.args.runtime_dir, "supervisor.pid")
+        try:
+            directory = os.path.dirname(os.path.abspath(path))
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write("%d\n" % os.getpid())
+            self._pid_file_path = path
+            return path
+        except OSError as exc:
+            self.health.record_failure("pid_file_unwritable", "%s: %s" % (type(exc).__name__, exc))
+            return None
+
+    def remove_pid_file(self) -> None:
+        path = getattr(self, "_pid_file_path", "")
+        if not path:
+            return
+        try:
+            if os.path.exists(path):
+                os.unlink(path)
+        except OSError:
+            pass
+
     def run(self) -> int:
         self.install_signal_handlers()
         os.makedirs(self.args.runtime_dir, exist_ok=True)
+        pid_path = self.write_pid_file()
+        self.health.set_facts(supervisor_pid=os.getpid(), supervisor_pid_file=pid_path)
         self.emit("supervisor_started", pid=os.getpid(), phase=PHASE,
+                  supervisor_pid_file=pid_path,
                   systemd_notify=self.notifier.available)
 
         self.health_server = HealthSocketServer(
@@ -607,6 +645,7 @@ class ServiceSupervisor:
                 json.dump(self.health.snapshot(), handle, indent=2, sort_keys=True, default=str)
         except OSError:
             pass
+        self.remove_pid_file()
         self.log.close()
         self.notifier.close()
 
@@ -617,6 +656,10 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--manifest", default="config/phase13f_service_manifest.json")
     parser.add_argument("--expected-repo-sha", default="")
     parser.add_argument("--runtime-dir", default="/run/ma-vlna")
+    parser.add_argument(
+        "--pid-file", default="",
+        help="Where the supervisor records its own PID; defaults inside --runtime-dir.",
+    )
     parser.add_argument("--evidence-dir", default="experiments/phase13")
     parser.add_argument("--log-path", default="")
     parser.add_argument("--log-max-bytes", type=int, default=8 * 1024 * 1024)
