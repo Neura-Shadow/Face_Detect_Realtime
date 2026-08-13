@@ -164,6 +164,8 @@ class ServiceSupervisor:
         self.node_failure_count = 0
         self.engine_load_count = 0
         self.last_child_returncode = None  # type: Optional[int]
+        self._node_log = None  # type: Optional[Any]
+        self._node_started_at = 0.0
         self.started_at = time.time()
 
     # ── evidence ────────────────────────────────────────────────────────────
@@ -299,19 +301,43 @@ class ServiceSupervisor:
             command += self.args.node_extra_args.split()
         return command
 
+    def _close_node_log(self) -> None:
+        if self._node_log is not None:
+            try:
+                self._node_log.close()
+            finally:
+                self._node_log = None
+
+    def node_log_path(self) -> str:
+        return os.path.join(self.args.runtime_dir, "node.log")
+
     def spawn_node(self) -> bool:
         command = self.node_command()
         env = dict(os.environ)
         # The child must never answer the parent's watchdog or claim readiness.
         for key in ("NOTIFY_SOCKET", "WATCHDOG_USEC", "WATCHDOG_PID"):
             env.pop(key, None)
+        # The node's output is captured rather than inherited, because
+        # readiness is read from it: the node announces itself on stdout, and
+        # that banner is the only non-destructive readiness signal it has.
+        # Close before reassigning -- a service that respawns for weeks would
+        # otherwise leak one file handle per generation.
+        self._close_node_log()
         try:
+            if self.args.discard_node_stdout:
+                stdout = subprocess.DEVNULL
+            else:
+                # The runtime directory is systemd's under a unit, but a direct
+                # spawn (tests, --once) may reach here before run() made it.
+                os.makedirs(self.args.runtime_dir, exist_ok=True)
+                self._node_log = open(self.node_log_path(), "w", encoding="utf-8")
+                stdout = self._node_log
             self.child = subprocess.Popen(
                 command,
                 cwd=str(REPO_ROOT),
                 env=env,
-                stdout=subprocess.DEVNULL if self.args.discard_node_stdout else None,
-                stderr=subprocess.STDOUT if self.args.discard_node_stdout else None,
+                stdout=stdout,
+                stderr=subprocess.STDOUT,
                 start_new_session=False,
             )
         except OSError as exc:
@@ -321,6 +347,7 @@ class ServiceSupervisor:
             self.emit("node_spawn_failed", error="%s: %s" % (type(exc).__name__, exc))
             return False
         self.child_pid = self.child.pid
+        self._node_started_at = time.time()
         self.node_start_count += 1
         # A node process loads its engine exactly once, at construction.
         self.engine_load_count += 1
@@ -329,7 +356,15 @@ class ServiceSupervisor:
         return True
 
     def wait_for_node_ready(self) -> bool:
-        """Readiness is the control port accepting, not exec returning."""
+        """Readiness is the node's own announcement, read from its output.
+
+        It must **not** be a TCP probe of the control port. The node accepts
+        exactly one control connection and treats it as the session; a probe
+        that connects and disconnects is consumed as that session and the node
+        exits with code 3. The first version of this wrapper did exactly that
+        and every node generation died on the readiness check that was supposed
+        to confirm it was alive.
+        """
 
         deadline = time.time() + float(self.args.node_ready_timeout_sec)
         while time.time() < deadline:
@@ -337,26 +372,31 @@ class ServiceSupervisor:
                 return False
             if self.child is not None and self.child.poll() is not None:
                 return False
-            if self._control_port_open():
+            if self._node_announced_ready():
                 return True
             self._tick_watchdog()
             time.sleep(0.5)
         return False
 
-    def _control_port_open(self) -> bool:
-        host = "127.0.0.1" if self.args.bind_host in ("0.0.0.0", "") else self.args.bind_host
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1.0)
+    def _node_announced_ready(self) -> bool:
+        if self.args.discard_node_stdout:
+            # Without the banner there is nothing safe to read, so fall back to
+            # "the process is still alive after its start-up grace period".
+            return self.child is not None and self.child.poll() is None and (
+                time.time() - self._node_started_at >= float(self.args.node_ready_grace_sec)
+            )
         try:
-            sock.connect((host, int(self.args.control_port)))
-            return True
+            with open(self.node_log_path(), "r", encoding="utf-8", errors="replace") as handle:
+                return "phase13b_jetson_node_ready" in handle.read()
         except OSError:
             return False
-        finally:
-            try:
-                sock.close()
-            except OSError:
-                pass
+
+    def node_log_tail(self, lines: int = 20) -> List[str]:
+        try:
+            with open(self.node_log_path(), "r", encoding="utf-8", errors="replace") as handle:
+                return handle.read().splitlines()[-lines:]
+        except OSError:
+            return []
 
     def _tick_watchdog(self) -> None:
         self.health.heartbeat()
@@ -395,6 +435,7 @@ class ServiceSupervisor:
                 result["still_running"] = True
         result["stopped"] = child.poll() is not None
         result["returncode"] = child.returncode
+        self._close_node_log()
         self.last_child_returncode = child.returncode
         self.emit("node_stopped", **result)
         self.child = None
@@ -415,7 +456,8 @@ class ServiceSupervisor:
                 return "stopped"
             self.health.transition(STATE_DEGRADED, "node did not become ready in time")
             self.health.record_failure("node_not_ready", "control port never accepted")
-            self.emit("node_not_ready", node_pid=self.child_pid)
+            self.emit("node_not_ready", node_pid=self.child_pid,
+                      node_log_tail=self.node_log_tail(12))
             # Ready-timeout is a failure of this generation, not of the service.
             self.stop_node(reason="not_ready")
             return "failed"
@@ -431,7 +473,11 @@ class ServiceSupervisor:
         self.child = None
         self.child_pid = None
         clean = self.last_child_returncode == 0
-        self.emit("node_exited", returncode=self.last_child_returncode, clean=clean)
+        self._close_node_log()
+        self.emit(
+            "node_exited", returncode=self.last_child_returncode, clean=clean,
+            node_log_tail=([] if clean else self.node_log_tail(12)),
+        )
         if clean:
             self.node_clean_exit_count += 1
             return "clean"
@@ -546,6 +592,7 @@ class ServiceSupervisor:
         self.emit("supervisor_stopping", reason=reason, **{
             k: v for k, v in stop_result.items() if k not in ("reason",)
         })
+        self._close_node_log()
         if self.health_server is not None:
             self.health_server.stop()
         summary = self.status_extra()
@@ -585,6 +632,10 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--run-id-prefix", default="phase13f")
     parser.add_argument("--node-extra-args", default="")
     parser.add_argument("--node-ready-timeout-sec", type=float, default=180.0)
+    parser.add_argument(
+        "--node-ready-grace-sec", type=float, default=45.0,
+        help="Only used with --discard-node-stdout, where the banner is unreadable.",
+    )
     parser.add_argument("--node-stop-timeout-sec", type=float, default=20.0)
     parser.add_argument("--node-control-timeout-sec", type=int, default=86400)
     parser.add_argument("--node-accept-timeout-sec", type=int, default=86400)

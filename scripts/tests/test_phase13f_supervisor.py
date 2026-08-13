@@ -51,6 +51,10 @@ STUB_NODE = textwrap.dedent(
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(("127.0.0.1", port)); s.listen(4)
+        # The real node announces itself on stdout; readiness is read from
+        # that banner, never from a TCP probe that would consume the
+        # node's single control session.
+        print("phase13b_jetson_node_ready run_id=stub control_port=%d" % port, flush=True)
     time.sleep(hold)
     sys.exit(code)
     """
@@ -174,6 +178,17 @@ class TestSupervisionOutcomes(JetsonMachineMixin):
         self.assertEqual(
             fixture.supervisor.health.last_failure()["classification"], "node_exit_nonzero"
         )
+
+    def test_readiness_does_not_consume_the_control_session(self) -> None:
+        # Regression: the first wrapper probed readiness by connecting to the
+        # control port. The node accepts exactly one control connection and
+        # treats it as the session, so the probe was consumed as that session
+        # and the node exited 3 -- every generation died on the check meant to
+        # confirm it was alive.
+        fixture = self.make_fixture(self.tmp, hold=4.0, code=0)
+        self.assertEqual(fixture.supervisor.supervise_once(), "clean")
+        connections = getattr(fixture.supervisor, "_control_port_open", None)
+        self.assertIsNone(connections, "readiness must not probe the control port")
 
     def test_a_child_that_never_binds_is_not_ready(self) -> None:
         fixture = self.make_fixture(
