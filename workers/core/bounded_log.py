@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import threading
 import time
 from typing import Any, Dict, Optional
@@ -105,10 +106,11 @@ class BoundedJsonlLog:
                 self.last_error = "%s: %s" % (type(exc).__name__, exc)
                 return record
             if self.echo:
-                # stdout is journald's input under systemd, and the operator's
-                # terminal during a manual Gate B run.
+                # stderr, not stdout: under systemd both land in journald, but
+                # keeping stdout clean means --preflight-only and --status stay
+                # machine-readable instead of interleaving log lines with JSON.
                 try:
-                    print(line, flush=True)
+                    print(line, file=sys.stderr, flush=True)
                 except (OSError, ValueError):
                     pass
             if self._handle is not None:
