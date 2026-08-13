@@ -414,6 +414,24 @@ class JetsonSession:
             payload = {"ok": result["returncode"] == 0}
         return payload
 
+    def count_log_events(self, event_type: str) -> int:
+        """How many times an event appears in the service log.
+
+        The storm case is judged on this rather than on catching a short-lived
+        PID file: what the phase requires is that the storm was blocked, and
+        the record of it being blocked is the evidence for that.
+        """
+
+        result = self.ssh(
+            "grep -c %s %s/service.jsonl 2>/dev/null || echo 0"
+            % (shlex.quote(event_type), shlex.quote(self.runtime_dir)),
+            timeout=90,
+        )
+        for line in (result.get("stdout") or "").splitlines():
+            if line.strip().isdigit():
+                return int(line.strip())
+        return 0
+
     def tail_log(self, name: str, lines: int = 40) -> List[str]:
         result = self.ssh(
             "tail -n %d %s/%s 2>/dev/null || true" % (lines, shlex.quote(self.runtime_dir), name),
@@ -523,39 +541,48 @@ class GateBRunner:
         # "expected one argument" and the wrapper never starts at all -- which
         # is exactly how this case previously reported UNKNOWN instead of
         # testing anything.
+        # Count the storm records already present, so only a *new* one counts.
+        before_count = self.session.count_log_events("restart_storm_blocked")
         started = self.session.start_wrapper(
             extra_args="--node-extra-args=--tensorrt-engine=/nonexistent/engine.plan"
                        " --node-ready-timeout-sec 8"
         )
-        if started.get("start_failed"):
-            self.record("S06", "restart storm", "BLOCKED", "WRAPPER_START_FAILED", started)
-            return
         deadline = time.time() + float(self.args.storm_timeout_sec)
-        health = {}  # type: Dict[str, Any]
         saw_failed = False
+        storm_records = before_count
+        health = {}  # type: Dict[str, Any]
         while time.time() < deadline:
             health = self.session.health()
             if health.get("state") == "FAILED":
                 saw_failed = True
+            storm_records = self.session.count_log_events("restart_storm_blocked")
+            if storm_records > before_count:
                 break
-            if not self.session._pid_alive(self.session.wrapper_pid):
+            if self.session.wrapper_pid and not self.session._pid_alive(self.session.wrapper_pid):
+                # The wrapper is gone; give the log one last read before
+                # concluding anything.
+                storm_records = self.session.count_log_events("restart_storm_blocked")
                 break
             time.sleep(4)
-        # Let the wrapper finish exiting so its final records are on disk.
+        # Let it finish exiting so its final records are on disk.
         exit_deadline = time.time() + 60
         while time.time() < exit_deadline and self.session._pid_alive(self.session.wrapper_pid):
             time.sleep(3)
+        storm_records = self.session.count_log_events("restart_storm_blocked")
         alive = self.session._pid_alive(self.session.wrapper_pid)
-        log = self.session.tail_log("service.jsonl", 400)
-        storm_logged = any("restart_storm_blocked" in line for line in log)
-        observed = "BLOCKED" if (saw_failed or storm_logged) else str(health.get("state", "UNKNOWN"))
+        blocked = storm_records > before_count
+        observed = "BLOCKED" if blocked else (
+            "WRAPPER_START_FAILED" if started.get("start_failed")
+            else str(health.get("state", "UNKNOWN"))
+        )
         self.record(
             "S06", "restart storm", "BLOCKED", observed,
             {
+                "storm_records_before": before_count,
+                "storm_records_after": storm_records,
                 "saw_failed_state": saw_failed,
-                "storm_logged": storm_logged,
                 "wrapper_alive_after": alive,
-                "restart_count": health.get("restart_count"),
+                "wrapper_start_failed": bool(started.get("start_failed")),
                 "node_start_count": health.get("node_start_count"),
             },
         )
