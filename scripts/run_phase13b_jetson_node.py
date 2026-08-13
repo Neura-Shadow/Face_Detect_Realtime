@@ -41,9 +41,15 @@ if str(REPO_ROOT) not in sys.path:
 
 import numpy as np
 
+from workers.core.bounded_metrics import BoundedSeries, JsonlSink
+from workers.core.clock_discipline import (
+    DEFAULT_RESYNC_INTERVAL_SEC,
+    DEFAULT_SAFETY_MARGIN_US,
+    DEFAULT_WINDOW_CAPACITY,
+    DisciplinedClock,
+)
 from workers.core.clock_sync import (
     DEFAULT_MAX_UNCERTAINTY_US,
-    JetsonClockDomain,
     monotonic_us,
 )
 from workers.core.config import ActionStep, AgentConfig, PerceptionConfig, PlannerAction
@@ -218,8 +224,12 @@ class JetsonNode:
         self.evidence_dir = self.output_root / self.run_id
         self.evidence_dir.mkdir(parents=True, exist_ok=True)
 
-        self.events = []  # type: List[Dict[str, Any]]
-        self.events_lock = threading.Lock()
+        # Phase 13E-R Goal 3: events stream to disk during the run and only a
+        # bounded tail stays resident. A soak emits them for hours.
+        self.events = JsonlSink(
+            str(self.evidence_dir / "events.jsonl"),
+            tail_capacity=int(getattr(args, "event_tail_capacity", 2048)),
+        )
         self.environment = collect_environment(require_real_jetson=args.require_real_jetson)
         self.blockers = []  # type: List[str]
 
@@ -252,12 +262,7 @@ class JetsonNode:
         self.bridge = EmbeddedCommandBridge(
             lease_duration_us=int(args.command_validity_ms) * 1000
         )
-        self.clock = JetsonClockDomain(
-            jetson_minus_pc_offset_us=0,
-            clock_uncertainty_us=DEFAULT_MAX_UNCERTAINTY_US + 1,
-            clock_sync_valid=False,
-            max_uncertainty_us=int(args.max_clock_uncertainty_us),
-        )
+        self.clock = self._build_clock()
         self.resources = JetsonResourceMonitor(interval_ms=int(args.tegrastats_interval_ms))
 
         self.session = {
@@ -302,7 +307,7 @@ class JetsonNode:
         self.tensorrt_safe_stop_count = 0
         self.tensorrt_active_authority_count = 0
         self.tensorrt_result_stale_count = 0
-        self.tensorrt_latency_samples = {}  # type: Dict[str, List[float]]
+        self.tensorrt_latency_samples = {}  # type: Dict[str, BoundedSeries]
         self.tensorrt_warmup_count = 0
         self.tensorrt_warmup_first_ms = None  # type: Optional[float]
         self.tensorrt_warmup_last_ms = None  # type: Optional[float]
@@ -310,12 +315,42 @@ class JetsonNode:
         self.ack_timeouts = 0
         self.ai_active_command_count = 0
         self.safe_stop_command_count = 0
-        self.diagnostic_throttle_applied = []  # type: List[float]
-        self.frame_command_records = []  # type: List[Dict[str, Any]]
+        self.diagnostic_throttle_applied = BoundedSeries(
+            "diagnostic_throttle", bucket_width=0.001, bucket_count=1024, digits=6
+        )
         self.range_state_counts = {}  # type: Dict[str, int]
-        self.one_way_latency_ms = []  # type: List[float]
-        self.command_rtt_ms = []  # type: List[float]
-        self.frame_to_command_ms = []  # type: List[float]
+
+        # Phase 13E-R Goal 3: these were unbounded lists. Latency series are
+        # sized to cover the range each metric can plausibly reach, so the
+        # histogram estimate stays inside one bucket instead of degrading to
+        # the exact maximum via the overflow path.
+        ring = int(args.metrics_ring_capacity)
+        self.one_way_latency_ms = BoundedSeries(
+            "one_way_latency_ms", bucket_width=0.5, bucket_count=8192, ring_capacity=ring
+        )
+        self.command_rtt_ms = BoundedSeries(
+            "command_rtt_ms", bucket_width=0.5, bucket_count=8192, ring_capacity=ring
+        )
+        self.frame_to_command_ms = BoundedSeries(
+            "frame_to_command_ms", bucket_width=0.5, bucket_count=8192, ring_capacity=ring
+        )
+        # Healthy skew is negative by construction (the guard band), so the
+        # histogram is centred well below zero.
+        self.issued_future_skew_us = BoundedSeries(
+            "issued_future_skew_us",
+            lower_bound=-1_000_000.0,
+            bucket_width=100.0,
+            bucket_count=16384,
+            ring_capacity=ring,
+            digits=1,
+        )
+        self.future_timestamp_reject_count = 0
+        self.future_dated_command_count = 0
+        self.frame_command_records = JsonlSink(
+            str(getattr(args, "frame_record_path", None) or
+                (self.evidence_dir / "frame_command_records.jsonl")),
+            tail_capacity=ring,
+        )
 
         self.perception_mode = str(getattr(args, "perception_backend", "dummy")).lower()
         self.tensorrt_backend = None  # type: Optional[Any]
@@ -329,6 +364,102 @@ class JetsonNode:
         self._pipeline_lock = threading.Lock()
         self._frames_target = 0
         self._frames_done = threading.Event()
+
+    # ── clock discipline ────────────────────────────────────────────────────
+
+    def _build_clock(self) -> DisciplinedClock:
+        """A fresh, unsynchronised clock model. Degraded until the first sync."""
+
+        args = self.args
+        return DisciplinedClock(
+            jetson_minus_pc_offset_us=0,
+            clock_uncertainty_us=DEFAULT_MAX_UNCERTAINTY_US + 1,
+            clock_sync_valid=False,
+            max_uncertainty_us=int(args.max_clock_uncertainty_us),
+            resync_interval_sec=float(args.clock_resync_interval_sec),
+            window_capacity=int(args.clock_window_capacity),
+            safety_margin_us=int(args.clock_safety_margin_us),
+            max_drift_ppm=float(args.clock_max_drift_ppm),
+        )
+
+    def _apply_clock_sync(self, message: Dict[str, Any]) -> Dict[str, Any]:
+        """Fold one PC-measured sync into the model.
+
+        The PC owns the measurement because it owns the reference clock: it
+        stamps ``observed_at_pc_us`` from the same monotonic source the MCU
+        compares against, so the model is fitted in the receiver's domain.
+        """
+
+        observed_at_pc_us = int(message.get("observed_at_pc_us", 0))
+        accepted = self.clock.update(
+            jetson_minus_pc_offset_us=int(message.get("jetson_minus_pc_offset_us", 0)),
+            clock_uncertainty_us=int(message.get("clock_uncertainty_us", 0)),
+            round_trip_us=int(message.get("round_trip_us", 0)),
+            observed_at_pc_us=observed_at_pc_us,
+            valid=bool(message.get("clock_sync_valid", False)),
+        )
+        payload = self.clock.to_dict(observed_at_pc_us)
+        payload["clock_sync_accepted"] = accepted
+        payload["clock_sync_reject_reason"] = self.clock.last_reject_reason
+        return payload
+
+    def _record_future_skew(self, issued_us: int, ack: Optional[Any], classification: str) -> Optional[int]:
+        """Compare the issue timestamp against the receiver's own clock reading.
+
+        ``ack.receive_timestamp_us`` is the exact ``now_us`` the C MCU used for
+        the frozen validity comparison, so this is a direct measurement of the
+        quantity Phase 13E got wrong rather than an inference from it. Nothing
+        here changes the rule; it only observes the margin.
+        """
+
+        if ack is None:
+            return None
+        skew_us = int(issued_us) - int(ack.receive_timestamp_us)
+        self.issued_future_skew_us.observe(skew_us)
+        if skew_us > 0:
+            self.future_dated_command_count += 1
+            if classification == "STALE_REJECT":
+                self.future_timestamp_reject_count += 1
+                self.emit(
+                    "command_future_dated",
+                    issued_timestamp_us=int(issued_us),
+                    receiver_now_us=int(ack.receive_timestamp_us),
+                    issued_future_skew_us=skew_us,
+                    clock_guard_us=self.clock.guard_us(int(ack.receive_timestamp_us)),
+                    estimated_drift_ppm=self.clock.drift_ppm,
+                )
+        return skew_us
+
+    # ── bounded metric evidence ─────────────────────────────────────────────
+
+    def _bounded_series(self) -> Dict[str, BoundedSeries]:
+        series = {
+            "one_way_latency_ms": self.one_way_latency_ms,
+            "command_rtt_ms": self.command_rtt_ms,
+            "frame_to_command_ms": self.frame_to_command_ms,
+            "issued_future_skew_us": self.issued_future_skew_us,
+            "diagnostic_throttle": self.diagnostic_throttle_applied,
+        }
+        for name, item in self.tensorrt_latency_samples.items():
+            series["tensorrt_" + name] = item
+        return series
+
+    def _memory_evidence(self) -> Dict[str, Any]:
+        """Prove the per-frame metric memory is capped, not merely small."""
+
+        series = self._bounded_series()
+        watermarks = {name: item.ring_high_watermark for name, item in series.items()}
+        capacities = {name: item.ring_capacity for name, item in series.items()}
+        return {
+            "metrics_ring_capacity": int(self.args.metrics_ring_capacity),
+            "metrics_ring_high_watermark": max(watermarks.values()) if watermarks else 0,
+            "metrics_ring_high_watermark_by_series": watermarks,
+            "metrics_ring_capacity_by_series": capacities,
+            "metrics_series_count": len(series),
+            "metrics_unbounded_list_count": 0,
+            "metrics_storage": "online_counters+fixed_histogram+bounded_ring+streamed_jsonl",
+            "frame_record_sink": self.frame_command_records.to_dict(),
+        }
 
     # ── helpers ─────────────────────────────────────────────────────────────
 
@@ -352,8 +483,7 @@ class JetsonNode:
             "event_type": event_type,
         }
         event.update(details)
-        with self.events_lock:
-            self.events.append(event)
+        self.events.write(event)
 
     def _bump(self, mapping: Dict[str, int], key: str) -> None:
         mapping[key] = mapping.get(key, 0) + 1
@@ -654,7 +784,7 @@ class JetsonNode:
             pc_monotonic_us=int(header.pc_monotonic_us),
         )
         if record is not None:
-            self.frame_command_records.append(record)
+            self.frame_command_records.write(record)
 
     def _init_tensorrt_backend(self) -> None:
         """Build the Phase 13C TensorRT backend. Never silently falls back."""
@@ -808,7 +938,18 @@ class JetsonNode:
         for key, value in timing.items():
             if value is None:
                 continue
-            self.tensorrt_latency_samples.setdefault(key, []).append(float(value))
+            series = self.tensorrt_latency_samples.get(key)
+            if series is None:
+                # Inference stages are sub-millisecond to tens of ms; 0.1 ms
+                # buckets over 8192 slots cover up to 819 ms.
+                series = BoundedSeries(
+                    key,
+                    bucket_width=0.1,
+                    bucket_count=8192,
+                    ring_capacity=int(self.args.metrics_ring_capacity),
+                )
+                self.tensorrt_latency_samples[key] = series
+            series.observe(float(value))
 
     def _run_tensorrt_perception(
         self,
@@ -1098,20 +1239,27 @@ class JetsonNode:
             self.commands_sent += 1
             if control_mode == 2:
                 self.ai_active_command_count += 1
-                self.diagnostic_throttle_applied.append(round(float(packet.throttle), 6))
+                self.diagnostic_throttle_applied.observe(round(float(packet.throttle), 6))
             else:
                 self.safe_stop_command_count += 1
 
-        observed = self._await_ack(None if injected else packet.sequence)
+        observed, ack = self._await_ack(None if injected else packet.sequence)
         if duplicate_of is not None:
             with self._pipeline_lock:
                 self.command_sender.send_command(duplicate_of)
                 self.commands_sent += 1
-            observed = self._await_ack(None)
+            observed, ack = self._await_ack(None)
             expected = "SEQUENCE_REJECT"
 
         rtt_ms = round((monotonic_us() - send_us) / 1000.0, 3)
-        self.command_rtt_ms.append(rtt_ms)
+        self.command_rtt_ms.observe(rtt_ms)
+        # `expired_command` deliberately back-dates validity, so its rejection
+        # is the injected outcome and must not be counted as a clock defect.
+        skew_us = (
+            None
+            if injected == "expired_command"
+            else self._record_future_skew(issued_us, ack, observed)
+        )
         self._bump(self.command_classifications, observed)
 
         record = {
@@ -1131,6 +1279,10 @@ class JetsonNode:
             "injected_fault": injected,
             "expected_classification": expected,
             "observed_classification": observed,
+            "issued_timestamp_us": int(packet.issued_timestamp_us),
+            "issued_future_skew_us": skew_us,
+            "clock_guard_us": self.clock.guard_us(issued_us),
+            "estimated_drift_ppm": self.clock.drift_ppm,
             "perception_backend": perception_backend,
             "simulation_timestamp_us": simulation_timestamp_us,
             "pc_monotonic_us": pc_monotonic_us,
@@ -1149,13 +1301,19 @@ class JetsonNode:
                 frame_to_command = round(delta_us / 1000.0, 4)
         record["frame_to_command_ms"] = frame_to_command
         if frame_to_command is not None:
-            self.frame_to_command_ms.append(frame_to_command)
+            self.frame_to_command_ms.observe(frame_to_command)
         if one_way is not None:
-            self.one_way_latency_ms.append(one_way)
+            self.one_way_latency_ms.observe(one_way)
         self.emit("command_sent", **record)
         return record
 
-    def _await_ack(self, expected_sequence: Optional[int]) -> str:
+    def _await_ack(self, expected_sequence: Optional[int]) -> Tuple[str, Optional[Any]]:
+        """Return the classification and, when one arrived, the ACK itself.
+
+        The ACK carries the receiver's own ``receive_timestamp_us``, which is
+        the only exact reading of the clock the MCU validated against.
+        """
+
         if self.faults["ack_sequence_unchecked"]:
             self.faults["ack_sequence_unchecked"] -= 1
             expected_sequence = None
@@ -1167,10 +1325,10 @@ class JetsonNode:
         except UdpTransportError as exc:
             if exc.classification == "TRANSPORT_TIMEOUT":
                 self.ack_timeouts += 1
-            return exc.classification
+            return exc.classification, None
         except JilProtocolError as exc:
-            return exc.classification
-        return ack.classification
+            return exc.classification, None
+        return ack.classification, ack
 
     # ── command/ACK stress (no frames) ──────────────────────────────────────
 
@@ -1229,9 +1387,7 @@ class JetsonNode:
     # ── metrics ─────────────────────────────────────────────────────────────
 
     def metrics(self) -> Dict[str, Any]:
-        def _mean(values: List[float]) -> Optional[float]:
-            return round(sum(values) / len(values), 3) if values else None
-
+        skew = self.issued_future_skew_us
         payload = {
             "run_id": self.run_id,
             "phase": PHASE,
@@ -1244,16 +1400,22 @@ class JetsonNode:
             "ack_timeout_count": self.ack_timeouts,
             "ack_resync_drops": self.ack_resync_drops,
             "diagnostic_throttle_target": float(self.args.diagnostic_throttle),
-            "diagnostic_throttle_applied_mean": _mean(self.diagnostic_throttle_applied),
-            "diagnostic_throttle_applied_max": max(self.diagnostic_throttle_applied)
-            if self.diagnostic_throttle_applied
-            else None,
-            "frame_to_command_ms_mean": _mean(self.frame_to_command_ms),
-            "frame_to_command_ms_sample_count": len(self.frame_to_command_ms),
-            "command_rtt_ms_mean": _mean(self.command_rtt_ms),
-            "command_rtt_ms_max": round(max(self.command_rtt_ms), 3) if self.command_rtt_ms else None,
-            "frame_one_way_latency_ms_mean": _mean(self.one_way_latency_ms),
-            "one_way_latency_reported": bool(self.one_way_latency_ms),
+            "diagnostic_throttle_applied_mean": self.diagnostic_throttle_applied.stat.mean,
+            "diagnostic_throttle_applied_max": self.diagnostic_throttle_applied.stat.maximum,
+            "frame_to_command_ms_mean": self.frame_to_command_ms.stat.to_dict()["mean"],
+            "frame_to_command_ms_sample_count": self.frame_to_command_ms.count,
+            "command_rtt_ms_mean": self.command_rtt_ms.stat.to_dict()["mean"],
+            "command_rtt_ms_max": self.command_rtt_ms.stat.to_dict()["max"],
+            "frame_one_way_latency_ms_mean": self.one_way_latency_ms.stat.to_dict()["mean"],
+            "one_way_latency_reported": self.one_way_latency_ms.count > 0,
+            # Phase 13E-R Goal 1 evidence. Skew is measured against the ACK's
+            # own receive timestamp, i.e. the exact value the MCU compared.
+            "issued_future_skew_us_max": skew.stat.maximum,
+            "issued_future_skew_us_p99": skew.percentile(0.99),
+            "issued_future_skew_us_mean": skew.stat.to_dict(digits=1)["mean"],
+            "issued_future_skew_sample_count": skew.count,
+            "future_timestamp_reject_count": self.future_timestamp_reject_count,
+            "future_dated_command_count": self.future_dated_command_count,
             "range_state_counts": dict(self.range_state_counts),
             "command_packet_size_bytes": PACKET_SIZE,
             "command_protocol_version": PROTOCOL_VERSION,
@@ -1291,23 +1453,23 @@ class JetsonNode:
         payload.update(self.ack_receiver.metrics())
         if self.command_sender is not None:
             payload.update(self.command_sender.metrics())
-        if self.frame_to_command_ms:
-            from run_phase13c_checks import latency_stats
-
-            payload["frame_to_command_ms_stats"] = latency_stats(self.frame_to_command_ms)
+        if self.frame_to_command_ms.count:
+            payload["frame_to_command_ms_stats"] = self.frame_to_command_ms.to_dict()
         payload.update(self.range_profile.evidence())
         if self.tensorrt_monitor is not None:
             payload.update(self.tensorrt_monitor.evidence())
         if self.tensorrt_backend is not None:
             payload.update(self.tensorrt_backend.metadata())
         if self.tensorrt_latency_samples:
-            from run_phase13c_checks import latency_stats
-
             payload["tensorrt_latency_metrics"] = {
-                name: latency_stats(values)
-                for name, values in self.tensorrt_latency_samples.items()
+                name: series.to_dict()
+                for name, series in self.tensorrt_latency_samples.items()
             }
-        payload.update(self.clock.to_dict())
+        # Report the clock model as of now, not as of the last sync, so
+        # clock_model_age_ms reflects the real staleness at read time.
+        payload.update(self.clock.to_dict(self.clock.estimated_pc_now_us(monotonic_us())))
+        payload["issued_future_skew_us_stats"] = skew.to_dict()
+        payload.update(self._memory_evidence())
         payload.update(self.resources.summary())
         payload.update(protocol_descriptor())
         payload["blockers"] = list(self.blockers)
@@ -1331,11 +1493,17 @@ class JetsonNode:
                 "manifest.json",
                 "jetson_metrics.json",
                 "events.jsonl",
+                "frame_command_records.jsonl",
                 "environment.json",
                 "commands.txt",
                 "README.md",
             ],
             "generated_evidence_git_policy": "ignored_local_only",
+            # Phase 13E-R Goal 3: both streams are written incrementally, so
+            # these files are the complete record and the control channel only
+            # ever carried a bounded tail of them.
+            "event_stream": self.events.to_dict(),
+            "frame_record_stream": self.frame_command_records.to_dict(),
         }
         (self.evidence_dir / "manifest.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -1346,12 +1514,9 @@ class JetsonNode:
         (self.evidence_dir / "environment.json").write_text(
             json.dumps(self.environment, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
-        with self.events_lock:
-            events = list(self.events)
-        (self.evidence_dir / "events.jsonl").write_text(
-            "".join(json.dumps(event, ensure_ascii=False) + "\n" for event in events),
-            encoding="utf-8",
-        )
+        # events.jsonl is written incrementally by the sink; flushing is all
+        # that is needed here, and rewriting it would discard the full stream.
+        self.events.flush()
         (self.evidence_dir / "commands.txt").write_text(
             "# Phase 13B Jetson node\n%s %s\n"
             % (sys.executable, " ".join(sys.argv)),
@@ -1413,6 +1578,7 @@ class JetsonNode:
                     self.tensorrt_backend.close()
                 except Exception:
                     pass
+            self.frame_command_records.close()
             self.frame_server.close()
             self.ack_receiver.close()
             if self.command_sender is not None:
@@ -1422,6 +1588,7 @@ class JetsonNode:
             except OSError:
                 pass
             self.write_evidence()
+            self.events.close()
         return exit_code
 
     def _control_loop(self, conn: socket.socket, peer_host: str) -> int:
@@ -1440,6 +1607,10 @@ class JetsonNode:
                 response["t2_jetson_recv_us"] = monotonic_us()
                 response["sample_index"] = message.get("sample_index")
                 response["t3_jetson_send_us"] = monotonic_us()
+            elif command == "update_clock":
+                # Phase 13E-R Goal 1: fold a fresh sync into the live model
+                # instead of rebuilding it, so drift history survives.
+                response.update(self._apply_clock_sync(message))
             elif command == "start_session":
                 response.update(self._handle_start_session(message))
             elif command == "run_frames":
@@ -1457,8 +1628,15 @@ class JetsonNode:
             elif command == "get_metrics":
                 response["metrics"] = self.metrics()
             elif command == "get_events":
-                with self.events_lock:
-                    response["events"] = list(self.events)
+                # The full stream lives on the Jetson; the control channel
+                # carries a bounded tail so a multi-hour run cannot build an
+                # unbounded response on either side. Provenance says so.
+                sink = self.events.to_dict()
+                response["events"] = self.events.tail()
+                response["events_total_count"] = sink["written_count"]
+                response["events_tail_capacity"] = sink["tail_capacity"]
+                response["events_truncated"] = sink["written_count"] > sink["tail_size"]
+                response["events_full_stream_path"] = sink["path"]
             elif command == "shutdown":
                 send_control_message(conn, {"command": command, "ok": True})
                 self.emit("control_shutdown_requested")
@@ -1504,12 +1682,8 @@ class JetsonNode:
         self.session["lease_expires_pc_us"] = int(message.get("lease_expires_pc_us", 0))
         self.session["session_id"] = str(message.get("session_id", uuid.uuid4().hex))
         self.session["started"] = True
-        self.clock = JetsonClockDomain(
-            jetson_minus_pc_offset_us=int(message.get("jetson_minus_pc_offset_us", 0)),
-            clock_uncertainty_us=int(message.get("clock_uncertainty_us", 0)),
-            clock_sync_valid=bool(message.get("clock_sync_valid", False)),
-            max_uncertainty_us=int(self.args.max_clock_uncertainty_us),
-        )
+        self.clock = self._build_clock()
+        self._apply_clock_sync(message)
         self._stop_frames.clear()
         self._frames_done.clear()
         if bool(message.get("start_frame_server", True)) and self._frame_thread is None:
@@ -1581,6 +1755,29 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--nominal-result-age-ms", type=float, default=20.0)
     parser.add_argument("--stale-frame-ms", type=float, default=DEFAULT_STALE_FRAME_MS)
     parser.add_argument("--max-clock-uncertainty-us", type=int, default=DEFAULT_MAX_UNCERTAINTY_US)
+    # Phase 13E-R Goal 1: bounded periodic clock discipline.
+    parser.add_argument(
+        "--clock-resync-interval-sec", type=float, default=DEFAULT_RESYNC_INTERVAL_SEC,
+        help="Expected interval between PC-driven resyncs; sets the staleness horizon.",
+    )
+    parser.add_argument(
+        "--clock-window-capacity", type=int, default=DEFAULT_WINDOW_CAPACITY,
+        help="Bounded number of recent syncs kept for the drift fit.",
+    )
+    parser.add_argument(
+        "--clock-safety-margin-us", type=int, default=DEFAULT_SAFETY_MARGIN_US,
+        help="Fixed component of the sender guard band.",
+    )
+    parser.add_argument("--clock-max-drift-ppm", type=float, default=100.0)
+    # Phase 13E-R Goal 3: bounded per-frame metric memory.
+    parser.add_argument(
+        "--metrics-ring-capacity", type=int, default=512,
+        help="Fixed capacity of the recent-sample rings and the record tail.",
+    )
+    parser.add_argument(
+        "--frame-record-path", default=None,
+        help="Stream per-frame command records to this JSONL file instead of RAM.",
+    )
     parser.add_argument("--ack-timeout-ms", type=int, default=500)
     parser.add_argument("--socket-timeout-sec", type=float, default=10.0)
     parser.add_argument("--frame-timeout-sec", type=float, default=20.0)

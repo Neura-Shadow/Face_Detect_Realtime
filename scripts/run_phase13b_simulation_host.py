@@ -41,6 +41,7 @@ from run_phase13b_jil_checks import (  # noqa: E402  (path bootstrap above)
     utc_now_iso,
 )
 from workers.core.carla_adapter import CarlaClientAdapter, CarlaControlCommand
+from workers.core.clock_discipline import DEFAULT_RESYNC_INTERVAL_SEC
 from workers.core.clock_sync import monotonic_us
 
 try:  # CARLA stays an optional runtime dependency for the rest of the repo.
@@ -369,6 +370,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         max_clock_uncertainty_us=args.max_clock_uncertainty_us,
         clock_samples=args.clock_samples,
         clock_warmup_probes=args.clock_warmup_probes,
+        clock_resync_interval_sec=getattr(
+            args, "clock_resync_interval_sec", DEFAULT_RESYNC_INTERVAL_SEC
+        ),
+        clock_resync_samples=getattr(args, "clock_resync_samples", 12),
         camera_width=args.camera_width,
         camera_height=args.camera_height,
         jpeg_quality=args.jpeg_quality,

@@ -40,6 +40,7 @@ from simulation.virtual_safety_mcu_server import (
     build_safety_mcu_library,
     find_safety_mcu_library,
 )
+from workers.core.clock_discipline import DEFAULT_RESYNC_INTERVAL_SEC
 from workers.core.clock_sync import (
     DEFAULT_MAX_UNCERTAINTY_US,
     DEFAULT_SAMPLE_COUNT,
@@ -263,6 +264,8 @@ class JilSessionDriver:
         jpeg_quality: int = 85,
         pin_source_host: bool = True,
         auto_build_mcu_library: bool = True,
+        clock_resync_interval_sec: float = DEFAULT_RESYNC_INTERVAL_SEC,
+        clock_resync_samples: int = 12,
     ) -> None:
         self.run_id = run_id
         self.jetson_host = jetson_host
@@ -275,6 +278,14 @@ class JilSessionDriver:
         self.max_clock_uncertainty_us = int(max_clock_uncertainty_us)
         self.clock_samples = max(DEFAULT_SAMPLE_COUNT, int(clock_samples))
         self.clock_warmup_probes = max(0, int(clock_warmup_probes))
+        # Phase 13E-R Goal 1: bounded periodic clock discipline.
+        self.clock_resync_interval_sec = float(clock_resync_interval_sec)
+        self.clock_resync_samples = max(4, int(clock_resync_samples))
+        self.clock_resync_count = 0
+        self.clock_resync_failure_count = 0
+        self.clock_last_resync_us = 0
+        self.clock_observed_at_pc_us = 0
+        self.clock_model = {}  # type: Dict[str, Any]
         self.camera_width = int(camera_width)
         self.camera_height = int(camera_height)
         self.pin_source_host = bool(pin_source_host)
@@ -418,15 +429,15 @@ class JilSessionDriver:
         self.emit("control_handshake", jetson_run_id=hello.get("run_id"), pc_source_address=local)
         return hello
 
-    def synchronise_clocks(self) -> Dict[str, Any]:
+    def _probe_clock(self, sample_count: int, warmup: int) -> Tuple[Any, List[ClockSyncSample]]:
         # Warm-up probes are discarded: the first round trips on a freshly
         # established TCP connection pay connection-setup and interpreter
         # warm-up costs that are not representative of the link.
-        for index in range(self.clock_warmup_probes):
+        for index in range(warmup):
             self.control.request("clock_probe", sample_index=-1 - index)
 
         samples = []  # type: List[ClockSyncSample]
-        for index in range(self.clock_samples):
+        for index in range(sample_count):
             t1 = monotonic_us()
             response = self.control.request("clock_probe", sample_index=index)
             t4 = monotonic_us()
@@ -441,15 +452,93 @@ class JilSessionDriver:
         result = estimate_clock_offset(
             samples,
             max_uncertainty_us=self.max_clock_uncertainty_us,
-            min_sample_count=min(self.clock_samples, DEFAULT_SAMPLE_COUNT),
+            min_sample_count=min(sample_count, DEFAULT_SAMPLE_COUNT),
         )
+        return result, samples
+
+    @staticmethod
+    def _observed_at_pc_us(samples: List[ClockSyncSample]) -> int:
+        """When the offset estimate was valid, in the PC domain.
+
+        ``estimate_clock_offset`` uses the minimum-RTT sample, so the estimate
+        belongs to the midpoint of that sample's round trip. Dating it here is
+        what lets the Jetson fit drift against a correct time axis.
+        """
+
+        valid = [sample for sample in samples if sample.valid]
+        if not valid:
+            return monotonic_us()
+        best = min(valid, key=lambda sample: sample.rtt_us)
+        return (best.t1_pc_send_us + best.t4_pc_recv_us) // 2
+
+    def synchronise_clocks(self) -> Dict[str, Any]:
+        result, samples = self._probe_clock(self.clock_samples, self.clock_warmup_probes)
         self.clock_result = result
+        self.clock_observed_at_pc_us = self._observed_at_pc_us(samples)
         payload = result.to_dict()
         payload["clock_samples"] = [sample.to_dict() for sample in samples]
+        payload["observed_at_pc_us"] = self.clock_observed_at_pc_us
         self.emit("clock_sync_completed", **result.to_dict())
         if not result.clock_sync_valid:
             self.blockers.append("clock_sync_failed")
         return payload
+
+    def resync_clocks(self) -> Dict[str, Any]:
+        """Phase 13E-R Goal 1: refresh the Jetson's clock model in place.
+
+        Phase 13E measured the offset once and trusted it for the whole run.
+        Two independent oscillators drift apart at a few ppm, so after a couple
+        of minutes every command carried a timestamp in the receiver's future
+        and the frozen validity rule rejected it. This is the periodic
+        correction that keeps the model honest; a smaller probe burst than the
+        initial sync is enough because it refines an existing estimate rather
+        than establishing one.
+        """
+
+        result, samples = self._probe_clock(self.clock_resync_samples, 1)
+        observed_at_pc_us = self._observed_at_pc_us(samples)
+        response = self.control.request(
+            "update_clock",
+            jetson_minus_pc_offset_us=result.jetson_minus_pc_offset_us,
+            clock_uncertainty_us=result.clock_uncertainty_us,
+            clock_sync_valid=result.clock_sync_valid,
+            round_trip_us=result.clock_rtt_us,
+            observed_at_pc_us=observed_at_pc_us,
+        )
+        self.clock_resync_count += 1
+        if not (result.clock_sync_valid and response.get("clock_sync_accepted")):
+            self.clock_resync_failure_count += 1
+        else:
+            self.clock_result = result
+            self.clock_observed_at_pc_us = observed_at_pc_us
+        self.clock_last_resync_us = monotonic_us()
+        self.clock_model = {
+            key: value for key, value in response.items() if key.startswith("clock_")
+        }
+        self.emit(
+            "clock_resynchronised",
+            accepted=bool(response.get("clock_sync_accepted")),
+            reject_reason=response.get("clock_sync_reject_reason", ""),
+            observed_at_pc_us=observed_at_pc_us,
+            estimated_drift_ppm=response.get("estimated_drift_ppm"),
+            clock_guard_us=response.get("clock_guard_us"),
+            clock_model_age_ms=response.get("clock_model_age_ms"),
+            clock_sync_degraded=response.get("clock_sync_degraded"),
+        )
+        return dict(response)
+
+    def maybe_resync_clocks(self) -> bool:
+        """Resync if the interval has elapsed. Safe to call from a hot loop."""
+
+        if self.clock_resync_interval_sec <= 0:
+            return False
+        now_us = monotonic_us()
+        if self.clock_last_resync_us and (
+            now_us - self.clock_last_resync_us < self.clock_resync_interval_sec * 1e6
+        ):
+            return False
+        self.resync_clocks()
+        return True
 
     def start_session(self, *, start_frame_server: bool = True) -> Dict[str, Any]:
         if self.clock_result is None:
@@ -462,8 +551,11 @@ class JilSessionDriver:
             jetson_minus_pc_offset_us=self.clock_result.jetson_minus_pc_offset_us,
             clock_uncertainty_us=self.clock_result.clock_uncertainty_us,
             clock_sync_valid=self.clock_result.clock_sync_valid,
+            round_trip_us=self.clock_result.clock_rtt_us,
+            observed_at_pc_us=self.clock_observed_at_pc_us,
             start_frame_server=start_frame_server,
         )
+        self.clock_last_resync_us = monotonic_us()
         self.emit("session_started", **{k: v for k, v in response.items() if k != "ok"})
         return response
 
@@ -1102,6 +1194,13 @@ class JilSessionDriver:
         payload.update(self.actuator.metrics())
         if self.clock_result is not None:
             payload.update(self.clock_result.to_dict())
+        # Phase 13E-R Goal 1: the discipline loop's own counters, measured on
+        # the PC that drives it. The projected model itself lives on the Jetson.
+        payload["clock_resync_count"] = self.clock_resync_count
+        payload["clock_resync_failure_count"] = self.clock_resync_failure_count
+        payload["clock_resync_interval_sec"] = self.clock_resync_interval_sec
+        payload["clock_resync_samples"] = self.clock_resync_samples
+        payload["clock_model"] = dict(self.clock_model)
         payload.update(protocol_descriptor())
         payload["blockers"] = list(self.blockers)
         return payload
@@ -1207,6 +1306,11 @@ def build_arg_parser(description: str) -> argparse.ArgumentParser:
     parser.add_argument(
         "--clock-warmup-probes", type=int, default=DEFAULT_CLOCK_WARMUP_PROBES
     )
+    parser.add_argument(
+        "--clock-resync-interval-sec", type=float, default=DEFAULT_RESYNC_INTERVAL_SEC,
+        help="Phase 13E-R periodic clock discipline interval; 0 disables resync.",
+    )
+    parser.add_argument("--clock-resync-samples", type=int, default=12)
     parser.add_argument("--max-clock-uncertainty-us", type=int, default=DEFAULT_MAX_UNCERTAINTY_US)
     parser.add_argument("--camera-width", type=int, default=DEFAULT_CAMERA_WIDTH)
     parser.add_argument("--camera-height", type=int, default=DEFAULT_CAMERA_HEIGHT)
@@ -1247,6 +1351,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         max_clock_uncertainty_us=args.max_clock_uncertainty_us,
         clock_samples=args.clock_samples,
         clock_warmup_probes=args.clock_warmup_probes,
+        clock_resync_interval_sec=args.clock_resync_interval_sec,
+        clock_resync_samples=args.clock_resync_samples,
         camera_width=args.camera_width,
         camera_height=args.camera_height,
         jpeg_quality=args.jpeg_quality,
