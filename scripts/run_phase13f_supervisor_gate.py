@@ -318,7 +318,12 @@ class JetsonSession:
             self.signal_pid(pid, "TERM")
             for pid in self.started_wrapper_pids if pid and pid != self.wrapper_pid
         ]
-        time.sleep(8)
+        # Wait for it to actually go. Starting a successor while the old
+        # supervisor is still tearing down its node races their PID files
+        # and their ports.
+        deadline = time.time() + float(getattr(self.args, "stop_wait_sec", 60.0))
+        while time.time() < deadline and self._pid_alive(self.wrapper_pid):
+            time.sleep(3)
         report["wrapper_still_running"] = self._pid_alive(self.wrapper_pid)
         if report["wrapper_still_running"]:
             report["wrapper_kill"] = self.signal_pid(self.wrapper_pid, "KILL")
@@ -647,6 +652,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--preflight-timeout-sec", type=float, default=180.0)
     parser.add_argument("--storm-timeout-sec", type=float, default=420.0)
     parser.add_argument("--graceful-stop-timeout-sec", type=float, default=90.0)
+    parser.add_argument("--stop-wait-sec", type=float, default=90.0)
     parser.add_argument("--node-ready-timeout-sec", type=float, default=180.0)
     parser.add_argument("--restart-initial-sec", type=float, default=2.0)
     parser.add_argument("--restart-max-sec", type=float, default=15.0)

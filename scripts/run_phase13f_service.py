@@ -513,12 +513,26 @@ class ServiceSupervisor:
             return None
 
     def remove_pid_file(self) -> None:
+        """Remove the PID file only while it is still ours.
+
+        A supervisor that is slow to stop -- the node's TensorRT teardown can
+        take tens of seconds -- may finish shutting down after its replacement
+        has already started and written its own PID. Removing by path alone
+        deletes the successor's file, and whatever is watching then concludes
+        the new service never started. So the contents are checked first.
+        """
+
         path = getattr(self, "_pid_file_path", "")
         if not path:
             return
         try:
-            if os.path.exists(path):
-                os.unlink(path)
+            if not os.path.exists(path):
+                return
+            with open(path, "r", encoding="utf-8") as handle:
+                recorded = handle.read().strip()
+            if recorded and recorded != str(os.getpid()):
+                return
+            os.unlink(path)
         except OSError:
             pass
 
