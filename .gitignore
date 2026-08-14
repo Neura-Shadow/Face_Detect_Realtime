@@ -26,3 +26,6 @@ ma-vlna-logs/
 # runtime artifacts. Schema, manager, packager and templates are source.
 ma-vlna-packages/
 *.tar.gz
+# Git bundles are the transfer mechanism to the Jetson when it has no DNS.
+# They are a copy of history, never content to commit.
+*.bundle

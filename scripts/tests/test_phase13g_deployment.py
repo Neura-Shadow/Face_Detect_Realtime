@@ -98,6 +98,7 @@ class FakeService:
         restart_storm_after_polls: Optional[int] = None,
         unit_inactive_after_polls: Optional[int] = None,
         release_provider: Optional[Any] = None,
+        env_reader: Optional[Any] = None,
     ) -> None:
         self.restart_ok = restart_ok
         # Releases whose ExecStart is broken. Realistic: the candidate
@@ -109,6 +110,11 @@ class FakeService:
         self.restart_storm_after_polls = restart_storm_after_polls
         self.unit_inactive_after_polls = unit_inactive_after_polls
         self.release_provider = release_provider
+        # systemd reads EnvironmentFile at unit start, so what the file says at
+        # the moment of restart is what the node will validate against. Sampling
+        # it here observes the ordering instead of trusting it.
+        self.env_reader = env_reader
+        self.env_at_restart = []  # type: List[Dict[str, str]]
         self.restart_count = 0
         self.health_polls = 0
         self.polls_since_restart = 0
@@ -119,6 +125,8 @@ class FakeService:
         self.restart_count += 1
         self.polls_since_restart = 0
         self.node_start_count += 1
+        if self.env_reader:
+            self.env_at_restart.append(self.env_reader())
         active = self.release_provider() if self.release_provider else None
         ok = bool(self.restart_ok) and active not in self.restart_fails_for
         return {
@@ -183,7 +191,9 @@ class DeploymentFixture:
         with open(self.startup, "w", encoding="utf-8") as handle:
             handle.write("{}")
         self.service = FakeService(
-            release_provider=lambda: self.store.resolve(CURRENT_LINK), **service_kwargs
+            release_provider=lambda: self.store.resolve(CURRENT_LINK),
+            env_reader=self.read_env_layer,
+            **service_kwargs
         )
         self.args = self._args()
         self.manager = DeploymentManager(self.args, service=self.service)
@@ -243,6 +253,21 @@ class DeploymentFixture:
             active_release_id="relA", last_known_good_release_id="relA",
         )
         return "relA"
+
+    def read_env_layer(self) -> Dict[str, str]:
+        """Parse ``state/service.env`` the way systemd would."""
+
+        values = {}  # type: Dict[str, str]
+        try:
+            with open(self.store.state_env_path(), "r", encoding="utf-8") as handle:
+                for line in handle:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, _, value = line.partition("=")
+                        values[key.strip()] = value.strip()
+        except OSError:
+            pass
+        return values
 
     def patch_facts(self, **overrides) -> None:
         facts = dict(TARGET_FACTS)
@@ -656,6 +681,161 @@ class TestAuthorityAndCleanup(DeploymentScenarioTest):
         for claim in ("signed", "secure_boot", "bootloader_ab", "anti_rollback_security"):
             self.assertFalse(status[claim])
         self.assertTrue(status["integrity_only"])
+
+
+@requires_symlinks
+class ExpectedShaEnvLayerTest(unittest.TestCase):
+    """The per-release environment layer.
+
+    The node validates at startup that its code is the commit it was told to
+    expect. Under Phase 13F that expectation was one SHA pinned in a root-owned
+    ``/etc`` file, which was right when one checkout ran forever and wrong the
+    moment releases exist: each release has its own ``source_git_sha``, so a
+    single pinned value lets exactly one release start and rolls the rest back.
+
+    Found before Gate C rather than during it. Every case below would otherwise
+    have surfaced as "candidate did not reach READY" with nothing wrong with the
+    candidate.
+    """
+
+    SHA_A = "1" * 40
+    SHA_B = "2" * 40
+
+    def setUp(self) -> None:
+        self._dir = tempfile.TemporaryDirectory(prefix="phase13g-envlayer-")
+        self.addCleanup(self._dir.cleanup)
+        self.tmp = self._dir.name
+        import run_phase13g_deploy as deploy
+
+        self._original_facts = deploy.target_facts
+        deploy.target_facts = lambda **_kwargs: dict(TARGET_FACTS)
+        self.addCleanup(setattr, deploy, "target_facts", self._original_facts)
+
+    def fixture(self, **kwargs) -> DeploymentFixture:
+        fixture = DeploymentFixture(self.tmp, **kwargs)
+        package, manifest = fixture.build_package("relA", source_git_sha=self.SHA_A)
+        fixture.manager.stage(package, manifest)
+        fixture.manager.validate("relA")
+        fixture.store.set_link_atomic(CURRENT_LINK, "relA")
+        fixture.store.set_link_atomic(LAST_KNOWN_GOOD_LINK, "relA")
+        fixture.manager.state.reset_to_idle("baseline")
+        fixture.manager.state.set(
+            active_release_id="relA", last_known_good_release_id="relA",
+        )
+        return fixture
+
+    def stage_b(self, fixture: DeploymentFixture, **overrides) -> None:
+        package, manifest = fixture.build_package(
+            "relB", source_git_sha=self.SHA_B, **overrides
+        )
+        fixture.manager.stage(package, manifest)
+        fixture.manager.validate("relB")
+
+    def test_activation_publishes_the_candidate_sha(self) -> None:
+        fixture = self.fixture()
+        self.stage_b(fixture)
+        report = fixture.manager.activate("relB")
+        self.assertTrue(report["ok"], report)
+        published = fixture.read_env_layer()
+        self.assertEqual(published["MA_VLNA_EXPECTED_SHA"], self.SHA_B)
+        self.assertEqual(published["MA_VLNA_ACTIVE_RELEASE_ID"], "relB")
+
+    def test_the_layer_is_published_before_the_restart(self) -> None:
+        """The ordering is the whole point, so it is observed, not assumed.
+
+        systemd reads EnvironmentFile at unit start. Publishing after the restart
+        would start the candidate against the outgoing release's SHA, failing
+        preflight for a reason that has nothing to do with the candidate.
+        """
+
+        fixture = self.fixture()
+        self.stage_b(fixture)
+        fixture.manager.activate("relB")
+        self.assertTrue(fixture.service.env_at_restart, "no restart was observed")
+        at_restart = fixture.service.env_at_restart[0]
+        self.assertEqual(at_restart.get("MA_VLNA_EXPECTED_SHA"), self.SHA_B)
+        self.assertEqual(at_restart.get("MA_VLNA_ACTIVE_RELEASE_ID"), "relB")
+
+    def test_rollback_republishes_the_target_sha(self) -> None:
+        """A rollback is a switch too, and the expectation must follow it back."""
+
+        fixture = self.fixture(never_ready=True)
+        self.stage_b(fixture)
+        report = fixture.manager.activate("relB")
+        self.assertFalse(report["ok"])
+        self.assertEqual(report["classification"], "candidate_not_ready")
+        self.assertEqual(fixture.store.resolve(CURRENT_LINK), "relA")
+        published = fixture.read_env_layer()
+        self.assertEqual(published["MA_VLNA_EXPECTED_SHA"], self.SHA_A)
+        self.assertEqual(published["MA_VLNA_ACTIVE_RELEASE_ID"], "relA")
+
+    def test_the_rollback_restart_sees_the_rollback_target_sha(self) -> None:
+        """Without this, a recoverable rollback would itself fail preflight.
+
+        The restarts are, in order: the candidate, then the rollback target. The
+        second must already carry relA's SHA or the node would come up expecting
+        the failed candidate's commit and be recorded FAILED.
+        """
+
+        fixture = self.fixture(never_ready=True)
+        self.stage_b(fixture)
+        fixture.manager.activate("relB")
+        self.assertGreaterEqual(len(fixture.service.env_at_restart), 2)
+        self.assertEqual(
+            fixture.service.env_at_restart[0].get("MA_VLNA_EXPECTED_SHA"), self.SHA_B
+        )
+        self.assertEqual(
+            fixture.service.env_at_restart[-1].get("MA_VLNA_EXPECTED_SHA"), self.SHA_A
+        )
+
+    def test_status_reports_agreement_with_current(self) -> None:
+        fixture = self.fixture()
+        self.stage_b(fixture)
+        fixture.manager.activate("relB")
+        layer = fixture.manager.status()["env_layer"]
+        self.assertTrue(layer["exists"])
+        self.assertTrue(layer["agrees_with_current"])
+        self.assertEqual(layer["published_release_id"], "relB")
+        self.assertEqual(layer["published_sha"], self.SHA_B)
+
+    def test_status_reports_disagreement_rather_than_repairing_it(self) -> None:
+        """A stale layer means the next restart fails preflight. Show it."""
+
+        fixture = self.fixture()
+        self.stage_b(fixture)
+        fixture.manager.activate("relB")
+        # Switch underneath the layer, as an interrupted operation would.
+        fixture.store.set_link_atomic(CURRENT_LINK, "relA")
+        layer = fixture.manager.status()["env_layer"]
+        self.assertFalse(layer["agrees_with_current"])
+        self.assertEqual(layer["published_release_id"], "relB")
+        self.assertEqual(layer["active_release_id"], "relA")
+
+    def test_no_layer_before_the_first_activation(self) -> None:
+        """The unit uses ``EnvironmentFile=-``, so absence must be a clean state."""
+
+        fixture = self.fixture()
+        layer = fixture.manager.status()["env_layer"]
+        self.assertFalse(layer["exists"])
+        self.assertFalse(layer["agrees_with_current"])
+
+    def test_the_write_leaves_no_temporary_files(self) -> None:
+        fixture = self.fixture()
+        self.stage_b(fixture)
+        fixture.manager.activate("relB")
+        leftovers = [
+            name for name in os.listdir(fixture.store.state_dir)
+            if name.startswith(".service.env.")
+        ]
+        self.assertEqual(leftovers, [], "a temporary env file survived")
+
+    def test_a_release_without_provenance_is_reported_not_hidden(self) -> None:
+        """No SHA to publish is a loud condition, not a silent skip."""
+
+        fixture = self.fixture()
+        result = fixture.manager._publish_release_env("relDoesNotExist")
+        self.assertFalse(result["ok"])
+        self.assertIn("source_git_sha", result["error"])
 
 
 if __name__ == "__main__":

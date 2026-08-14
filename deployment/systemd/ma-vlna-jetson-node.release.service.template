@@ -43,6 +43,24 @@ SupplementaryGroups=video render
 WorkingDirectory=@RELEASE_ROOT@/current
 
 EnvironmentFile=@ENV_FILE@
+# The deployment-owned layer, applied second so it wins. systemd reads
+# environment files in order, so this overrides MA_VLNA_EXPECTED_SHA from the
+# root-owned file above.
+#
+# It has to exist. Every release carries its own source_git_sha, and the node
+# validates at startup that its code is the commit it was told to expect. A
+# single SHA pinned in /etc can only ever match one release, so without this
+# layer exactly one release could start and every other activation would fail
+# preflight and roll back. Editing /etc per activation would mean sudo per
+# update, which would defeat A/B deployment entirely.
+#
+# The leading `-` makes a missing file non-fatal: before the first activation
+# there is nothing to read, and the pinned /etc default is correct then.
+#
+# This is not a security boundary. The service user can write this file, and
+# already runs the code it describes. Integrity comes from the SHA-256 values in
+# the release manifest; authenticity is Phase 13H.
+EnvironmentFile=-@RELEASE_ROOT@/state/service.env
 
 RuntimeDirectory=ma-vlna
 RuntimeDirectoryMode=0750

@@ -349,6 +349,13 @@ class DeploymentManager:
         self.state.set(switch_completed=True, active_release_id=release_id)
         self.emit("switched", release_id=release_id, previous=outgoing)
 
+        # Tell the unit which commit to expect *before* restarting into it.
+        # Order matters: the node validates its expected SHA during preflight,
+        # so publishing this after the restart would let the candidate fail a
+        # check against the outgoing release's SHA and be rolled back for a
+        # reason that has nothing to do with the candidate.
+        report["env_layer"] = self._publish_release_env(release_id)
+
         restart = self.service.restart()
         report["restart"] = restart
         if not restart.get("restarted"):
@@ -430,6 +437,11 @@ class DeploymentManager:
 
         report["switch"] = self.store.set_link_atomic(CURRENT_LINK, destination)
         self.state.set(active_release_id=destination, switch_completed=True)
+        # A rollback is a switch like any other, so the expected SHA must follow
+        # it back. Without this the rollback target would be started with the
+        # failed candidate's SHA still published and would fail preflight too --
+        # turning a recoverable rollback into the FAILED state below.
+        report["env_layer"] = self._publish_release_env(destination)
         restart = self.service.restart()
         report["restart"] = restart
         ready = self._wait_for_ready(float(self.args.rollback_timeout_sec))
@@ -469,10 +481,68 @@ class DeploymentManager:
             "bootloader_ab": False,
             "anti_rollback_security": False,
         }
+        payload["env_layer"] = self._describe_release_env()
         if not self.args.skip_service_status:
             payload["service_properties"] = self.service.properties()
             payload["service_health"] = self.service.health()
         payload["ok"] = True
+        return payload
+
+    def _publish_release_env(self, release_id: str) -> Dict[str, Any]:
+        """Write the environment layer naming the release about to be started."""
+
+        sha = self.store.release_source_sha(release_id)
+        if not sha:
+            # Refusing here would be worse than proceeding: the release is
+            # already installed and validated, and validation checked the
+            # manifest. Report it loudly instead of failing the switch.
+            result = {
+                "ok": False,
+                "release_id": release_id,
+                "error": "release manifest carries no source_git_sha",
+            }
+            self.emit("env_layer_incomplete", **result)
+            return result
+        result = self.store.write_state_env(release_id, sha)
+        result["ok"] = True
+        self.emit("env_layer_published", release_id=release_id, expected_sha=sha)
+        return result
+
+    def _describe_release_env(self) -> Dict[str, Any]:
+        """What the unit will read, and whether it agrees with ``current``.
+
+        Reported rather than corrected. A mismatch between the published SHA and
+        the active release means the next restart would fail preflight, and that
+        is worth seeing in ``status`` instead of being silently repaired.
+        """
+
+        path = self.store.state_env_path()
+        active = self.store.resolve(CURRENT_LINK)
+        payload = {
+            "path": path,
+            "exists": os.path.isfile(path),
+            "active_release_id": active,
+            "active_release_sha": self.store.release_source_sha(active) if active else "",
+        }
+        published = {}  # type: Dict[str, str]
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                for line in handle:
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, _, value = line.partition("=")
+                    published[key.strip()] = value.strip()
+        except OSError:
+            pass
+        payload["published_sha"] = published.get("MA_VLNA_EXPECTED_SHA", "")
+        payload["published_release_id"] = published.get("MA_VLNA_ACTIVE_RELEASE_ID", "")
+        payload["agrees_with_current"] = bool(
+            payload["exists"]
+            and payload["published_release_id"] == (active or "")
+            and payload["published_sha"] == payload["active_release_sha"]
+            and payload["active_release_sha"]
+        )
         return payload
 
     def resume(self) -> Dict[str, Any]:
