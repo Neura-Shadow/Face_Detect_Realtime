@@ -64,6 +64,19 @@ from workers.core.release_store import (  # noqa: E402
 HAS_SYMLINK = hasattr(os, "symlink")
 
 
+def fake_credential(prefix: str, body: str) -> str:
+    """Assemble a credential-shaped literal at test time.
+
+    Passed as fragments deliberately. A verbatim ``ghp_...`` or ``sk-...``
+    string committed to the repository can trip provider-side secret scanning
+    and push protection, and a test fixture is a poor reason to teach a scanner
+    that this repository ships tokens. None of these are real credentials; they
+    exist only to be written into a temporary directory and scanned.
+    """
+
+    return prefix + body
+
+
 def make_release(store: ReleaseStore, release_id: str, *, content: str = "x") -> str:
     source = tempfile.mkdtemp(prefix="rel-src-")
     with open(os.path.join(source, "marker.txt"), "w", encoding="utf-8") as handle:
@@ -442,6 +455,12 @@ class TestSecretScan(unittest.TestCase):
         with open(path, "w", encoding="utf-8") as handle:
             handle.write(text)
 
+    def flagged(self) -> list:
+        """Offenders with forward slashes, so assertions read the same on both
+        hosts -- ``scan_for_secrets`` returns native separators."""
+
+        return [entry.replace(os.sep, "/") for entry in scan_for_secrets(self.tmp)]
+
     def test_env_file_is_flagged(self) -> None:
         self.write(".env", "MA_VLNA_PC_HOST=1.2.3.4")
         self.assertIn(".env", scan_for_secrets(self.tmp))
@@ -452,11 +471,92 @@ class TestSecretScan(unittest.TestCase):
 
     def test_example_documenting_a_variable_name_is_not_flagged(self) -> None:
         self.write("deployment/node.env.example", "MA_VLNA_TOKEN=replace-me")
-        self.assertEqual(scan_for_secrets(self.tmp), [])
+        self.assertEqual(self.flagged(), [])
 
     def test_private_key_is_flagged(self) -> None:
         self.write("keys/id_rsa", "-----BEGIN RSA PRIVATE KEY-----\nabc\n")
         self.assertTrue(scan_for_secrets(self.tmp))
+
+    # --- Real credential shapes must still be refused -----------------------
+    #
+    # These come first because the rest of this class relaxes the scan, and a
+    # relaxation is only legitimate if the cases that matter still fail.
+
+    def test_long_literal_assigned_to_a_secret_name_is_flagged(self) -> None:
+        self.write("workers/core/thing.py", 'API_KEY = "aB3xQ91zLmPk04Rt"\n')
+        self.assertEqual(self.flagged(), ["workers/core/thing.py"])
+
+    def test_annotated_assignment_of_a_real_value_is_flagged(self) -> None:
+        """The annotation must not smuggle a literal past the check."""
+
+        self.write("workers/core/thing.py", 'api_key: str = "aB3xQ91zLmPk04Rt"\n')
+        self.assertEqual(self.flagged(), ["workers/core/thing.py"])
+
+    def test_credential_literal_is_flagged_under_an_innocent_name(self) -> None:
+        """Name-independent patterns close the obvious hole in name matching."""
+
+        secret = fake_credential("sk-", "live91zLmPk04RtQxA7")
+        self.write("workers/core/thing.py", 'DEFAULT = "%s"\n' % secret)
+        self.assertEqual(self.flagged(), ["workers/core/thing.py"])
+
+    def test_credential_literal_is_flagged_even_in_an_example_file(self) -> None:
+        """Exemption covers heuristic name matching, never a real key."""
+
+        secret = fake_credential("ghp_", "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5")
+        self.write("deployment/node.env.example", "TOKEN=%s\n" % secret)
+        self.assertEqual(self.flagged(), ["deployment/node.env.example"])
+
+    # --- The Gate B false positives -----------------------------------------
+    #
+    # Three ordinary source files, refused by the previous rule because it
+    # matched any assignment whose name contained a secret-ish word.
+
+    def test_placeholder_default_is_not_flagged(self) -> None:
+        self.write("workers/core/config.py", '    api_key: str = "optional"\n')
+        self.assertEqual(self.flagged(), [])
+
+    def test_reading_a_secret_from_the_environment_is_not_flagged(self) -> None:
+        """This is the pattern we want; flagging it punished correct code."""
+
+        self.write("workers/core/config.py", '    api_key=_env("VLM_API_KEY", "optional"),\n')
+        self.assertEqual(self.flagged(), [])
+
+    def test_assignment_from_an_expression_is_not_flagged(self) -> None:
+        self.write(
+            "workers/core/vlm_reasoner.py",
+            "        self._api_key = cfg.api_key\n",
+        )
+        self.assertEqual(self.flagged(), [])
+
+    def test_unrelated_use_of_the_word_token_is_not_flagged(self) -> None:
+        """``token`` here is a parsed word from a layer-group spec."""
+
+        self.write(
+            "workers/core/int8_layer_groups.py",
+            '        token = raw.strip().upper()\n        if token == "CONV":\n',
+        )
+        self.assertEqual(self.flagged(), [])
+
+    def test_interpolated_value_is_not_flagged(self) -> None:
+        self.write("workers/core/thing.py", 'AUTH_TOKEN = "${MA_VLNA_AUTH_TOKEN}"\n')
+        self.assertEqual(self.flagged(), [])
+
+    def test_real_repository_sources_are_accepted(self) -> None:
+        """The actual files Gate B refused, read from the repository itself.
+
+        A synthetic reproduction can drift from the code it stands for, so this
+        asserts against the real thing.
+        """
+
+        for relative in (
+            "workers/core/config.py",
+            "workers/core/int8_layer_groups.py",
+            "workers/core/vlm_reasoner.py",
+        ):
+            source = REPO_ROOT / relative
+            self.assertTrue(source.is_file(), "%s is missing" % relative)
+            self.write(relative, source.read_text(encoding="utf-8", errors="ignore"))
+        self.assertEqual(self.flagged(), [])
 
 
 class TestReleaseProvenanceWithoutGit(unittest.TestCase):

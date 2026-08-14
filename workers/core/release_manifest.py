@@ -75,12 +75,50 @@ REQUIRED_FIELDS = (
     "int8_authority_allowed",
 )
 
-#: Names that look like a secret. A release package is copied to a shared
-#: location and kept; nothing resembling a credential belongs in one.
-SECRET_PATTERNS = (
-    re.compile(r"(?i)(password|passwd|secret|token|api[_-]?key|private[_-]?key)"),
-    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+#: A credential-shaped *assignment*: a secret-ish name given a **string
+#: literal**. Requiring the literal is the whole point. ``self._api_key =
+#: cfg.api_key`` moves a value that lives in the environment; ``token =
+#: raw.strip().upper()`` is a parsed word. Neither ships a credential, and
+#: flagging them made the scan refuse three ordinary source files during
+#: Gate B -- including ``api_key=_env("VLM_API_KEY", "optional")``, which is
+#: precisely the pattern we want people to use.
+SECRET_NAME_ASSIGNMENT = re.compile(
+    r"(?i)\b(?:password|passwd|secret|token|api[_-]?key|private[_-]?key"
+    r"|access[_-]?key|auth[_-]?token|client[_-]?secret)\b"
+    r"[^\n'\"]{0,40}?[:=][^\n'\"]{0,24}?"
+    r"(['\"])(?P<value>[^'\"\n]{0,256})\1"
 )
+
+#: Literals that are credentials whatever they are called. These are
+#: name-independent, so they still catch ``FOO = \"sk-...\"`` -- a real gap in
+#: name-based matching, and the reason relaxing the name rule is not a net
+#: loosening.
+CREDENTIAL_LITERAL_PATTERNS = (
+    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    re.compile(r"\bsk-[A-Za-z0-9_\-]{16,}"),
+    re.compile(r"\bghp_[A-Za-z0-9]{20,}"),
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}"),
+    re.compile(r"\bxox[baprs]-[A-Za-z0-9\-]{10,}"),
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    re.compile(r"\bAIza[0-9A-Za-z_\-]{30,}"),
+)
+
+#: Below this, a literal is too short to be a usable credential.
+MIN_SECRET_VALUE_LEN = 12
+
+#: Values that name the absence of a secret rather than one.
+PLACEHOLDER_SECRET_VALUES = frozenset({
+    "", "optional", "none", "null", "unset", "disabled", "todo", "changeme",
+    "change-me", "replace-me", "replaceme", "placeholder", "redacted",
+    "example", "dummy", "fake", "test", "your-api-key", "your_api_key",
+    "yourkeyhere", "xxx", "xxxx", "notset", "not-set", "n/a",
+})
+
+#: ``api_key=_env("VLM_API_KEY", ...)`` names a variable; it is not its value.
+_ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
+
+#: Interpolation markers mean the real value arrives from somewhere else.
+_TEMPLATE_MARKERS = ("{", "}", "<", ">", "$", "%s", "...")
 
 #: Files that may never appear inside a release package.
 FORBIDDEN_PACKAGE_NAMES = (
@@ -531,8 +569,35 @@ def _writable(path: str) -> bool:
         return False
 
 
+def looks_like_secret_value(value: str) -> bool:
+    """Whether a string literal could actually be a credential.
+
+    Deliberately conservative about what counts as a secret, because the cost
+    of a false positive here is a release that cannot be built at all. A short
+    word, a placeholder, an environment-variable name or a template hole are
+    none of them usable credentials.
+    """
+
+    stripped = value.strip()
+    if len(stripped) < MIN_SECRET_VALUE_LEN:
+        return False
+    if stripped.lower() in PLACEHOLDER_SECRET_VALUES:
+        return False
+    if _ENV_NAME_RE.match(stripped):
+        return False
+    if any(marker in stripped for marker in _TEMPLATE_MARKERS):
+        return False
+    return True
+
+
 def scan_for_secrets(root: str, *, max_bytes: int = 256 * 1024) -> List[str]:
-    """Names and contents that look like credentials. Best-effort, not proof."""
+    """Names and contents that look like credentials.
+
+    Best-effort, not proof, and the limit is worth stating plainly: a
+    credential assigned to an innocuously named constant is caught only if the
+    literal itself matches ``CREDENTIAL_LITERAL_PATTERNS``. This scan reduces
+    the chance of shipping a secret; it does not establish that none shipped.
+    """
 
     offenders = []  # type: List[str]
     for base, _dirs, files in os.walk(root):
@@ -555,13 +620,20 @@ def scan_for_secrets(root: str, *, max_bytes: int = 256 * 1024) -> List[str]:
                     text = handle.read()
             except OSError:
                 continue
-            for pattern in SECRET_PATTERNS:
-                if pattern.search(text):
-                    # An example file that documents a variable name is not a
-                    # secret; only flag assignments that carry a value.
-                    if re.search(r"(?i)(password|secret|token|api[_-]?key)\s*[=:]\s*\S+", text):
-                        if not relative.endswith((".example", ".template", ".md")):
-                            offenders.append(relative)
+            # A credential literal is damning wherever it appears -- an example
+            # file carrying a real key is the worst case, not an exempt one.
+            if any(pattern.search(text) for pattern in CREDENTIAL_LITERAL_PATTERNS):
+                offenders.append(relative)
+                continue
+
+            # Name-based matching is heuristic, so files whose job is to
+            # document variable names are exempt from it (but not from the
+            # literal patterns above).
+            if relative.endswith((".example", ".template", ".md")):
+                continue
+            for match in SECRET_NAME_ASSIGNMENT.finditer(text):
+                if looks_like_secret_value(match.group("value")):
+                    offenders.append(relative)
                     break
     return sorted(set(offenders))
 
