@@ -150,9 +150,10 @@ growing list of timestamps.
 
 ---
 
-## 6. Four defects Gate B found, all of one kind
+## 6. Six defects the gates found, all of them mine
 
-Every one of these was mine, and three share a single root cause.
+Four of them share a single root cause; the last two only became reachable
+once the service was under systemd and rebooting.
 
 **The readiness probe killed what it was probing.** The wrapper checked
 readiness by connecting to the node's control port. The node accepts exactly one
@@ -183,6 +184,44 @@ engine and corrupt the manifest on purpose and restore them in their teardown.
 Interrupting the driver skips that, and the engine was left renamed. Repair now
 runs at the start of every run as well as the end, and is idempotent.
 
+**A stopping supervisor deleted its successor's PID file.** `remove_pid_file`
+removed by path. The node's TensorRT teardown takes tens of seconds, so a
+supervisor can finish stopping after its replacement has already written its own
+PID — and then delete it, leaving anything watching to conclude the new service
+never started. It now removes the file only while the contents are still its own
+PID.
+
+**The restart-storm case measured the wrong thing.** It reported failure three
+times while the service log showed the storm blocked correctly each time:
+`restart_storm_blocked`, `restarts_in_window: 5`, `state: FAILED`. It was trying
+to catch a PID file that exists only for the ~35 s the storm lasts, over an SSH
+poll, while the process owning it was exiting. What the phase requires is that
+the storm was blocked, so the case now counts `restart_storm_blocked` records
+before and after. Status stayed **Blocked** until this was fixed and genuinely
+reached 10/10.
+
+### And one in the clock discipline, which only a reboot could reach
+
+Gate D's first two cycles were textbook — real reboots, 25.8 s and 26.8 s to
+ready, engine hash verified — and both failed FP16 authority.
+`estimated_drift_ppm` came back as **455** and **257**. The boot check synced and
+resynced about a second apart, and a few hundred microseconds of scatter across a
+one-second baseline is hundreds of ppm when fitted as a rate. The model saw
+|drift| > 100 ppm, reported `implausible_drift_ppm`, withheld AI authority, and
+every command was `ACCEPTED` as SAFE_STOP.
+
+Nothing was broken. The estimator was answering a question it did not yet have
+the data for. `estimate_drift_ppm` now reports no slope until the window spans a
+minimum baseline — the honest answer to "we have not been watching long enough to
+know", and the safe one: the measured scatter still inflates the guard as its
+residual, and the drift term scales with a model age that is small by definition
+when the window is young. A genuinely implausible rate over a real baseline is
+still caught, with a test pinning that so the guard cannot become a way to hide a
+fault.
+
+This was never boot-specific. It applied to any freshly started session; a reboot
+simply makes the window newest.
+
 ---
 
 ## 7. Gate results
@@ -202,19 +241,97 @@ unit_valid_for_systemd_245=True   (both)
 
 ### Gate B — Supervisor Pass
 
-_Recorded in the phase evidence; see the final report._
+Production wrapper run by hand on the real Jetson, 10/10 fault cases:
 
-### Gates C and D
+```
+soak                    1827.206 s, state held READY, unexpected restarts 0
+watchdog pings          2071          (stand-in notify listener counted them)
+orphan processes        0
+S00 initial start      READY        S05 port already held   SAFE_STOP
+S01 node SIGTERM       READY        S06 restart storm       BLOCKED
+S02 node SIGKILL       READY        S07 PC unavailable      READY, no authority
+S03 missing engine     SAFE_STOP    S08 SIGTERM to wrapper  SAFE_STOP
+S04 corrupt hash       SAFE_STOP    S09 watchdog            PINGED
+```
 
-Gate C installs the unit into `/etc/systemd/system` and Gate D reboots the
-Jetson. Both require **explicit operator approval**, and neither is performed
-here without it. `run_phase13f_install.py` renders the unit, validates it and
-prints the exact commands — it never runs sudo, never writes `/etc`, never
-enables or starts a unit, and never asks for or stores a password.
+### Gate C — Service Pass
+
+Installed by the operator; every sudo command was theirs. Verified against
+systemd itself rather than the service's own report:
+
+```
+Type=notify   NotifyAccess=main   User=myjetsonnx (non-root)
+ActiveState=active  SubState=running  Result=success  NRestarts=0
+WatchdogUSec=1min   watchdog timestamp fresh
+Restart=on-failure  RestartUSec=5s   UnitFileState=enabled
+StartLimitIntervalUSec=10min  StartLimitBurst=5  RuntimeDirectory=ma-vlna
+```
+
+Health socket: READY, authority permitted, engine hash matching the manifest,
+`engine_load_count=1`, watchdog pinging at 30 s — half of `WatchdogSec`, per
+systemd's contract — and logs bounded at 32 MiB total.
+
+The SHA pin was exercised rather than assumed. With the repository moved and the
+env still pinned to the old commit, preflight failed on `repository_sha_match`;
+with the pin updated it passed. Both directions were measured.
+
+### Gate D — Boot Pass
+
+Two operator-approved reboot cycles. Each reboot is proved by a changed kernel
+boot id, because a service restart that looks like a reboot does not change one.
+
+| | cycle 1 | cycle 2 |
+| --- | --- | --- |
+| boot id changed | yes | yes |
+| `boot_to_ready_sec` (systemd, from boot) | **27.234** | **25.684** |
+| within 120 s limit | yes | yes |
+| service state | READY | READY |
+| `NRestarts` | 0 | 0 |
+| `UnitFileState` | enabled | enabled |
+| supervisor parent is PID 1 | yes | yes |
+| engine hash re-verified | yes | yes |
+| engine loaded exactly once | yes | yes |
+| FP16 authority restored | yes | yes |
+| INT8 authority count | 0 | 0 |
+| fallback / CUDA errors | 0 / 0 | 0 / 0 |
+| mailbox depth | 1 | 1 |
+| clock resync accepted | yes | yes |
+| drift ppm (baseline 16 s) | −27.4 | −26.0 |
+| `issued_future_skew_us_max` | −2216 | −2137 |
+| future-timestamp rejects | 0 | 0 |
+
+Readiness is systemd's `ActiveEnterTimestampMonotonic` — microseconds since boot,
+and for a `Type=notify` unit the moment `READY=1` arrived. SSH came back at ~43 s
+in both cycles, *after* the service was already READY, which is why timing from
+the PC would have overstated it.
+
+"No manual launch" is structural: the supervisor's parent is PID 1.
 
 ---
 
-## 8. Artifact boundary
+## 8. Two operational notes worth recording
+
+**Passwordless sudo already exists on this host.** `/etc/sudoers` carries
+`%sudo ALL=(ALL:ALL) NOPASSWD:ALL`, which predates this phase. It was not created
+here and nothing in this phase configures sudo. It is recorded because it is why
+`sudo systemctl reboot` worked non-interactively for Gate D, and that should be
+visible rather than quietly relied on.
+
+**The Jetson lost internet DNS across the reboots.** `git fetch origin` failed
+with `Could not resolve host: github.com` — the ICS path from the PC did not
+re-establish. ICS is on the do-not-touch list, so the repository was synced with
+a `git bundle` carried over the direct USB-gadget link instead. That keeps real
+git objects and a real HEAD, where copying files would have left the commit
+claiming something the working tree did not match.
+
+**The env pin moved three times**, once per fix that changed the commit the
+service is bound to. That is the pin doing its job, but it is friction: a real
+deployment would regenerate the manifest and environment file as one step of
+installation rather than by hand.
+
+---
+
+## 9. Artifact boundary
 
 Committed: the schema, builder, validator, wrapper, unit template, environment
 **example**, tests and this document.
@@ -226,7 +343,7 @@ The environment example is committed; a real environment file never is.
 
 ---
 
-## 9. Not claimed
+## 10. Not claimed
 
 No full HIL. No real MCU, CAN or UART. No secure boot. No OTA. No physical
 camera, actuator or vehicle deployment. No model accuracy, mAP, recall or route
