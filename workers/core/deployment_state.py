@@ -65,8 +65,12 @@ TERMINAL_STATES = frozenset({CONFIRMED, ROLLED_BACK, FAILED, IDLE})
 #: deployment into a state its recovery logic was never written for.
 ALLOWED_TRANSITIONS = {
     IDLE: {STAGED, FAILED},
-    STAGED: {VALIDATED, FAILED, IDLE},
-    VALIDATED: {ACTIVATING, FAILED, IDLE},
+    # STAGED and VALIDATED may be re-entered: replacing a candidate that has
+    # not been activated is an ordinary operation, and nothing has moved in
+    # production yet. Re-staging over an *in-flight* activation is not allowed,
+    # which is why ACTIVATING and PROBATION have no path back to STAGED.
+    STAGED: {STAGED, VALIDATED, FAILED, IDLE},
+    VALIDATED: {STAGED, ACTIVATING, FAILED, IDLE},
     ACTIVATING: {PROBATION, ROLLING_BACK, FAILED},
     PROBATION: {CONFIRMED, ROLLING_BACK, FAILED},
     CONFIRMED: {IDLE, STAGED},

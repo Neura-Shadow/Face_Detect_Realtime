@@ -91,6 +91,7 @@ class FakeService:
         self,
         *,
         restart_ok: bool = True,
+        restart_fails_for: Optional[Any] = None,
         ready_after_polls: int = 1,
         never_ready: bool = False,
         leave_ready_after_polls: Optional[int] = None,
@@ -99,6 +100,9 @@ class FakeService:
         release_provider: Optional[Any] = None,
     ) -> None:
         self.restart_ok = restart_ok
+        # Releases whose ExecStart is broken. Realistic: the candidate
+        # fails to start, the release being rolled back to does not.
+        self.restart_fails_for = set(restart_fails_for or ())
         self.ready_after_polls = ready_after_polls
         self.never_ready = never_ready
         self.leave_ready_after_polls = leave_ready_after_polls
@@ -115,9 +119,12 @@ class FakeService:
         self.restart_count += 1
         self.polls_since_restart = 0
         self.node_start_count += 1
+        active = self.release_provider() if self.release_provider else None
+        ok = bool(self.restart_ok) and active not in self.restart_fails_for
         return {
-            "restarted": bool(self.restart_ok),
-            "returncode": 0 if self.restart_ok else 1,
+            "restarted": ok,
+            "returncode": 0 if ok else 1,
+            "active_release_id": active,
             "command": "fake systemctl restart",
         }
 
@@ -404,7 +411,8 @@ class TestAutomaticRollback(DeploymentScenarioTest):
         return fixture, fixture.manager.activate()
 
     def test_service_startup_failure_rolls_back(self) -> None:
-        fixture, result = self._activate_failing(restart_ok=False)
+        # Only the candidate is broken; rolling back to A must still work.
+        fixture, result = self._activate_failing(restart_fails_for={"relB"})
         self.assertFalse(result["ok"])
         self.assertEqual(result["classification"], "service_restart_failed")
         self.assertTrue(result["rolled_back"])
@@ -442,7 +450,8 @@ class TestAutomaticRollback(DeploymentScenarioTest):
         self.assertEqual(fixture.store.resolve(LAST_KNOWN_GOOD_LINK), "relA")
 
     def test_rollback_that_also_fails_is_recorded_as_failed(self) -> None:
-        # Scenario 15: the worst case. It must not be dressed up as recovered.
+        # Scenario 15: the worst case -- nothing will start. It must not be
+        # dressed up as recovered.
         fixture = self.fixture(never_ready=True)
         fixture.install_release_a()
         package, manifest = fixture.build_package("relB")
@@ -610,6 +619,19 @@ class TestAuthorityAndCleanup(DeploymentScenarioTest):
         before = fixture.service.node_start_count
         fixture.manager.activate()
         self.assertGreater(fixture.service.node_start_count, before)
+
+    def test_a_staged_candidate_can_be_replaced_before_activation(self) -> None:
+        # Nothing has moved in production yet, so staging a different
+        # candidate is an ordinary operation rather than an error.
+        fixture = self.fixture()
+        fixture.install_release_a()
+        first_pkg, first_man = fixture.build_package("relB")
+        self.assertTrue(fixture.manager.stage(first_pkg, first_man)["ok"])
+        second_pkg, second_man = fixture.build_package("relC")
+        result = fixture.manager.stage(second_pkg, second_man)
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(fixture.manager.state.candidate_release_id, "relC")
+        self.assertEqual(fixture.store.resolve(CURRENT_LINK), "relA")
 
     def test_cleanup_keeps_current_previous_and_last_known_good(self) -> None:
         fixture = self.fixture()
