@@ -107,6 +107,21 @@ class PreflightReport:
 
 
 def _git_sha(repo_root: str) -> str:
+    """The commit this tree came from.
+
+    Two cases, and the second is not a fallback so much as the normal one in
+    production. A git checkout answers with ``git rev-parse``. An **immutable
+    release** has no ``.git`` at all -- that is the point of it -- so the commit
+    is read from the release manifest sitting at the release root, whose hash
+    was validated before the release was allowed to become ``current``.
+
+    Reading it from the manifest is not weaker than asking git. A checkout can
+    be changed under the running service by a ``git pull``; a release cannot,
+    and its manifest is covered by the package hash. What the check is for is
+    "is the running code the code we validated", and in a release the manifest
+    is the more direct answer.
+    """
+
     try:
         completed = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -115,11 +130,33 @@ def _git_sha(repo_root: str) -> str:
             stderr=subprocess.PIPE,
             timeout=30,
         )
+        if completed.returncode == 0:
+            sha = completed.stdout.decode("utf-8", "replace").strip()
+            if sha:
+                return sha
     except (OSError, subprocess.SubprocessError):
-        return ""
-    if completed.returncode != 0:
-        return ""
-    return completed.stdout.decode("utf-8", "replace").strip()
+        pass
+    return _release_source_sha(repo_root)
+
+
+def _release_source_sha(repo_root: str) -> str:
+    """``source_git_sha`` from the release manifest, when this is a release."""
+
+    for name in ("release.manifest.json", os.path.join("config", "release.manifest.json")):
+        path = os.path.join(repo_root, name)
+        if not os.path.isfile(path):
+            continue
+        try:
+            import json
+
+            with open(path, "r", encoding="utf-8") as handle:
+                payload = json.load(handle)
+        except (OSError, ValueError):
+            continue
+        sha = str(payload.get("source_git_sha", "")).strip()
+        if sha:
+            return sha
+    return ""
 
 
 def _path_writable(path: str) -> bool:

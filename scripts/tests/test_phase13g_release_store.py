@@ -454,6 +454,64 @@ class TestSecretScan(unittest.TestCase):
         self.assertTrue(scan_for_secrets(self.tmp))
 
 
+class TestReleaseProvenanceWithoutGit(unittest.TestCase):
+    """A release has no .git, so provenance comes from its manifest.
+
+    Found before Gate C rather than during it: the Phase 13F preflight asks
+    git for HEAD, and an immutable release directory has no repository. Without
+    this, repository_sha_match would fail for every release and no release
+    could ever hold authority.
+    """
+
+    def setUp(self) -> None:
+        self._dir = tempfile.TemporaryDirectory(prefix="phase13g-prov-")
+        self.addCleanup(self._dir.cleanup)
+        self.root = self._dir.name
+
+    def test_source_sha_is_read_from_the_release_manifest(self) -> None:
+        from workers.core.service_preflight import _git_sha
+
+        with open(os.path.join(self.root, "release.manifest.json"), "w", encoding="utf-8") as handle:
+            json.dump({"source_git_sha": "b" * 40}, handle)
+        self.assertEqual(_git_sha(self.root), "b" * 40)
+
+    def test_a_directory_with_neither_git_nor_manifest_reports_nothing(self) -> None:
+        from workers.core.service_preflight import _git_sha
+
+        # Empty string, not a guess: the preflight then fails the check, which
+        # is the correct outcome for a tree of unknown provenance.
+        self.assertEqual(_git_sha(self.root), "")
+
+    def test_a_corrupt_release_manifest_reports_nothing(self) -> None:
+        from workers.core.service_preflight import _git_sha
+
+        with open(os.path.join(self.root, "release.manifest.json"), "w", encoding="utf-8") as handle:
+            handle.write("{truncated")
+        self.assertEqual(_git_sha(self.root), "")
+
+    def test_preflight_accepts_a_release_with_a_matching_manifest_sha(self) -> None:
+        from workers.core.service_preflight import run_preflight
+        from workers.core.service_manifest import build_manifest
+
+        engine = os.path.join(self.root, "engine.plan")
+        with open(engine, "wb") as handle:
+            handle.write(b"engine")
+        startup = os.path.join(self.root, "startup.json")
+        with open(startup, "w", encoding="utf-8") as handle:
+            json.dump(build_manifest(
+                service_name="svc", repository_sha="c" * 40, engine_path=engine,
+            ), handle)
+        with open(os.path.join(self.root, "release.manifest.json"), "w", encoding="utf-8") as handle:
+            json.dump({"source_git_sha": "c" * 40}, handle)
+        report = run_preflight(
+            manifest_path=startup, repo_root=self.root, expected_repo_sha="c" * 40,
+            check_ports=False, import_tensorrt=False,
+            machine_provider=lambda: "aarch64",
+        )
+        failed = report.to_dict()["failed_required_checks"]
+        self.assertNotIn("repository_sha_match", failed)
+
+
 class TestDeploymentState(unittest.TestCase):
     def setUp(self) -> None:
         self._dir = tempfile.TemporaryDirectory(prefix="phase13g-state-")
