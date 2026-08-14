@@ -21,6 +21,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -69,6 +70,21 @@ REQUIRED_DIRECTIVES = (
     "User=",
     "WorkingDirectory=",
 )
+
+
+def repository_sha(repo_root: str) -> str:
+    """HEAD of the repository the service will run from."""
+
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=repo_root,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    if completed.returncode != 0:
+        return ""
+    return completed.stdout.decode("utf-8", "replace").strip()
 
 
 def render(values: Dict[str, str]) -> str:
@@ -208,6 +224,8 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--log-path", default="/home/myjetsonnx/ma-vlna-logs/service.jsonl")
     parser.add_argument("--staging-dir", default="/home/myjetsonnx/ma-vlna-staging")
     parser.add_argument("--systemd-version", type=int, default=0)
+    parser.add_argument("--expected-sha", default="")
+    parser.add_argument("--pc-host", default="192.168.55.100")
     parser.add_argument("--write-staged", default="", help="Directory to write rendered files to.")
     parser.add_argument("--print-commands", action="store_true")
     parser.add_argument("--json", action="store_true")
@@ -243,8 +261,25 @@ def main(argv: Optional[List[str]] = None) -> int:
         unit_path = staging / ("%s.service" % args.service_name)
         env_path = staging / ("%s.env" % args.service_name)
         unit_path.write_text(unit_text, encoding="utf-8")
+        # The committed example carries a placeholder SHA. A staged copy is
+        # meant to be installed, so it gets the repository's real HEAD --
+        # otherwise the first preflight fails on repository_sha_match and the
+        # operator debugs a service that was handed a deliberately wrong value.
         env_text = ENV_EXAMPLE.read_text(encoding="utf-8")
+        sha = args.expected_sha or repository_sha(args.repo_root)
+        if sha:
+            env_text = re.sub(
+                r"^MA_VLNA_EXPECTED_SHA=.*$",
+                "MA_VLNA_EXPECTED_SHA=%s" % sha,
+                env_text,
+                flags=re.MULTILINE,
+            )
+        env_text = re.sub(
+            r"^MA_VLNA_PC_HOST=.*$", "MA_VLNA_PC_HOST=%s" % args.pc_host,
+            env_text, flags=re.MULTILINE,
+        )
         env_path.write_text(env_text, encoding="utf-8")
+        report["staged_expected_sha"] = sha
         report["staged_unit_path"] = str(unit_path)
         report["staged_env_path"] = str(env_path)
 
