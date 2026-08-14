@@ -77,15 +77,62 @@ def git_sha(repo_root: str) -> str:
     return completed.stdout.decode("utf-8", "replace").strip() if completed.returncode == 0 else ""
 
 
-def git_tree_clean(repo_root: str) -> bool:
+def worktree_provenance(repo_root: str) -> Dict[str, Any]:
+    """Whether the package this tree produces will match ``source_git_sha``.
+
+    The question is not "is the worktree pristine" but "will the bytes we ship
+    be the bytes of that commit". Those differ:
+
+    * A **modified tracked file** breaks provenance wherever it is: the commit
+      no longer describes the tree.
+    * An **untracked file inside a packaged tree** breaks it too, because the
+      packager copies whole directories and would ship a file the commit does
+      not contain.
+    * An untracked file **outside** the packaged trees changes nothing that
+      ships. Build leftovers, editor droppings and CTest output live there, and
+      a real target always has some. Refusing on those makes the check
+      superstition rather than provenance -- Gate B was blocked by a stray
+      ``Testing/`` directory that could not reach a package.
+
+    All three are reported either way, so the distinction is visible rather
+    than implicit in a boolean.
+    """
+
+    report = {
+        "tracked_modifications": [],
+        "untracked_in_package": [],
+        "untracked_outside_package": [],
+        "clean_for_packaging": False,
+    }  # type: Dict[str, Any]
     try:
         completed = subprocess.run(
-            ["git", "status", "--porcelain"], cwd=repo_root,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60,
+            ["git", "status", "--porcelain", "--untracked-files=all"], cwd=repo_root,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120,
         )
-    except (OSError, subprocess.SubprocessError):
-        return False
-    return completed.returncode == 0 and not completed.stdout.decode("utf-8", "replace").strip()
+    except (OSError, subprocess.SubprocessError) as exc:
+        report["error"] = "%s: %s" % (type(exc).__name__, exc)
+        return report
+    if completed.returncode != 0:
+        report["error"] = completed.stderr.decode("utf-8", "replace").strip()[-200:]
+        return report
+
+    for line in completed.stdout.decode("utf-8", "replace").splitlines():
+        if len(line) < 4:
+            continue
+        status, path = line[:2], line[3:].strip().strip('"')
+        top = path.split("/", 1)[0]
+        if status == "??":
+            if top in PACKAGE_INCLUDE:
+                report["untracked_in_package"].append(path)
+            else:
+                report["untracked_outside_package"].append(path)
+        else:
+            report["tracked_modifications"].append({"status": status.strip(), "path": path})
+
+    report["clean_for_packaging"] = not (
+        report["tracked_modifications"] or report["untracked_in_package"]
+    )
+    return report
 
 
 def collect_payload(repo_root: str, destination: str) -> Dict[str, Any]:
@@ -159,7 +206,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(list(sys.argv[1:] if argv is None else argv))
     repo_root = os.path.abspath(args.repo_root)
     sha = git_sha(repo_root)
-    clean = git_tree_clean(repo_root)
+    provenance = worktree_provenance(repo_root)
     release_id = args.release_id or "r%s-%s" % (
         time.strftime("%Y%m%d%H%M%S", time.gmtime()), (sha or "unknown")[:8]
     )
@@ -168,7 +215,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "phase": PHASE,
         "release_id": release_id,
         "source_git_sha": sha,
-        "worktree_clean": clean,
+        "worktree_provenance": provenance,
+        "package_matches_commit": provenance["clean_for_packaging"],
         "integrity_only": True,
         "signed": False,
         "secure_boot": False,
@@ -176,9 +224,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         "anti_rollback_security": False,
     }  # type: Dict[str, Any]
 
-    if not clean and not args.allow_dirty:
+    if not provenance["clean_for_packaging"] and not args.allow_dirty:
         report["ok"] = False
-        report["error"] = "worktree is not clean; a release must name a real commit"
+        report["error"] = (
+            "worktree does not correspond to %s: %d tracked modification(s), "
+            "%d untracked file(s) inside packaged trees"
+            % (
+                (sha or "HEAD")[:8],
+                len(provenance["tracked_modifications"]),
+                len(provenance["untracked_in_package"]),
+            )
+        )
         print(json.dumps(report, indent=2, sort_keys=True))
         return 2
     if not sha:

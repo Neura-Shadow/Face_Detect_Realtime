@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import stat
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -20,9 +22,12 @@ from pathlib import Path
 from typing import Any, Dict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+for _path in (str(REPO_ROOT), str(SCRIPTS_DIR)):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
 
+from run_phase13g_package import worktree_provenance  # noqa: E402
 from workers.core.deployment_state import (  # noqa: E402
     ACTIVATING,
     CONFIRMED,
@@ -635,6 +640,108 @@ class TestDeploymentState(unittest.TestCase):
         self.assertIn(ACTIVATING, described["unconfirmed_states"])
         self.assertIn(PROBATION, described["fail_closed_states"])
         self.assertEqual(described["default_reboot_policy"], "rollback_to_last_known_good")
+
+
+class TestWorktreeProvenance(unittest.TestCase):
+    """The packager's cleanliness rule, on real git repositories.
+
+    The rule exists to guarantee the package matches ``source_git_sha``, so the
+    tests are written against that guarantee: dirt that can reach a package must
+    be refused, and dirt that cannot must not block a release. A rule that only
+    refused would be trivially "safe" and useless, so both directions are
+    asserted.
+    """
+
+    def setUp(self) -> None:
+        self.root = tempfile.mkdtemp(prefix="phase13g-git-")
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self._git("init", "--quiet")
+        self._git("config", "user.email", "test@example.invalid")
+        self._git("config", "user.name", "Phase 13G Test")
+        # One packaged tree and one unpackaged one, both tracked.
+        self._write("workers/core/thing.py", "VALUE = 1\n")
+        self._write("docs/notes.md", "notes\n")
+        self._git("add", "-A")
+        self._git("commit", "--quiet", "-m", "base")
+
+    def _git(self, *args: str) -> str:
+        completed = subprocess.run(
+            ("git",) + args, cwd=self.root,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60,
+        )
+        output = completed.stdout.decode("utf-8", "replace")
+        if completed.returncode != 0:
+            raise AssertionError("git %s failed: %s" % (" ".join(args), output))
+        return output
+
+    def _write(self, relative: str, content: str) -> None:
+        path = os.path.join(self.root, relative)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(content)
+
+    def test_committed_tree_is_clean(self) -> None:
+        report = worktree_provenance(self.root)
+        self.assertTrue(report["clean_for_packaging"])
+        self.assertEqual(report["tracked_modifications"], [])
+        self.assertEqual(report["untracked_in_package"], [])
+
+    def test_untracked_outside_packaged_trees_does_not_block(self) -> None:
+        """The Gate B case: a CTest leftover at the repo root.
+
+        ``Testing/`` is not inside any packaged tree, so no byte of it can enter
+        the tarball. Refusing here would block a release for a file the package
+        does not contain.
+        """
+
+        self._write("Testing/Temporary/LastTest.log", "ctest output\n")
+        report = worktree_provenance(self.root)
+        self.assertTrue(report["clean_for_packaging"])
+        self.assertIn("Testing/Temporary/LastTest.log", report["untracked_outside_package"])
+        self.assertEqual(report["untracked_in_package"], [])
+
+    def test_untracked_inside_packaged_tree_blocks(self) -> None:
+        """This one really would ship: the packager copies whole trees."""
+
+        self._write("workers/core/local_hack.py", "SECRET_TWEAK = True\n")
+        report = worktree_provenance(self.root)
+        self.assertFalse(report["clean_for_packaging"])
+        self.assertIn("workers/core/local_hack.py", report["untracked_in_package"])
+
+    def test_modified_tracked_file_blocks_even_outside_packaged_trees(self) -> None:
+        """A modified tracked file means the commit no longer describes the tree."""
+
+        self._write("docs/notes.md", "edited\n")
+        report = worktree_provenance(self.root)
+        self.assertFalse(report["clean_for_packaging"])
+        self.assertEqual(
+            [entry["path"] for entry in report["tracked_modifications"]], ["docs/notes.md"]
+        )
+
+    def test_modified_packaged_file_blocks(self) -> None:
+        self._write("workers/core/thing.py", "VALUE = 999\n")
+        report = worktree_provenance(self.root)
+        self.assertFalse(report["clean_for_packaging"])
+        self.assertTrue(report["tracked_modifications"])
+
+    def test_staged_and_deleted_tracked_files_block(self) -> None:
+        self._write("workers/core/staged.py", "X = 1\n")
+        self._git("add", "workers/core/staged.py")
+        os.unlink(os.path.join(self.root, "workers", "core", "thing.py"))
+        report = worktree_provenance(self.root)
+        self.assertFalse(report["clean_for_packaging"])
+        paths = [entry["path"] for entry in report["tracked_modifications"]]
+        self.assertIn("workers/core/staged.py", paths)
+        self.assertIn("workers/core/thing.py", paths)
+
+    def test_non_repository_reports_error_and_is_not_clean(self) -> None:
+        """Absence of git is not cleanliness -- provenance is unverifiable."""
+
+        outside = tempfile.mkdtemp(prefix="phase13g-nogit-")
+        self.addCleanup(shutil.rmtree, outside, ignore_errors=True)
+        report = worktree_provenance(outside)
+        self.assertFalse(report["clean_for_packaging"])
+        self.assertIn("error", report)
 
 
 if __name__ == "__main__":
