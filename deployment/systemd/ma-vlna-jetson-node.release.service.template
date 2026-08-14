@@ -1,0 +1,87 @@
+# Phase 13G unit template: run the node from the active *release*, not a checkout.
+#
+# TEMPLATE ONLY. Never installed automatically. Installing it is an operator
+# action requiring sudo; Claude Code does not run sudo, edit /etc, or enable
+# passwordless sudo.
+#
+# The only difference from the Phase 13F unit is where the code comes from:
+#
+#   13F:  WorkingDirectory=/home/<user>/Face_Detect_Realtime   (a git checkout)
+#   13G:  WorkingDirectory=/opt/ma-vlna/current                (a release symlink)
+#
+# That matters because a git checkout is mutable: `git pull` changes the running
+# service's code underneath it, and the SHA the service validated at startup
+# stops describing what is on disk. A release directory is immutable after
+# install, and `current` is switched atomically, so "what is running" is a
+# question with one answer at every instant.
+#
+# systemd resolves WorkingDirectory and ExecStart at start time, so switching
+# `current` takes effect on the next restart -- which is exactly the activation
+# step the deployment manager performs.
+#
+# Targeted at systemd 245 (Ubuntu 20.04 / JetPack R35.x). Directives newer than
+# 245 are deliberately absent; see the Phase 13F template for the reasoning.
+
+[Unit]
+Description=MA-VLNA Jetson FP16 node (Phase 13G release-managed)
+Documentation=file://@REPO_ROOT@/docs/phase13g_ota_ab_rollback.md
+After=network-online.target
+Wants=network-online.target
+
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=notify
+NotifyAccess=main
+
+User=@SERVICE_USER@
+Group=@SERVICE_GROUP@
+SupplementaryGroups=video render
+
+# The active release. A symlink, switched atomically by the deployment manager.
+WorkingDirectory=@RELEASE_ROOT@/current
+
+EnvironmentFile=@ENV_FILE@
+
+RuntimeDirectory=ma-vlna
+RuntimeDirectoryMode=0750
+
+ExecStart=@PYTHON@ @RELEASE_ROOT@/current/scripts/run_phase13f_service.py \
+    --service-name @SERVICE_NAME@ \
+    --manifest @RELEASE_ROOT@/current/config/phase13f_service_manifest.json \
+    --runtime-dir %t/ma-vlna \
+    --evidence-dir @EVIDENCE_DIR@ \
+    --log-path @LOG_PATH@ \
+    --pc-host ${MA_VLNA_PC_HOST} \
+    --bind-host ${MA_VLNA_BIND_HOST} \
+    --frame-port ${MA_VLNA_FRAME_PORT} \
+    --control-port ${MA_VLNA_CONTROL_PORT} \
+    --command-port ${MA_VLNA_COMMAND_PORT} \
+    --ack-port ${MA_VLNA_ACK_PORT} \
+    --expected-repo-sha ${MA_VLNA_EXPECTED_SHA}
+
+KillSignal=SIGTERM
+KillMode=mixed
+TimeoutStopSec=45
+
+WatchdogSec=60
+Restart=on-failure
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=@SERVICE_NAME@
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+# The release root is read-only to the service: a running node must not be able
+# to rewrite the release it is running from, or the immutability the manifest
+# hash relies on is only a convention.
+ReadOnlyPaths=@RELEASE_ROOT@/releases
+ReadWritePaths=@EVIDENCE_DIR@ @LOG_DIR@ @RELEASE_ROOT@/state
+
+[Install]
+WantedBy=multi-user.target

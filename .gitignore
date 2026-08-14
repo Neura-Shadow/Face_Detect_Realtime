@@ -22,3 +22,7 @@ config/phase13f_service_manifest.json
 # service's own bounded logs. Never committed.
 ma-vlna-staging/
 ma-vlna-logs/
+# Phase 13G: release packages, installed releases and deployment state are
+# runtime artifacts. Schema, manager, packager and templates are source.
+ma-vlna-packages/
+*.tar.gz

@@ -1,0 +1,56 @@
+# Phase 13G boot-resume unit: decide what an interrupted update should do.
+#
+# TEMPLATE ONLY. Never installed automatically.
+#
+# Why this exists at all: an update has two moments where a power cut leaves the
+# machine in a state nobody confirmed --
+#
+#   ACTIVATING  `current` may already point at the candidate, but nothing has
+#               confirmed it works.
+#   PROBATION   the candidate is live and being watched, and still not trusted.
+#
+# Without this unit the machine simply boots into whatever `current` happened to
+# be at the moment power was lost, which quietly promotes an unproven release.
+# With it, the deployment manager reads its persisted state on every boot and
+# acts deterministically: by default an unconfirmed activation is rolled back to
+# last-known-good, because an activation that could not finish is not evidence
+# that the candidate is good.
+#
+# Ordering: this must run BEFORE the node service, so the node starts from
+# whatever release the recovery decision settled on rather than being started
+# once and then switched underneath itself.
+
+[Unit]
+Description=MA-VLNA deployment resume (Phase 13G interrupted-update recovery)
+Documentation=file://@REPO_ROOT@/docs/phase13g_ota_ab_rollback.md
+After=local-fs.target
+Before=@SERVICE_NAME@.service
+Wants=@SERVICE_NAME@.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=@SERVICE_USER@
+Group=@SERVICE_GROUP@
+WorkingDirectory=@RELEASE_ROOT@
+
+# `resume` is a no-op in every state except the interrupted ones, so running it
+# on every boot costs nothing and cannot surprise a healthy system.
+#
+# --skip-service-status because the node service is deliberately not up yet:
+# asking it for health here would time out on every boot.
+ExecStart=@PYTHON@ @RELEASE_ROOT@/current/scripts/run_phase13g_deploy.py resume \
+    --root @RELEASE_ROOT@ \
+    --unit @SERVICE_NAME@.service \
+    --on-boot-unconfirmed rollback \
+    --skip-service-status
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ma-vlna-deploy-resume
+
+# A resume that cannot complete must not block the boot indefinitely.
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target
