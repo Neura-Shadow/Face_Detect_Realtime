@@ -29,6 +29,7 @@ for _path in (str(REPO_ROOT), str(SCRIPTS_DIR)):
 
 from workers.core.clock_discipline import (  # noqa: E402
     DEFAULT_RESYNC_INTERVAL_SEC,
+    MIN_DRIFT_BASELINE_SEC,
     DisciplinedClock,
     estimate_drift_ppm,
 )
@@ -125,6 +126,62 @@ class TestDriftEstimation(unittest.TestCase):
 
     def test_a_single_observation_reports_no_drift(self) -> None:
         self.assertEqual(estimate_drift_ppm([]), (0.0, 0.0))
+
+
+class TestShortBaselineDrift(unittest.TestCase):
+    """A baseline too short to measure rate must not claim one.
+
+    Found by the first Gate D reboot: the boot-recovery check synced and
+    resynced about a second apart, a few hundred microseconds of scatter over
+    that baseline implied 455 ppm, the model declared itself degraded for
+    implausible drift, and AI authority was withheld from a healthy service.
+    """
+
+    def test_two_syncs_a_second_apart_claim_no_drift(self) -> None:
+        model = DisciplinedClock(resync_interval_sec=15.0)
+        # 400 us of scatter across 1.0 s would be 400 ppm if fitted as a rate.
+        model.update(jetson_minus_pc_offset_us=BASE_OFFSET_US, clock_uncertainty_us=411,
+                     round_trip_us=1000, observed_at_pc_us=0)
+        model.update(jetson_minus_pc_offset_us=BASE_OFFSET_US + 400, clock_uncertainty_us=411,
+                     round_trip_us=1000, observed_at_pc_us=1_000_000)
+        self.assertEqual(model.drift_ppm, 0.0)
+        self.assertFalse(model.drift_estimable)
+        self.assertAlmostEqual(model.drift_baseline_sec, 1.0, places=3)
+        self.assertNotIn("implausible_drift_ppm", model.degraded_reasons(1_000_000))
+
+    def test_the_scatter_still_inflates_the_guard(self) -> None:
+        # Not claiming a slope must not mean claiming certainty.
+        model = DisciplinedClock(resync_interval_sec=15.0)
+        model.update(jetson_minus_pc_offset_us=BASE_OFFSET_US, clock_uncertainty_us=411,
+                     round_trip_us=1000, observed_at_pc_us=0)
+        model.update(jetson_minus_pc_offset_us=BASE_OFFSET_US + 400, clock_uncertainty_us=411,
+                     round_trip_us=1000, observed_at_pc_us=1_000_000)
+        self.assertGreaterEqual(model.drift_residual_us, 200.0)
+        self.assertGreater(model.guard_us(1_000_000), 411 + 1000)
+
+    def test_a_long_enough_baseline_still_reports_real_drift(self) -> None:
+        pair = SimulatedPair(50.0)
+        model = DisciplinedClock(resync_interval_sec=15.0)
+        for index in range(6):
+            t = index * 15.0
+            model.update(jetson_minus_pc_offset_us=pair.measure(t), clock_uncertainty_us=500,
+                         round_trip_us=1000, observed_at_pc_us=pair.pc_us(t))
+        self.assertTrue(model.drift_estimable)
+        self.assertAlmostEqual(model.drift_ppm, 50.0, delta=1.0)
+
+    def test_genuinely_implausible_drift_is_still_caught(self) -> None:
+        # The baseline guard must not become a way to hide a real fault.
+        pair = SimulatedPair(5000.0)
+        model = DisciplinedClock(resync_interval_sec=15.0, max_offset_jump_us=10_000_000)
+        for index in range(6):
+            t = index * 15.0
+            model.update(jetson_minus_pc_offset_us=pair.measure(t), clock_uncertainty_us=500,
+                         round_trip_us=1000, observed_at_pc_us=pair.pc_us(t))
+        self.assertTrue(model.drift_estimable)
+        self.assertIn("implausible_drift_ppm", model.degraded_reasons(pair.pc_us(75.0)))
+
+    def test_minimum_baseline_is_documented(self) -> None:
+        self.assertGreater(MIN_DRIFT_BASELINE_SEC, 0.0)
 
 
 class TestFutureSkewNeverPositive(unittest.TestCase):

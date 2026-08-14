@@ -47,6 +47,9 @@ DEFAULT_MAX_DRIFT_PPM = 100.0
 DEFAULT_MAX_OFFSET_JUMP_US = 50_000
 #: A model older than this many resync intervals is not trusted.
 DEFAULT_MAX_AGE_INTERVALS = 3.0
+#: A drift slope is only claimed once the sync window spans this long. A
+#: shorter baseline measures scatter, not rate.
+MIN_DRIFT_BASELINE_SEC = 5.0
 
 
 @dataclass(frozen=True)
@@ -69,18 +72,37 @@ class ClockObservation:
         }
 
 
-def estimate_drift_ppm(observations: List[ClockObservation]) -> Tuple[float, float]:
+def estimate_drift_ppm(
+    observations: List[ClockObservation],
+    *,
+    min_baseline_sec: float = MIN_DRIFT_BASELINE_SEC,
+) -> Tuple[float, float]:
     """Least-squares rate of change of the offset, in ppm, plus residual error.
 
     The offset is expressed in microseconds and time in microseconds, so the
     slope is already microseconds per microsecond — parts per million is the
     same number scaled by 1e6.
+
+    A slope is only reported once the window spans ``min_baseline_sec``. Below
+    that the fit is measuring its own noise: two syncs a second apart with a few
+    hundred microseconds of scatter between them imply hundreds of ppm, and the
+    first Gate D reboot produced 455 ppm that way. The model then declared
+    itself degraded for implausible drift and withheld AI authority from a
+    perfectly healthy service. Reporting no slope is the honest answer to "we
+    have not been watching long enough to know" — and it is the safe one too,
+    because the guard still carries the measured scatter as its residual and the
+    drift term is proportional to a model age that is by definition small here.
     """
 
     if len(observations) < 2:
         return 0.0, 0.0
     times = [float(item.observed_at_pc_us) for item in observations]
     offsets = [float(item.jetson_minus_pc_offset_us) for item in observations]
+    baseline_sec = (max(times) - min(times)) / 1e6
+    if baseline_sec < float(min_baseline_sec):
+        mean_offset = sum(offsets) / len(offsets)
+        scatter = max(abs(value - mean_offset) for value in offsets)
+        return 0.0, scatter
     mean_t = sum(times) / len(times)
     mean_o = sum(offsets) / len(offsets)
     denominator = sum((t - mean_t) ** 2 for t in times)
@@ -199,6 +221,19 @@ class DisciplinedClock:
     # ── estimates ───────────────────────────────────────────────────────────
 
     @property
+    def drift_baseline_sec(self) -> float:
+        """How long the current window spans, in seconds."""
+
+        if len(self._window) < 2:
+            return 0.0
+        times = [item.observed_at_pc_us for item in self._window]
+        return round((max(times) - min(times)) / 1e6, 3)
+
+    @property
+    def drift_estimable(self) -> bool:
+        return self.drift_baseline_sec >= MIN_DRIFT_BASELINE_SEC
+
+    @property
     def drift_ppm(self) -> float:
         return round(estimate_drift_ppm(list(self._window))[0], 6)
 
@@ -287,7 +322,8 @@ class DisciplinedClock:
         drift = self.drift_ppm
         if not math.isfinite(drift):
             reasons.append("nonfinite_drift")
-        elif abs(drift) > self.max_drift_ppm:
+        elif self.drift_estimable and abs(drift) > self.max_drift_ppm:
+            # Implausible only if the window was long enough to mean it.
             reasons.append("implausible_drift_ppm")
         age_ms = self.model_age_us(now_pc_us) / 1000.0
         if age_ms > self.resync_interval_sec * self.max_age_intervals * 1000.0:
@@ -314,6 +350,9 @@ class DisciplinedClock:
             "jetson_minus_pc_offset_us": self.jetson_minus_pc_offset_us,
             "estimated_offset_us": round(self.estimated_offset_us(reference), 3),
             "estimated_drift_ppm": self.drift_ppm,
+            "drift_baseline_sec": self.drift_baseline_sec,
+            "drift_estimable": self.drift_estimable,
+            "drift_min_baseline_sec": MIN_DRIFT_BASELINE_SEC,
             "clock_drift_residual_us": self.drift_residual_us,
             "clock_uncertainty_us": self.clock_uncertainty_us,
             "clock_guard_us": self.guard_us(reference),

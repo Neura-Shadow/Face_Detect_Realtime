@@ -199,11 +199,18 @@ def verify_fp16_authority(args: argparse.Namespace) -> Dict[str, Any]:
         report["clock_uncertainty_us"] = clock.get("clock_uncertainty_us")
         driver.start_session(start_frame_server=True)
         # Periodic discipline must work after a reboot too, not just at start.
+        # Space the resync like the real service does: resyncing a second after
+        # the initial sync gives the drift fit a baseline too short to mean
+        # anything, which is how the first Gate D run produced 455 ppm.
+        time.sleep(max(0.0, float(args.resync_spacing_sec)))
         resync = driver.resync_clocks()
         report["clock_resync_accepted"] = bool(resync.get("clock_sync_accepted"))
         report["estimated_drift_ppm"] = resync.get("estimated_drift_ppm")
         report["clock_guard_us"] = resync.get("clock_guard_us")
         report["clock_sync_degraded"] = resync.get("clock_sync_degraded")
+        report["clock_degraded_reasons"] = resync.get("clock_degraded_reasons")
+        report["drift_baseline_sec"] = resync.get("drift_baseline_sec")
+        report["drift_estimable"] = resync.get("drift_estimable")
         report["clock_resync_count"] = driver.clock_resync_count
 
         if not driver.connect_frames():
@@ -355,6 +362,10 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--camera-width", type=int, default=320)
     parser.add_argument("--camera-height", type=int, default=180)
     parser.add_argument("--frames", type=int, default=40)
+    parser.add_argument(
+        "--resync-spacing-sec", type=float, default=16.0,
+        help="Gap between the initial sync and the resync, matching the service interval.",
+    )
     parser.add_argument("--skip-authority-check", action="store_true")
     parser.add_argument("--output-dir", default="experiments/phase13")
     parser.add_argument(
