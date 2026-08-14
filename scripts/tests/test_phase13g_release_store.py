@@ -27,7 +27,7 @@ for _path in (str(REPO_ROOT), str(SCRIPTS_DIR)):
     if _path not in sys.path:
         sys.path.insert(0, _path)
 
-from run_phase13g_package import worktree_provenance  # noqa: E402
+from run_phase13g_package import collect_payload, worktree_provenance  # noqa: E402
 from workers.core.deployment_state import (  # noqa: E402
     ACTIVATING,
     CONFIRMED,
@@ -740,6 +740,70 @@ class TestDeploymentState(unittest.TestCase):
         self.assertIn(ACTIVATING, described["unconfirmed_states"])
         self.assertIn(PROBATION, described["fail_closed_states"])
         self.assertEqual(described["default_reboot_policy"], "rollback_to_last_known_good")
+
+
+class TestPackagePayloadExclusions(unittest.TestCase):
+    """Generated host state must not travel inside an immutable release."""
+
+    def setUp(self) -> None:
+        self.src = tempfile.mkdtemp(prefix="phase13g-src-")
+        self.dst = tempfile.mkdtemp(prefix="phase13g-dst-")
+        self.addCleanup(shutil.rmtree, self.src, ignore_errors=True)
+        self.addCleanup(shutil.rmtree, self.dst, ignore_errors=True)
+
+    def write(self, relative: str, content: str = "x") -> None:
+        path = os.path.join(self.src, relative)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(content)
+
+    def packaged(self) -> set:
+        collect_payload(self.src, self.dst)
+        found = set()
+        for base, _dirs, files in os.walk(self.dst):
+            for name in files:
+                found.add(
+                    os.path.relpath(os.path.join(base, name), self.dst).replace(os.sep, "/")
+                )
+        return found
+
+    def test_the_generated_startup_manifest_is_not_packaged(self) -> None:
+        """It pins an absolute engine path and the commit *it* was built for.
+
+        A copy inside a release contradicts that release's own source_git_sha.
+        The release manifest references it by path and hash instead.
+        """
+
+        self.write("config/phase13f_service_manifest.json", '{"repository_sha": "dabbbaba"}')
+        self.write("config/keep_me.json", "{}")
+        packaged = self.packaged()
+        self.assertNotIn("config/phase13f_service_manifest.json", packaged)
+        self.assertIn("config/keep_me.json", packaged)
+
+    def test_a_release_manifest_is_not_packaged_inside_itself(self) -> None:
+        """Its value includes the package's own hash."""
+
+        self.write("config/release.manifest.json", "{}")
+        self.assertNotIn("config/release.manifest.json", self.packaged())
+
+    def test_ordinary_runtime_files_are_packaged(self) -> None:
+        self.write("scripts/run_thing.py", "print(1)\n")
+        self.write("workers/core/mod.py", "X = 1\n")
+        packaged = self.packaged()
+        self.assertIn("scripts/run_thing.py", packaged)
+        self.assertIn("workers/core/mod.py", packaged)
+
+    def test_engines_tests_and_caches_are_excluded(self) -> None:
+        self.write("scripts/tests/test_thing.py", "pass\n")
+        self.write("workers/__pycache__/mod.pyc", "junk")
+        self.write("config/model.engine", "weights")
+        self.write("config/.env", "SECRET=1")
+        packaged = self.packaged()
+        self.assertEqual(
+            [name for name in packaged if "test" in name or name.endswith((".pyc", ".engine"))],
+            [],
+        )
+        self.assertNotIn("config/.env", packaged)
 
 
 class TestWorktreeProvenance(unittest.TestCase):

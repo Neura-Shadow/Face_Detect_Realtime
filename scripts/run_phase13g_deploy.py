@@ -488,6 +488,31 @@ class DeploymentManager:
         payload["ok"] = True
         return payload
 
+    def publish_env(self) -> Dict[str, Any]:
+        """Publish the environment layer for whatever ``current`` already is.
+
+        Needed because the layer is written by ``activate``, and the first start
+        under Phase 13G has not activated anything -- Gate B deliberately left
+        release A active without switching production authority. Starting the
+        unit then would fall back to the single SHA pinned in ``/etc`` and fail
+        the preflight ``repository_sha_match``, for a release that is perfectly
+        good.
+
+        Idempotent, so running it before every start is safe.
+        """
+
+        release_id = self.store.resolve(CURRENT_LINK)
+        report = {"operation": "publish-env", "release_id": release_id}  # type: Dict[str, Any]
+        if not release_id:
+            report["ok"] = False
+            report["error"] = "no current release to publish an environment layer for"
+            return report
+        result = self._publish_release_env(release_id)
+        report.update(result)
+        report["env_layer"] = self._describe_release_env()
+        report["ok"] = bool(result.get("ok"))
+        return report
+
     def _publish_release_env(self, release_id: str) -> Dict[str, Any]:
         """Write the environment layer naming the release about to be started."""
 
@@ -679,7 +704,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument(
         "operation",
         choices=["stage", "validate", "activate", "confirm", "rollback", "status",
-                 "cleanup", "resume"],
+                 "cleanup", "resume", "publish-env"],
     )
     parser.add_argument("--root", default=DEFAULT_ROOT)
     parser.add_argument("--unit", default=DEFAULT_UNIT)
@@ -733,6 +758,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         report = manager.cleanup()
     elif operation == "resume":
         report = manager.resume()
+    elif operation == "publish-env":
+        report = manager.publish_env()
     else:
         report = manager.status()
 

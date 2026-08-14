@@ -829,6 +829,45 @@ class ExpectedShaEnvLayerTest(unittest.TestCase):
         ]
         self.assertEqual(leftovers, [], "a temporary env file survived")
 
+    def test_publish_env_writes_the_layer_for_the_active_release(self) -> None:
+        """The first Phase 13G start has activated nothing, so nothing wrote it."""
+
+        fixture = self.fixture()
+        self.assertFalse(fixture.read_env_layer())
+        report = fixture.manager.publish_env()
+        self.assertTrue(report["ok"], report)
+        self.assertEqual(report["release_id"], "relA")
+        published = fixture.read_env_layer()
+        self.assertEqual(published["MA_VLNA_EXPECTED_SHA"], self.SHA_A)
+        self.assertTrue(report["env_layer"]["agrees_with_current"])
+
+    def test_publish_env_is_idempotent(self) -> None:
+        """It is run before every start, so repeating it must be a no-op."""
+
+        fixture = self.fixture()
+        first = fixture.manager.publish_env()
+        second = fixture.manager.publish_env()
+        self.assertTrue(first["ok"] and second["ok"])
+        self.assertEqual(fixture.read_env_layer(), {
+            "MA_VLNA_EXPECTED_SHA": self.SHA_A,
+            "MA_VLNA_ACTIVE_RELEASE_ID": "relA",
+        })
+
+    def test_publish_env_repairs_a_layer_that_drifted_from_current(self) -> None:
+        fixture = self.fixture()
+        self.stage_b(fixture)
+        fixture.manager.activate("relB")
+        fixture.store.set_link_atomic(CURRENT_LINK, "relA")
+        self.assertFalse(fixture.manager.status()["env_layer"]["agrees_with_current"])
+        fixture.manager.publish_env()
+        self.assertTrue(fixture.manager.status()["env_layer"]["agrees_with_current"])
+
+    def test_publish_env_without_a_current_release_is_refused(self) -> None:
+        fixture = DeploymentFixture(self.tmp)
+        report = fixture.manager.publish_env()
+        self.assertFalse(report["ok"])
+        self.assertIn("no current release", report["error"])
+
     def test_a_release_without_provenance_is_reported_not_hidden(self) -> None:
         """No SHA to publish is a loud condition, not a silent skip."""
 

@@ -190,6 +190,23 @@ def validate_release_unit(
     expected_read_only = "%s/releases" % release_root.rstrip("/")
     report["releases_read_only"] = any(expected_read_only in value for value in read_only)
 
+    # The startup manifest is generated host state, referenced not packaged. A
+    # unit pointing inside the release would read a copy pinning whichever
+    # commit the manifest was generated against -- which contradicts the
+    # release's own source_git_sha and made the first Gate C start fail
+    # preflight for a release that was fine.
+    exec_start = " ".join(value for name, value in directives if name == "ExecStart")
+    manifest_arg = ""
+    tokens = exec_start.split()
+    for index, token in enumerate(tokens):
+        if token == "--manifest" and index + 1 < len(tokens):
+            manifest_arg = tokens[index + 1]
+            break
+    report["startup_manifest"] = manifest_arg
+    report["startup_manifest_external"] = bool(manifest_arg) and not manifest_arg.startswith(
+        "%s/" % release_root.rstrip("/")
+    )
+
     report["valid"] = not (
         report["missing_required"]
         or report["wrong_values"]
@@ -202,6 +219,7 @@ def validate_release_unit(
         report["state_env_present"],
         report["state_env_is_last"],
         report["releases_read_only"],
+        report["startup_manifest_external"],
     ))
     return report
 
@@ -281,14 +299,21 @@ def installation_commands(values: Dict[str, str]) -> List[str]:
         "sudo systemd-analyze verify /etc/systemd/system/%s" % resume_unit,
         "sudo systemctl daemon-reload",
         "",
-        "# 6. Start, and watch. `current` must already point at a validated",
-        "#    release -- Gate B left release A active and confirmed.",
+        "# 6. Publish the environment layer for the release that is already",
+        "#    active. No privilege needed, and it must happen before the first",
+        "#    start: nothing has been activated yet, so without it the unit falls",
+        "#    back to the single SHA pinned in /etc and fails preflight against a",
+        "#    release that is perfectly good. Idempotent.",
         "ls -l %s/current" % release_root,
+        "%s %s/current/scripts/run_phase13g_deploy.py publish-env --root %s --unit %s"
+        % (shlex.quote(values["PYTHON"]), release_root, shlex.quote(release_root), unit),
+        "",
+        "# 7. Start, and watch.",
         "sudo systemctl start %s" % unit,
         "systemctl status %s --no-pager" % unit,
         "journalctl -u %s -n 60 --no-pager" % unit,
         "",
-        "# 7. Only once it is healthy, enable both for boot.",
+        "# 8. Only once it is healthy, enable both for boot.",
         "sudo systemctl enable %s" % unit,
         "sudo systemctl enable %s" % resume_unit,
         "",
@@ -313,6 +338,15 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--repo-root", default="/home/myjetsonnx/Face_Detect_Realtime")
     parser.add_argument("--python", default="/home/myjetsonnx/venvs/ma-vlna/bin/python")
     parser.add_argument("--env-file", default="/etc/ma-vlna/jetson-node.env")
+    parser.add_argument(
+        "--startup-manifest",
+        default="/home/myjetsonnx/Face_Detect_Realtime/config/phase13f_service_manifest.json",
+        help=(
+            "Phase 13F startup manifest, referenced not packaged. Must live "
+            "outside the release root; its SHA-256 is recorded in each release "
+            "manifest so drift is caught at validate time."
+        ),
+    )
     parser.add_argument(
         "--evidence-dir", default="/home/myjetsonnx/Face_Detect_Realtime/experiments/phase13"
     )
@@ -341,6 +375,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "LOG_DIR": args.log_dir,
         "LOG_PATH": args.log_path,
         "STAGING_DIR": args.staging_dir,
+        "STARTUP_MANIFEST": args.startup_manifest,
     }
 
     release_text = render(RELEASE_TEMPLATE, values)

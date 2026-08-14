@@ -47,6 +47,7 @@ VALUES = {
     "LOG_DIR": "/home/myjetsonnx/ma-vlna-logs",
     "LOG_PATH": "/home/myjetsonnx/ma-vlna-logs/service.jsonl",
     "STAGING_DIR": "/home/myjetsonnx/ma-vlna-staging",
+    "STARTUP_MANIFEST": "/home/myjetsonnx/Face_Detect_Realtime/config/phase13f_service_manifest.json",
 }  # type: Dict[str, str]
 
 
@@ -120,6 +121,11 @@ class TestRenderedUnitsAreValid(unittest.TestCase):
     def test_release_unit_keeps_the_release_tree_read_only(self) -> None:
         self.assertTrue(check_release(release_unit())["releases_read_only"])
 
+    def test_release_unit_references_the_startup_manifest_externally(self) -> None:
+        report = check_release(release_unit())
+        self.assertTrue(report["startup_manifest_external"])
+        self.assertFalse(report["startup_manifest"].startswith(RELEASE_ROOT + "/"))
+
     def test_resume_unit_is_ordered_before_the_node(self) -> None:
         report = check_resume(resume_unit())
         self.assertTrue(report["before_node_service"])
@@ -175,6 +181,24 @@ class TestValidatorRefusesBadUnits(unittest.TestCase):
         report = check_release(text)
         self.assertFalse(report["valid"])
         self.assertFalse(report["releases_read_only"])
+
+    def test_a_startup_manifest_inside_the_release_is_refused(self) -> None:
+        """The second Gate C blocker, caught before Gate C ran.
+
+        A packaged copy of the generated startup manifest pins whichever commit
+        it was generated against -- ``dabbbaba``, the frozen Phase 13F runtime --
+        inside a release whose ``source_git_sha`` is a later commit. Two
+        contradictory answers to "which commit is this?" in one directory, and
+        the first start would fail preflight blaming a release that was fine.
+        """
+
+        text = release_unit().replace(
+            "--manifest %s" % VALUES["STARTUP_MANIFEST"],
+            "--manifest %s/current/config/phase13f_service_manifest.json" % RELEASE_ROOT,
+        )
+        report = check_release(text)
+        self.assertFalse(report["valid"])
+        self.assertFalse(report["startup_manifest_external"])
 
     def test_a_directive_newer_than_the_target_is_refused(self) -> None:
         """`RestartSteps` is systemd 254; the Jetson runs 245."""
@@ -239,6 +263,19 @@ class TestInstallationCommands(unittest.TestCase):
         verify = next(i for i, c in enumerate(commands) if "systemd-analyze verify" in c)
         start = next(i for i, c in enumerate(commands) if c.startswith("sudo systemctl start"))
         self.assertLess(verify, start, "unit is started before systemd validates it")
+
+    def test_the_env_layer_is_published_before_the_first_start(self) -> None:
+        """Nothing has been activated yet, so nothing has written the layer.
+
+        Without this step the first start falls back to the single SHA pinned in
+        /etc and fails preflight against a good release.
+        """
+
+        commands = installation_commands(VALUES)
+        publish = next(i for i, c in enumerate(commands) if "publish-env" in c)
+        start = next(i for i, c in enumerate(commands) if c.startswith("sudo systemctl start"))
+        self.assertLess(publish, start)
+        self.assertNotIn("sudo", commands[publish], "publishing the layer needs no privilege")
 
     def test_enabling_comes_after_starting(self) -> None:
         """Enabling an unproven unit makes a bad release survive reboots."""

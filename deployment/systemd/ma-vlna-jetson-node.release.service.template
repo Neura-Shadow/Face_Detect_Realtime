@@ -65,9 +65,17 @@ EnvironmentFile=-@RELEASE_ROOT@/state/service.env
 RuntimeDirectory=ma-vlna
 RuntimeDirectoryMode=0750
 
+# The startup manifest is referenced, not packaged. It is generated on this
+# target and pins an absolute engine path plus the commit the service was built
+# for, so it is host state rather than repository content -- the same category as
+# the engine, which is also referenced by path. A copy inside the release would
+# pin a commit that contradicts the release's own source_git_sha.
+#
+# The release manifest records its SHA-256, so drift is detected at validate
+# time rather than discovered at start time.
 ExecStart=@PYTHON@ @RELEASE_ROOT@/current/scripts/run_phase13f_service.py \
     --service-name @SERVICE_NAME@ \
-    --manifest @RELEASE_ROOT@/current/config/phase13f_service_manifest.json \
+    --manifest @STARTUP_MANIFEST@ \
     --runtime-dir %t/ma-vlna \
     --evidence-dir @EVIDENCE_DIR@ \
     --log-path @LOG_PATH@ \

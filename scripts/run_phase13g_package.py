@@ -65,6 +65,28 @@ PACKAGE_EXCLUDE_SUFFIXES = (
     ".log", ".jsonl", ".env",
 )
 
+#: Generated, host-specific files that must never travel inside a release.
+#:
+#: ``phase13f_service_manifest.json`` is the Phase 13F startup manifest. It is
+#: generated on the target and pins an absolute engine path and the commit the
+#: *service* was built for, which is why it is gitignored rather than committed.
+#: Packaging it put a copy pinning ``dabbbaba`` (the frozen Phase 13F runtime)
+#: inside a release whose own ``source_git_sha`` was a later commit -- two
+#: contradictory answers to "which commit is this?" in the same directory.
+#:
+#: The release manifest already does the right thing with it: records
+#: ``engine_manifest_path`` and ``engine_manifest_sha256`` and references it as
+#: an external asset, exactly as it does the engine. So it is referenced, not
+#: copied.
+#:
+#: ``release.manifest.json`` is written *beside* the package and installed at the
+#: release root. A package cannot contain a file whose value includes the
+#: package's own hash.
+PACKAGE_EXCLUDE_NAMES = frozenset({
+    "phase13f_service_manifest.json",
+    "release.manifest.json",
+})
+
 
 def git_sha(repo_root: str) -> str:
     try:
@@ -156,7 +178,7 @@ def collect_payload(repo_root: str, destination: str) -> Dict[str, Any]:
             target_dir = os.path.join(destination, relative)
             os.makedirs(target_dir, exist_ok=True)
             for name in files:
-                if name.endswith(PACKAGE_EXCLUDE_SUFFIXES):
+                if name.endswith(PACKAGE_EXCLUDE_SUFFIXES) or name in PACKAGE_EXCLUDE_NAMES:
                     skipped_files += 1
                     continue
                 shutil.copy2(os.path.join(base, name), os.path.join(target_dir, name))
