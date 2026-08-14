@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ma-vlna/vlm-output",
+  "title": "VLMReasonerOutput",
+  "description": "VLM Reasoner 結構化輸出 — 語義推理結果，由 Safety Gate 與 Planner 驗證後執行",
+  "type": "object",
+  "required": ["scene_summary", "hazards", "navigable_regions", "waypoint_hints", "speed_hint", "must_not_do", "confidence"],
+  "properties": {
+    "scene_summary": {
+      "type": "string",
+      "description": "場景自然語言摘要"
+    },
+    "reasoning_summary": {
+      "type": "string",
+      "description": "A concise explanation of the decision basis. Do not include hidden chain-of-thought."
+    },
+    "hazards": {
+      "type": "array",
+      "description": "偵測到的危險物件或區域",
+      "items": {
+        "type": "object",
+        "required": ["label", "severity"],
+        "properties": {
+          "label": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "bbox": {
+            "type": "object",
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "w": { "type": "number" },
+              "h": { "type": "number" }
+            }
+          },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "navigable_regions": {
+      "type": "array",
+      "description": "可通行區域描述",
+      "items": {
+        "type": "object",
+        "required": ["region_id", "description"],
+        "properties": {
+          "region_id": { "type": "string" },
+          "description": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "waypoint_hints": {
+      "type": "array",
+      "description": "建議的航點提示（語義層級，由 Planner 驗證後轉為精確座標）",
+      "items": {
+        "type": "object",
+        "required": ["hint"],
+        "properties": {
+          "hint": { "type": "string" },
+          "direction": { "type": "string", "enum": ["forward", "left", "right", "back", "stop"] },
+          "distance_hint": { "type": "string" },
+          "priority": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "speed_hint": {
+      "type": "string",
+      "enum": ["stop", "slow", "normal"],
+      "description": "建議速度等級"
+    },
+    "must_not_do": {
+      "type": "array",
+      "description": "必須避免的行為",
+      "items": { "type": "string" }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "VLM 對此推理結果的信心分數"
+    }
+  }
+}

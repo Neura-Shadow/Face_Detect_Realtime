@@ -1,0 +1,31 @@
+.env
+config/.env
+*.env
+runtime_logs/
+release_artifacts/
+test_env/
+__pycache__/
+*.pyc
+*.log
+node_modules/
+.next/
+experiments/phase12/*/runs/
+experiments/phase12/*/raw_outputs/
+experiments/phase12/*/
+experiments/phase13/*/
+.phase13a-cmake-check-*/
+# Phase 13F: the generated startup manifest is host-specific runtime config
+# (absolute engine path, pinned commit, real hash). The schema, builder and
+# validator are source and are committed; the generated file is not.
+config/phase13f_service_manifest.json
+# Rendered units and env files staged for an operator to install, and the
+# service's own bounded logs. Never committed.
+ma-vlna-staging/
+ma-vlna-logs/
+# Phase 13G: release packages, installed releases and deployment state are
+# runtime artifacts. Schema, manager, packager and templates are source.
+ma-vlna-packages/
+*.tar.gz
+# Git bundles are the transfer mechanism to the Jetson when it has no DNS.
+# They are a copy of history, never content to commit.
+*.bundle

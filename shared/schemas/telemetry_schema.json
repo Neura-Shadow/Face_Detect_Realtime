@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ma-vlna/telemetry",
+  "title": "TelemetryEntry",
+  "description": "遙測資料條目 — 車輛狀態、觸發事件與規劃決策",
+  "type": "object",
+  "required": ["vehicle_id", "timestamp", "event_type"],
+  "properties": {
+    "vehicle_id": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "status_update",
+        "vlm_triggered",
+        "vlm_response",
+        "vlm_timeout",
+        "vlm_rejected",
+        "planner_update",
+        "planner_deadlock",
+        "planner_override",
+        "safe_stop",
+        "request_review",
+        "memory_replay",
+        "memory_conflict",
+        "operator_decision"
+      ]
+    },
+    "planner_state": { "type": "string" },
+    "current_speed": { "type": "number" },
+    "position": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "heading_deg": { "type": "number" },
+    "trigger_reason": { "type": ["string", "null"] },
+    "vlm_active": { "type": "boolean" },
+    "safe_mode": { "type": "boolean" },
+    "current_action": { "type": "string" },
+    "details": {
+      "type": "object",
+      "description": "事件相關的附加細節",
+      "additionalProperties": true
+    }
+  }
+}
